@@ -6,7 +6,7 @@
 ;WZGV=7023K_681
 ;WZGVCONFIG=
 ;MASCHINE=HOLZHER
-;NCNAME=test_output
+;NCNAME=Test_1m_Platte_mit_Tasche_v.2
 ;KOMMENTAR=
 ;DX=0.000
 ;DY=0.000
@@ -17,9 +17,11 @@
 ;BUTTONBILD=
 ;DIMENSION_UNIT=0
 VARS
-   DX := 800;*VAR*Dimension X
-   DY := 400;*VAR*Dimension Y
+   DX := 1000;*VAR*Dimension X
+   DY := 1000;*VAR*Dimension Y
    DZ := 19;*VAR*Dimension Z
 START
 Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)
 CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)
+WZF (1,_VE,_V*1,_VA,_SD,0,'')
+CALL _RechteckTasche_V5(VAL x_Mitte:=500,Y_Mitte:=500,Taschenlaenge:=500,Taschenbreite:=500,Radius:=20,Winkel:=0,Tiefe:=-10,Zustellung:=0,AB:=2,ABF:=_ANF,Interpol:=1,umkehren:=0,esxy:=0,esmd:=0,laser:=0)
