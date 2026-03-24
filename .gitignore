@@ -1,1 +1,3 @@
 .planning/
+output/
+output/*.hop
