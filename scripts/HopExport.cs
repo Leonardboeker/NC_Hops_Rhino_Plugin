@@ -1,7 +1,10 @@
 // HopExport -- Core .hop file generator for DYNESTIC CNC
-// Inputs: filePath (Item), export (Item), dx (Item), dy (Item), dz (Item),
+// Inputs: folder (Item), fileName (Item), export (Item), dx (Item), dy (Item), dz (Item),
 //         wzgv (Item), operationLines (List)
 // Outputs: hopContent, statusMsg
+//
+// folder   -- output directory, e.g. D:/Projekte/test/
+// fileName -- file name without extension, e.g. Tisch_bohren
 //
 // Assembles and writes syntactically valid .hop files from GH inputs.
 // Follows the kukaprc_toolpath.cs guard-default-work-output pattern.
@@ -26,7 +29,8 @@ using Grasshopper.Kernel.Types;
 public class Script_Instance : GH_ScriptInstance
 {
   private void RunScript(
-    string filePath,
+    string folder,
+    string fileName,
     bool export,
     double dx, double dy, double dz,
     string wzgv,
@@ -56,15 +60,21 @@ public class Script_Instance : GH_ScriptInstance
     // ---------------------------------------------------------------
     // 4. VALIDATION -- error messages for invalid required inputs
     // ---------------------------------------------------------------
-    if (string.IsNullOrWhiteSpace(filePath))
+    if (string.IsNullOrWhiteSpace(folder))
     {
       this.Component.AddRuntimeMessage(
-        GH_RuntimeMessageLevel.Error, "filePath is empty");
+        GH_RuntimeMessageLevel.Error, "folder is empty");
       return;
     }
 
-    string fullPath = Path.GetFullPath(filePath);
-    string directory = Path.GetDirectoryName(fullPath);
+    if (string.IsNullOrWhiteSpace(fileName))
+    {
+      this.Component.AddRuntimeMessage(
+        GH_RuntimeMessageLevel.Error, "fileName is empty");
+      return;
+    }
+
+    string directory = Path.GetFullPath(folder);
 
     if (!Directory.Exists(directory))
     {
@@ -73,11 +83,12 @@ public class Script_Instance : GH_ScriptInstance
       return;
     }
 
-    // Ensure .hop extension
-    if (!fullPath.EndsWith(".hop", StringComparison.OrdinalIgnoreCase))
-    {
-      fullPath = fullPath + ".hop";
-    }
+    // Strip .hop extension if user typed it, then re-add -- always clean
+    string stem = fileName.EndsWith(".hop", StringComparison.OrdinalIgnoreCase)
+      ? fileName.Substring(0, fileName.Length - 4)
+      : fileName;
+
+    string fullPath = Path.Combine(directory, stem + ".hop");
 
     if (operationLines == null)
     {
@@ -87,7 +98,7 @@ public class Script_Instance : GH_ScriptInstance
     // ---------------------------------------------------------------
     // 5. BUILD HEADER -- match Muster_DXF_Import.hop order exactly
     // ---------------------------------------------------------------
-    string ncName = Path.GetFileNameWithoutExtension(fullPath);
+    string ncName = stem;
 
     List<string> lines = new List<string>();
     lines.Add(";MAKROTYP=0");
