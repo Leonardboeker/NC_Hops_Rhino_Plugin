@@ -1,6 +1,7 @@
 // HopFreeSlot -- Free slot operation for DYNESTIC CNC
 // Inputs: p1 (Item), p2 (Item), slotWidth (Item),
-//         depth (Item), toolNr (Item), feedFactor (Item), toolType (Item)
+//         depth (Item), toolNr (Item), feedFactor (Item), toolType (Item),
+//         colour (Item)
 // Outputs: operationLines
 //
 // Takes two Point3d inputs (slot start and end) plus slot width.
@@ -22,11 +23,56 @@ using Grasshopper.Kernel.Types;
 
 public class Script_Instance : GH_ScriptInstance
 {
+  // ---------------------------------------------------------------
+  // PREVIEW FIELDS
+  // ---------------------------------------------------------------
+  private static readonly Color _defaultColor = Color.Orange;
+  private Line  _centerline    = Line.Unset;
+  private Line  _edgeLine1     = Line.Unset;
+  private Line  _edgeLine2     = Line.Unset;
+  private Line  _approachLine  = Line.Unset;
+  private Color _drawColor     = Color.Orange;
+
+  public override BoundingBox ClippingBox
+  {
+    get
+    {
+      BoundingBox bb = BoundingBox.Empty;
+      if (_centerline.IsValid)  { bb.Union(_centerline.From);  bb.Union(_centerline.To);  }
+      if (_edgeLine1.IsValid)   { bb.Union(_edgeLine1.From);   bb.Union(_edgeLine1.To);   }
+      if (_edgeLine2.IsValid)   { bb.Union(_edgeLine2.From);   bb.Union(_edgeLine2.To);   }
+      if (_approachLine.IsValid){ bb.Union(_approachLine.From); bb.Union(_approachLine.To);}
+      return bb;
+    }
+  }
+
+  public override void DrawViewportWires(IGH_PreviewArgs args)
+  {
+    if (_centerline.IsValid)
+      args.Display.DrawLine(_centerline, _drawColor, 2);
+    if (_edgeLine1.IsValid)
+      args.Display.DrawLine(_edgeLine1, _drawColor, 1);
+    if (_edgeLine2.IsValid)
+      args.Display.DrawLine(_edgeLine2, _drawColor, 1);
+    if (_approachLine.IsValid)
+      args.Display.DrawPatternedLine(
+        _approachLine.From, _approachLine.To,
+        Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
+  }
+
   private void RunScript(
     Point3d p1, Point3d p2, double slotWidth,
     double depth, int toolNr, double feedFactor, string toolType,
+    Color colour,
     ref object operationLines)
   {
+    // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
+    _centerline   = Line.Unset;
+    _edgeLine1    = Line.Unset;
+    _edgeLine2    = Line.Unset;
+    _approachLine = Line.Unset;
+    _drawColor    = colour.IsEmpty ? _defaultColor : colour;
+
     // ---------------------------------------------------------------
     // 1. DEFAULTS
     // ---------------------------------------------------------------
@@ -55,6 +101,26 @@ public class Script_Instance : GH_ScriptInstance
     if (feedFactor <= 0) feedFactor = 1.0;
     if (string.IsNullOrEmpty(toolType)) toolType = "WZF";
     if (depth <= 0) depth = 1.0;
+
+    // PREVIEW: centerline and slot-edge parallel lines at cut depth
+    double previewZ = -Math.Abs(depth);
+    Point3d a = new Point3d(p1.X, p1.Y, previewZ);
+    Point3d b = new Point3d(p2.X, p2.Y, previewZ);
+    _centerline = new Line(a, b);
+    // Perpendicular offset in XY plane
+    Vector3d dir = b - a;
+    if (dir.Length > 0.001)
+    {
+      dir.Unitize();
+      Vector3d perp = Vector3d.CrossProduct(dir, Vector3d.ZAxis);
+      perp.Unitize();
+      double halfW = slotWidth / 2.0;
+      _edgeLine1 = new Line(a + perp * halfW, b + perp * halfW);
+      _edgeLine2 = new Line(a - perp * halfW, b - perp * halfW);
+    }
+    // PREVIEW: approach line from safeZ to p1
+    double safeZVal = Math.Max(p1.Z, p2.Z) + 20.0;
+    _approachLine = new Line(new Point3d(a.X, a.Y, safeZVal), a);
 
     // ---------------------------------------------------------------
     // 4. BUILD TOOL CALL + MACRO
