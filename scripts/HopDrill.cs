@@ -1,6 +1,7 @@
 // HopDrill -- Vertical drilling operation via Bohrung macro
 // Inputs: points (List), zSurface (Item), depth (Item), diameter (Item),
-//         stepdown (Item), toolNr (Item), feedFactor (Item), toolType (Item)
+//         stepdown (Item), toolNr (Item), feedFactor (Item), toolType (Item),
+//         colour (Item)
 // Outputs: operationLines
 //
 // Converts a list of Grasshopper points into NC-Hops Bohrung macro strings.
@@ -24,6 +25,39 @@ using Grasshopper.Kernel.Types;
 
 public class Script_Instance : GH_ScriptInstance
 {
+  // ---------------------------------------------------------------
+  // PREVIEW FIELDS
+  // ---------------------------------------------------------------
+  private static readonly Color _defaultColor = Color.Red;
+  private List<Circle> _drillCircles    = new List<Circle>();
+  private List<Line>   _drillDepthLines = new List<Line>();
+  private Line         _approachLine    = Line.Unset;
+  private Color        _drawColor       = Color.Red;
+
+  public override BoundingBox ClippingBox
+  {
+    get
+    {
+      BoundingBox bb = BoundingBox.Empty;
+      foreach (var c in _drillCircles) bb.Union(c.BoundingBox);
+      foreach (var l in _drillDepthLines) { bb.Union(l.From); bb.Union(l.To); }
+      if (_approachLine.IsValid) { bb.Union(_approachLine.From); bb.Union(_approachLine.To); }
+      return bb;
+    }
+  }
+
+  public override void DrawViewportWires(IGH_PreviewArgs args)
+  {
+    foreach (var c in _drillCircles)
+      args.Display.DrawCircle(c, _drawColor, 2);
+    foreach (var l in _drillDepthLines)
+      args.Display.DrawLine(l, _drawColor, 1);
+    if (_approachLine.IsValid)
+      args.Display.DrawPatternedLine(
+        _approachLine.From, _approachLine.To,
+        Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
+  }
+
   private void RunScript(
     List<Point3d> points,
     double zSurface,
@@ -33,8 +67,15 @@ public class Script_Instance : GH_ScriptInstance
     int toolNr,
     double feedFactor,
     string toolType,
+    Color colour,
     ref object operationLines)
   {
+    // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
+    _drillCircles.Clear();
+    _drillDepthLines.Clear();
+    _approachLine = Line.Unset;
+    _drawColor    = colour.IsEmpty ? _defaultColor : colour;
+
     // ---------------------------------------------------------------
     // 1. DEFAULTS -- downstream gets these if guards trigger
     // ---------------------------------------------------------------
@@ -63,6 +104,22 @@ public class Script_Instance : GH_ScriptInstance
     if (string.IsNullOrEmpty(toolType)) toolType = "WZB";
     if (depth <= 0) depth = 1.0;
     if (diameter <= 0) diameter = 8.0;
+
+    // PREVIEW: circle + depth line per drill point (after diameter default applied)
+    double radius = diameter / 2.0;
+    for (int i = 0; i < points.Count; i++)
+    {
+      Point3d pt = new Point3d(points[i].X, points[i].Y, zSurface);
+      _drillCircles.Add(new Circle(new Plane(pt, Vector3d.ZAxis), radius));
+      _drillDepthLines.Add(new Line(pt, new Point3d(pt.X, pt.Y, zSurface - Math.Abs(depth))));
+    }
+    // PREVIEW: approach line above first point
+    if (points.Count > 0)
+    {
+      Point3d firstPt = new Point3d(points[0].X, points[0].Y, zSurface);
+      double safeZ = zSurface + 20.0;
+      _approachLine = new Line(new Point3d(firstPt.X, firstPt.Y, safeZ), firstPt);
+    }
 
     // ---------------------------------------------------------------
     // 4. BUILD TOOL CALL -- first line of output per D-13
