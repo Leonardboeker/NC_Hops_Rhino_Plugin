@@ -1,6 +1,7 @@
 // HopContour -- 2D contour cutting component for DYNESTIC CNC
 // Inputs: curve (Item), depth (Item), plungeZ (Item), tolerance (Item),
-//         toolNr (Item), feedFactor (Item), toolType (Item), stepdown (Item)
+//         toolNr (Item), feedFactor (Item), toolType (Item), stepdown (Item),
+//         colour (Item)
 // Outputs: operationLines
 //
 // Converts Grasshopper curves (NURBS, arcs, polylines) into NC-Hops 2D contour
@@ -24,11 +25,51 @@ using Grasshopper.Kernel.Types;
 
 public class Script_Instance : GH_ScriptInstance
 {
+  // ---------------------------------------------------------------
+  // PREVIEW FIELDS
+  // ---------------------------------------------------------------
+  private static readonly Color _defaultColor = Color.Yellow;
+  private Curve  _previewCurve  = null;
+  private Line   _approachLine  = Line.Unset;
+  private Color  _drawColor     = Color.Yellow;
+
+  public override BoundingBox ClippingBox
+  {
+    get
+    {
+      BoundingBox bb = BoundingBox.Empty;
+      if (_previewCurve != null)
+        bb.Union(_previewCurve.GetBoundingBox(true));
+      if (_approachLine.IsValid)
+      {
+        bb.Union(_approachLine.From);
+        bb.Union(_approachLine.To);
+      }
+      return bb;
+    }
+  }
+
+  public override void DrawViewportWires(IGH_PreviewArgs args)
+  {
+    if (_previewCurve != null)
+      args.Display.DrawCurve(_previewCurve, _drawColor, 2);
+    if (_approachLine.IsValid)
+      args.Display.DrawPatternedLine(
+        _approachLine.From, _approachLine.To,
+        Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
+  }
+
   private void RunScript(
     Curve curve, double depth, double plungeZ, double tolerance,
     int toolNr, double feedFactor, string toolType, double stepdown,
+    Color colour,
     ref object operationLines)
   {
+    // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
+    _previewCurve = null;
+    _approachLine = Line.Unset;
+    _drawColor    = colour.IsEmpty ? _defaultColor : colour;
+
     // ---------------------------------------------------------------
     // 1. DEFAULTS -- downstream gets these if guards trigger
     // ---------------------------------------------------------------
@@ -76,6 +117,15 @@ public class Script_Instance : GH_ScriptInstance
         GH_RuntimeMessageLevel.Warning,
         "Curve has Z variation -- using XY projection for 2D contour");
     }
+
+    // PREVIEW: cache curve at cut depth (after planarity check passes)
+    _previewCurve = curve.DuplicateCurve();
+    double cutZ = -Math.Abs(plungeZ > 0 ? plungeZ : depth);
+    _previewCurve.Translate(new Vector3d(0, 0, cutZ - _previewCurve.PointAtStart.Z));
+    // PREVIEW: approach line from safeZ above start point
+    double safeZ = curve.GetBoundingBox(true).Max.Z + 20.0;
+    Point3d startPt = _previewCurve.PointAtStart;
+    _approachLine = new Line(new Point3d(startPt.X, startPt.Y, safeZ), startPt);
 
     // ---------------------------------------------------------------
     // 5. CURVE DECOMPOSITION -- arcs and lines via RhinoCommon
