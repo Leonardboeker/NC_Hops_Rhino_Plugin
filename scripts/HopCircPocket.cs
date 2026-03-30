@@ -1,7 +1,8 @@
 // HopCircPocket -- Circular pocket operation for DYNESTIC CNC
 // Inputs: center (Item), radius (Item),
 //         depth (Item), stepdown (Item),
-//         toolNr (Item), feedFactor (Item), toolType (Item)
+//         toolNr (Item), feedFactor (Item), toolType (Item),
+//         colour (Item)
 // Outputs: operationLines
 //
 // Emits WZF tool call + CALL _Kreistasche_V5 macro for HopExport.
@@ -22,12 +23,47 @@ using Grasshopper.Kernel.Types;
 
 public class Script_Instance : GH_ScriptInstance
 {
+  // ---------------------------------------------------------------
+  // PREVIEW FIELDS
+  // ---------------------------------------------------------------
+  private static readonly Color _defaultColor = Color.Cyan;
+  private Circle _previewCircle  = Circle.Unset;
+  private Line   _approachLine   = Line.Unset;
+  private Color  _drawColor      = Color.Cyan;
+
+  public override BoundingBox ClippingBox
+  {
+    get
+    {
+      BoundingBox bb = BoundingBox.Empty;
+      if (_previewCircle.IsValid) bb.Union(_previewCircle.BoundingBox);
+      if (_approachLine.IsValid) { bb.Union(_approachLine.From); bb.Union(_approachLine.To); }
+      return bb;
+    }
+  }
+
+  public override void DrawViewportWires(IGH_PreviewArgs args)
+  {
+    if (_previewCircle.IsValid)
+      args.Display.DrawCircle(_previewCircle, _drawColor, 2);
+    if (_approachLine.IsValid)
+      args.Display.DrawPatternedLine(
+        _approachLine.From, _approachLine.To,
+        Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
+  }
+
   private void RunScript(
     Point3d center, double radius,
     double depth, double stepdown,
     int toolNr, double feedFactor, string toolType,
+    Color colour,
     ref object operationLines)
   {
+    // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
+    _previewCircle = Circle.Unset;
+    _approachLine  = Line.Unset;
+    _drawColor     = colour.IsEmpty ? _defaultColor : colour;
+
     // ---------------------------------------------------------------
     // 1. DEFAULTS
     // ---------------------------------------------------------------
@@ -56,6 +92,14 @@ public class Script_Instance : GH_ScriptInstance
     if (feedFactor <= 0) feedFactor = 1.0;
     if (string.IsNullOrEmpty(toolType)) toolType = "WZF";
     if (depth <= 0) depth = 1.0;
+
+    // PREVIEW: circle at pocket depth
+    double previewZ = center.Z - Math.Abs(depth);
+    Point3d circlePt = new Point3d(center.X, center.Y, previewZ);
+    _previewCircle = new Circle(new Plane(circlePt, Vector3d.ZAxis), radius);
+    // PREVIEW: approach line from safeZ to circle center
+    double safeZ = center.Z + 20.0;
+    _approachLine = new Line(new Point3d(center.X, center.Y, safeZ), circlePt);
 
     // ---------------------------------------------------------------
     // 4. BUILD TOOL CALL + MACRO
