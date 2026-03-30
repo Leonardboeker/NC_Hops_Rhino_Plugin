@@ -1,7 +1,8 @@
 // HopRectPocket -- Rectangular pocket operation for DYNESTIC CNC
 // Inputs: rectCurve (Item), cornerRadius (Item), angle (Item),
 //         depth (Item), stepdown (Item),
-//         toolNr (Item), feedFactor (Item), toolType (Item)
+//         toolNr (Item), feedFactor (Item), toolType (Item),
+//         colour (Item)
 // Outputs: operationLines
 //
 // Extracts center and dimensions from the rectangle curve bounding box.
@@ -23,12 +24,47 @@ using Grasshopper.Kernel.Types;
 
 public class Script_Instance : GH_ScriptInstance
 {
+  // ---------------------------------------------------------------
+  // PREVIEW FIELDS
+  // ---------------------------------------------------------------
+  private static readonly Color _defaultColor = Color.Cyan;
+  private Curve _previewRect  = null;
+  private Line  _approachLine = Line.Unset;
+  private Color _drawColor    = Color.Cyan;
+
+  public override BoundingBox ClippingBox
+  {
+    get
+    {
+      BoundingBox bb = BoundingBox.Empty;
+      if (_previewRect != null) bb.Union(_previewRect.GetBoundingBox(true));
+      if (_approachLine.IsValid) { bb.Union(_approachLine.From); bb.Union(_approachLine.To); }
+      return bb;
+    }
+  }
+
+  public override void DrawViewportWires(IGH_PreviewArgs args)
+  {
+    if (_previewRect != null)
+      args.Display.DrawCurve(_previewRect, _drawColor, 2);
+    if (_approachLine.IsValid)
+      args.Display.DrawPatternedLine(
+        _approachLine.From, _approachLine.To,
+        Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
+  }
+
   private void RunScript(
     Curve rectCurve, double cornerRadius, double angle,
     double depth, double stepdown,
     int toolNr, double feedFactor, string toolType,
+    Color colour,
     ref object operationLines)
   {
+    // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
+    _previewRect  = null;
+    _approachLine = Line.Unset;
+    _drawColor    = colour.IsEmpty ? _defaultColor : colour;
+
     // ---------------------------------------------------------------
     // 1. DEFAULTS
     // ---------------------------------------------------------------
@@ -67,6 +103,18 @@ public class Script_Instance : GH_ScriptInstance
     double cy = (bb.Min.Y + bb.Max.Y) / 2.0;
     double width = bb.Max.X - bb.Min.X;
     double height = bb.Max.Y - bb.Min.Y;
+
+    // PREVIEW: rectangle outline at pocket depth
+    double previewZ = -Math.Abs(depth > 0 ? depth : 1.0);
+    Rectangle3d previewBounds = new Rectangle3d(
+      new Plane(new Point3d(cx, cy, previewZ), Vector3d.XAxis, Vector3d.YAxis),
+      new Interval(-width / 2.0, width / 2.0),
+      new Interval(-height / 2.0, height / 2.0));
+    _previewRect = previewBounds.ToNurbsCurve();
+    // PREVIEW: approach line from safeZ to bottom-left corner of rect
+    double safeZ = rectCurve.GetBoundingBox(true).Max.Z + 20.0;
+    Point3d startPt = new Point3d(bb.Min.X, bb.Min.Y, previewZ);
+    _approachLine = new Line(new Point3d(startPt.X, startPt.Y, safeZ), startPt);
 
     // ---------------------------------------------------------------
     // 5. BUILD TOOL CALL (first line)
