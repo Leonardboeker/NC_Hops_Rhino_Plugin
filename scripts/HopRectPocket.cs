@@ -110,7 +110,24 @@ public class Script_Instance : GH_ScriptInstance
       new Plane(new Point3d(cx, cy, previewZ), Vector3d.XAxis, Vector3d.YAxis),
       new Interval(-width / 2.0, width / 2.0),
       new Interval(-height / 2.0, height / 2.0));
-    _previewRect = previewBounds.ToNurbsCurve();
+    Curve previewCurve = previewBounds.ToNurbsCurve();
+
+    // Bug fix 1: apply corner radius fillet when cornerRadius > 0
+    if (cornerRadius > 0)
+    {
+      Curve filleted = Curve.CreateFilletCornersCurve(previewCurve, cornerRadius, 1e-6, 1e-6);
+      if (filleted != null) previewCurve = filleted;
+    }
+
+    // Bug fix 2: rotate by angle (degrees) around center point
+    if (angle != 0)
+    {
+      double angleRad = angle * Math.PI / 180.0;
+      Point3d centerPoint = new Point3d(cx, cy, previewZ);
+      previewCurve.Transform(Transform.Rotation(angleRad, Vector3d.ZAxis, centerPoint));
+    }
+
+    _previewRect = previewCurve;
     // PREVIEW: approach line from safeZ to bottom-left corner of rect
     double safeZ = rectCurve.GetBoundingBox(true).Max.Z + 20.0;
     Point3d startPt = new Point3d(bb.Min.X, bb.Min.Y, previewZ);
