@@ -4,6 +4,8 @@
 // Outputs: operationLines
 //
 // Takes two Point3d inputs (slot start and end) plus slot width.
+// surfaceZ = Math.Max(p1.Z, p2.Z) — highest endpoint Z is the plate surface.
+// Tiefe = surfaceZ - depth (absolute Z the machine cuts to).
 // Emits WZF tool call + CALL _nuten_frei_v5 macro for HopExport.
 // toolType and feedFactor are hardcoded (WZF / 1.0) -- handled at machine level.
 
@@ -157,7 +159,8 @@ public class Script_Instance : GH_ScriptInstance
       + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
       + ",_VA,_SD,0,'')");
 
-    double negDepth = -Math.Abs(depth);
+    // surfaceZ: highest Z of the two input points (already computed as topZ above)
+    double cutZ = topZ - Math.Abs(depth);
 
     lines.Add("CALL _nuten_frei_v5(VAL "
       + "X1:=" + p1.X.ToString(CultureInfo.InvariantCulture) + ","
@@ -165,7 +168,7 @@ public class Script_Instance : GH_ScriptInstance
       + "X2:=" + p2.X.ToString(CultureInfo.InvariantCulture) + ","
       + "Y2:=" + p2.Y.ToString(CultureInfo.InvariantCulture) + ","
       + "NB:=" + slotWidth.ToString(CultureInfo.InvariantCulture) + ","
-      + "Tiefe:=" + negDepth.ToString(CultureInfo.InvariantCulture) + ","
+      + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
       + "LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)");
 
     // ---------------------------------------------------------------
