@@ -191,8 +191,10 @@ public class Script_Instance : GH_ScriptInstance
         new Curve[] { outerBoundary, innerBoundary }, tol);
       if (planar != null && planar.Length > 0)
       {
-        Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
-        Brep vol = planar[0].Faces[0].CreateExtrusion(extDir, true);
+        // CreateExtrusion takes a path Curve, not a Vector3d
+        Vector3d extDir  = new Vector3d(0, 0, -Math.Abs(depth));
+        LineCurve extPath = new LineCurve(new Line(Point3d.Origin, Point3d.Origin + extDir));
+        Brep vol = planar[0].Faces[0].CreateExtrusion(extPath, true);
         if (vol != null) _previewVolume = vol;
       }
     }
