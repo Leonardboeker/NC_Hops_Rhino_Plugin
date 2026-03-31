@@ -1,7 +1,7 @@
 # Roadmap: DYNESTIC NC-Hops Post-Processor
 
 **Created:** 2026-03-22
-**Last updated:** 2026-03-31 — Phase 8 planned (5 plans, 08-01 through 08-05)
+**Last updated:** 2026-03-31 — Phase 9.1 planned (2 plans, 09-01 through 09-02)
 
 ---
 
@@ -147,18 +147,42 @@ Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 5 ──► Phase 6 
 
 ---
 
-### Phase 9 — Parametric Korpus Model
-**Goal:** Parametric box/carcass from dimensions (B × H × T × material thickness). Joint types selectable. All panels as flat Brep geometry.
+### Phase 9 — Parametric Korpus Generator
+**Goal:** Complete parametric cabinet body generator. Sliders for B×H×T×thickness. Rückwand options, automatic corner connectors, shelves, foot drilling, doors with hinge holes. Visual 3D model in viewport. All panels flat + named, ready for nesting.
 **Requirements:** KORPUS-01, KORPUS-02
 
+#### Phase 9.1 — Grundkörper + 3D Preview
+**Plans:** 2 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — HopKorpus base component: KorpusPanel data class + HopKorpusComponent (B/H/T/MS sliders → 5 flat panels + KorpusData dictionary + panel list output)
+- [ ] 09-02-PLAN.md — 3D viewport preview (assembled korpus as solid/shaded geometry via DrawViewportMeshes/Wires) + human verification checkpoint
+
+**Exit criteria:** Slider input → 3D korpus visible in viewport + flat named panels output.
+
+#### Phase 9.2 — Rückwand + Verbinder
 | Plan | Task |
 |------|------|
-| 9.1 | Basic box generator — 6 panels (top/bottom/left/right/back/front) from B×H×T×thickness |
-| 9.2 | Joint generation — Schlitz/Zapfen, Überblattung, Dübelbohrungen; selectable per edge |
-| 9.3 | Opening cutouts — door/drawer openings as subtracted geometry |
-| 9.4 | Internal shelves and dividers — parametric grid |
+| 9.2.1 | HopKorpusRueckwand options component — type (eingelegt / eingefälzt / eingenutert), thickness, Einsprung; updates panel geometry accordingly |
+| 9.2.2 | Automatic corner connectors by korpus depth (Dübel / Cabineo); System-32 hole rows in side panels |
 
-**Exit criteria:** Any rectangle dimension input produces a fully jointed carcass as flat panels ready for nesting.
+**Exit criteria:** Rückwand-Typ wählbar, korrekte Geometrie, Verbinder-Bohrungen in Seitenplatten.
+
+#### Phase 9.3 — Inneneinteilung + Füße
+| Plan | Task |
+|------|------|
+| 9.3.1 | Konstruktionsboden (fixed, position per slider) + Einlegeböden (count + System-32 grid) |
+| 9.3.2 | Foot drilling (Häfele M8/M10 pattern on Boden) + Sockelhöhe offset |
+
+**Exit criteria:** Böden und Fußbohrungen parametrisch konfigurierbar, in Plattengeometrie eingearbeitet.
+
+#### Phase 9.4 — Türen + Beschläge
+| Plan | Task |
+|------|------|
+| 9.4.1 | Door geometry from korpus dimensions + Aufschlag-Typ (Vollanschlag / Halbeinschlag / Einliegend) + Anschlag (links/rechts) |
+| 9.4.2 | HopKorpusTuer options node — Scharnier-Typ (Blum Clip Top / Häfele Duomatic), Topfband-Bohrungen (35mm Ø, Lochreihenbezug System 32), auto-count by door height |
+
+**Exit criteria:** Tür als Platte mit korrekten Topfband-Bohrungen, Aufschlag-Geometrie stimmt, Anschlag wählbar.
 
 ---
 
@@ -241,3 +265,4 @@ v2.0:  Phase 9 (Korpus) ──► Phase 10 (Parts+Nesting) ──► Phase 11 (D
 *Updated: 2026-03-31 — Phase 6 closed DONE; canvas cleanup deferred to Phase 8*
 *Updated: 2026-03-31 — Phase 7 planned: 3 plans (07-01 HopPart, 07-02 HopSheetExport, 07-03 Integration checkpoint)*
 *Updated: 2026-03-31 — Phase 8 planned: 5 plans (08-01 SDK+scaffold, 08-02 Icons, 08-03 Ops port, 08-04 Nesting+Export port, 08-05 Build+Yak+verify)*
+*Updated: 2026-03-31 — Phase 9.1 planned: 2 plans (09-01 HopKorpus base component, 09-02 3D preview + checkpoint)*
