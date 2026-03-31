@@ -3,26 +3,26 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — GH Post-Processor
 status: executing
-stopped_at: Completed 07-02-PLAN.md (HopSheetExport component)
-last_updated: "2026-03-31T16:27:17.825Z"
+stopped_at: Completed 08-01-PLAN.md (project scaffold)
+last_updated: "2026-03-31T17:13:26.946Z"
 progress:
-  total_phases: 6
-  completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
+  total_phases: 7
+  completed_phases: 5
+  total_plans: 16
+  completed_plans: 13
 ---
 
 # Project State
 
 **Last updated:** 2026-03-31
-**Status:** Executing Phase 07
+**Status:** Executing Phase 08
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** One GH definition takes geometry to a ready-to-run .hop file for the DYNESTIC -- no CAM middleman.
-**Current focus:** Phase 07 — opennest
+**Current focus:** Phase 08 — plugin-packaging
 
 ## Current Phase
 
@@ -50,7 +50,7 @@ Roadmap updated 2026-03-30:
 | 5 -- Visual Preview | DONE ✓ | 1/1 | 100% |
 | 6 -- UX Polish + HopSheet | DONE ✓ | 1/1 | 100% |
 | 7 -- OpenNest Integration | IN PROGRESS | 2/3 | 67% |
-| 8 -- Plugin Packaging | - | 0/4 | 0% |
+| 8 -- Plugin Packaging | IN PROGRESS | 1/5 | 20% |
 | --- v2.0 Milestone --- | | | |
 | 9 -- Korpus Model | - | 0/4 | 0% |
 | 10 -- Part Export | - | 0/4 | 0% |
@@ -76,6 +76,7 @@ Roadmap updated 2026-03-30:
 - [Phase 07]: operationLines stored as List<List<string>> (grouped) for HopSheetExport grouping compatibility
 - [Phase 07]: HopPart default color cornflower blue (100,149,237) to distinguish from yellow op-component previews
 - [Phase 07]: HopSheetExport mirrors HopExport header character-for-character; sheet dz is explicit input (2D curves have no Z extent)
+- [Phase 08]: Used dotnet SDK 8.0 with net48 target, local DLL refs (Private=false), PostBuild .dll-to-.gha copy
 
 ## Performance Metrics
 
@@ -89,8 +90,9 @@ Roadmap updated 2026-03-30:
 | 06 | 06 | ~2 days | 4 tasks (Task 5 skipped) | 7 files (1 created, 1 deleted, 6 modified) |
 | 07 | 01 | 2min | 1 | 1 |
 | 07 | 02 | 2min | 1 | 1 |
+| 08 | 01 | 5min | 2 | 5 |
 
 ## Session
 
-**Last session:** 2026-03-31T16:27:17.823Z
-**Stopped at:** Completed 07-02-PLAN.md (HopSheetExport component)
+**Last session:** 2026-03-31T17:13:26.944Z
+**Stopped at:** Completed 08-01-PLAN.md (project scaffold)

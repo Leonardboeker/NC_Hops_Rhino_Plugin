@@ -71,7 +71,7 @@
 - [ ] **ANALYZER-02**: Detected features mapped to correct operation macros (HopContour / HopRectPocket / HopDrill) automatically
 - [ ] **ANALYZER-03**: HopAnalyzer output is operationLines list — wires directly into HopExport without manual op-component setup
 
-- [ ] **PLUGIN-01**: All components compiled as .gha Grasshopper plugin (no script editor required)
+- [x] **PLUGIN-01**: All components compiled as .gha Grasshopper plugin (no script editor required)
 - [ ] **PLUGIN-02**: Each component has icon (24×24 px), tooltip, and GH category "DYNESTIC"
 - [ ] **PLUGIN-03**: Installable via yak package manager or manual .gha drop into GH Libraries folder
 
