@@ -27,9 +27,12 @@ public class Script_Instance : GH_ScriptInstance
 {
   // ---------------------------------------------------------------
   // PREVIEW FIELDS
+  // A contour is a profile CUT along the curve edge -- NOT a pocket.
+  // Preview shows: curve at cut depth + dashed approach line.
+  // A filled solid would imply pocket clearing, which is wrong for contour.
   // ---------------------------------------------------------------
   private static readonly Color _defaultColor = Color.Yellow;
-  private Brep  _previewVolume = null;
+  private Curve _previewCurve  = null;
   private Line  _approachLine  = Line.Unset;
   private Color _drawColor     = Color.Yellow;
 
@@ -38,8 +41,8 @@ public class Script_Instance : GH_ScriptInstance
     get
     {
       BoundingBox bb = BoundingBox.Empty;
-      if (_previewVolume != null)
-        bb.Union(_previewVolume.GetBoundingBox(true));
+      if (_previewCurve != null)
+        bb.Union(_previewCurve.GetBoundingBox(true));
       if (_approachLine.IsValid)
       {
         bb.Union(_approachLine.From);
@@ -49,20 +52,10 @@ public class Script_Instance : GH_ScriptInstance
     }
   }
 
-  public override void DrawViewportMeshes(IGH_PreviewArgs args)
-  {
-    if (_previewVolume != null)
-    {
-      Rhino.Display.DisplayMaterial mat = new Rhino.Display.DisplayMaterial(_drawColor);
-      mat.Transparency = 0.55;
-      args.Display.DrawBrepShaded(_previewVolume, mat);
-    }
-  }
-
   public override void DrawViewportWires(IGH_PreviewArgs args)
   {
-    if (_previewVolume != null)
-      args.Display.DrawBrepWires(_previewVolume, _drawColor, 1);
+    if (_previewCurve != null)
+      args.Display.DrawCurve(_previewCurve, _drawColor, 2);
     if (_approachLine.IsValid)
       args.Display.DrawPatternedLine(
         _approachLine.From, _approachLine.To,
@@ -80,9 +73,9 @@ public class Script_Instance : GH_ScriptInstance
     double feedFactor = 1.0;
 
     // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
-    _previewVolume = null;
-    _approachLine  = Line.Unset;
-    _drawColor     = colour.IsEmpty ? _defaultColor : colour;
+    _previewCurve = null;
+    _approachLine = Line.Unset;
+    _drawColor    = colour.IsEmpty ? _defaultColor : colour;
 
     // ---------------------------------------------------------------
     // 1. DEFAULTS -- downstream gets these if guards trigger
@@ -130,38 +123,13 @@ public class Script_Instance : GH_ScriptInstance
         "Curve has Z variation -- using XY projection for 2D contour");
     }
 
-    // PREVIEW: build extruded volume (curve extruded downward by depth)
-    double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
+    // PREVIEW: curve translated to cut depth (profile cut -- NOT a pocket)
     double cutZ = -Math.Abs(plungeZ > 0 ? plungeZ : depth);
-
-    // Place curve at cut Z for extrusion base
     Curve baseCurve = curve.DuplicateCurve();
     baseCurve.Translate(new Vector3d(0, 0, cutZ - baseCurve.PointAtStart.Z));
+    _previewCurve = baseCurve;
 
-    if (baseCurve.IsClosed)
-    {
-      Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
-      Surface extSrf = Surface.CreateExtrusion(baseCurve, extDir);
-      if (extSrf != null)
-      {
-        Brep extBrep = extSrf.ToBrep();
-        if (extBrep != null)
-        {
-          Brep capped = extBrep.CapPlanarHoles(tol);
-          _previewVolume = capped != null ? capped : extBrep;
-        }
-      }
-    }
-    else
-    {
-      // Open curve: just extrude without capping
-      Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
-      Surface extSrf = Surface.CreateExtrusion(baseCurve, extDir);
-      if (extSrf != null)
-        _previewVolume = extSrf.ToBrep();
-    }
-
-    // PREVIEW: approach line from safeZ above start point
+    // PREVIEW: dashed approach line from safeZ to curve start
     double safeZ = curve.GetBoundingBox(true).Max.Z + 20.0;
     Point3d startPt = baseCurve.PointAtStart;
     _approachLine = new Line(new Point3d(startPt.X, startPt.Y, safeZ), startPt);
