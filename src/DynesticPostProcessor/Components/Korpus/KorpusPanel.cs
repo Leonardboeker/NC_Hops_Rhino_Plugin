@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Rhino.Geometry;
 
@@ -35,6 +36,9 @@ namespace DynesticPostProcessor.Components.Korpus
 
         /// <summary>Transform from flat XY position to 3D assembled position</summary>
         public Transform AssembledTransform { get; set; }
+
+        /// <summary>Operation groups (each group is a list of HOP lines: tool change + operation)</summary>
+        public List<List<string>> OperationGroups { get; set; } = new List<List<string>>();
 
         /// <summary>
         /// Creates a new KorpusPanel with a flat rectangular Brep at the origin.
@@ -74,13 +78,35 @@ namespace DynesticPostProcessor.Components.Korpus
             Curve[] joined = Curve.JoinCurves(nakedEdges);
             dict["outline"] = (joined != null && joined.Length > 0) ? joined[0] : null;
 
-            // Empty operation lines (filled by later phases)
-            dict["operationLines"] = new List<List<string>> { new List<string>() };
+            // Operation lines: use generated groups if available, else empty placeholder
+            dict["operationLines"] = OperationGroups.Count > 0
+                ? OperationGroups
+                : new List<List<string>> { new List<string>() };
 
             dict["grainDir"] = GrainDir;
             dict["panelName"] = Name;
 
             return dict;
+        }
+
+        /// <summary>
+        /// Adds a drill operation group to this panel.
+        /// X,Y are coordinates in the flat panel's local 2D space (Z=0 surface).
+        /// surfaceZ is the Z of the top face (0.0 for flat panels at Z=0).
+        /// depth is the drilling depth (positive value, tool goes DOWN by this amount).
+        /// </summary>
+        public void AddDrillGroup(double x, double y, double diameter, double depth, int toolNr)
+        {
+            var group = new List<string>();
+            group.Add("WZB (" + toolNr + ",_VE,_V*1,_VA,_SD,0,'')");
+            group.Add("Bohrung ("
+                + x.ToString(CultureInfo.InvariantCulture) + ","
+                + y.ToString(CultureInfo.InvariantCulture) + ","
+                + "0,"   // surfaceZ = 0 (flat panel at Z=0)
+                + (-depth).ToString(CultureInfo.InvariantCulture) + ","
+                + diameter.ToString(CultureInfo.InvariantCulture)
+                + ",0,0,0,0,0,0,0)");
+            OperationGroups.Add(group);
         }
     }
 }
