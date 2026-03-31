@@ -156,11 +156,19 @@ namespace DynesticPostProcessor.Components.Korpus
             base.AddedToDocument(doc);
             DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<2"),     // Count
-                DynesticPostProcessor.AutoWire.Spec.Int("0<0<2"),     // Overlay
-                DynesticPostProcessor.AutoWire.Spec.Int("0<0<1"),     // HingeType
-                DynesticPostProcessor.AutoWire.Spec.Int("0<0<2"),     // HingeSide
-                DynesticPostProcessor.AutoWire.Spec.Float("0<2<5"),   // Gap
+                DynesticPostProcessor.AutoWire.Spec.ValueList(("1 T\u00fcr", "1"), ("2 T\u00fcren", "2")),        // Count
+                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                    ("Vollanschlag (Full Overlay)", "0"),
+                    ("Halbeinschlag (Half Overlay)", "1"),
+                    ("Einliegend (Inset)", "2")),                                                          // Overlay
+                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                    ("Blum Clip Top", "0"),
+                    ("H\u00e4fele Duomatic", "1")),                                                            // HingeType
+                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                    ("Links (Left)", "0"),
+                    ("Rechts (Right)", "1"),
+                    ("Mitte (Center, for 2-door)", "2")),                                                 // HingeSide
+                DynesticPostProcessor.AutoWire.Spec.Float("0<2<5"),                                      // Gap
             });
         }
     }
