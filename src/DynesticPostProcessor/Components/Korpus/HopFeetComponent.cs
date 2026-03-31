@@ -111,7 +111,9 @@ namespace DynesticPostProcessor.Components.Korpus
             base.AddedToDocument(doc);
             AutoWire.Apply(this, doc, new[]
             {
-                AutoWire.Spec.Int("0<0<1"),          // Type
+                AutoWire.Spec.ValueList(
+                    ("M8 Rampa (\u00d813.5mm, 17mm)", "0"),
+                    ("M10 Rampa (\u00d815.5mm, 20mm)", "1")),          // Type
                 AutoWire.Spec.Float("50<100<300"),   // SockelHeight
                 AutoWire.Spec.Float("30<50<100"),    // EdgeOffset
             });
