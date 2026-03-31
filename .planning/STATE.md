@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — GH Post-Processor
 status: executing
-stopped_at: Completed 08-01-PLAN.md (project scaffold)
+stopped_at: Completed 08-04-PLAN.md (nesting+export components)
 last_updated: "2026-03-31T17:13:26.946Z"
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -50,7 +50,7 @@ Roadmap updated 2026-03-30:
 | 5 -- Visual Preview | DONE ✓ | 1/1 | 100% |
 | 6 -- UX Polish + HopSheet | DONE ✓ | 1/1 | 100% |
 | 7 -- OpenNest Integration | IN PROGRESS | 2/3 | 67% |
-| 8 -- Plugin Packaging | IN PROGRESS | 1/5 | 20% |
+| 8 -- Plugin Packaging | IN PROGRESS | 2/5 | 40% |
 | --- v2.0 Milestone --- | | | |
 | 9 -- Korpus Model | - | 0/4 | 0% |
 | 10 -- Part Export | - | 0/4 | 0% |
@@ -77,6 +77,7 @@ Roadmap updated 2026-03-30:
 - [Phase 07]: HopPart default color cornflower blue (100,149,237) to distinguish from yellow op-component previews
 - [Phase 07]: HopSheetExport mirrors HopExport header character-for-character; sheet dz is explicit input (2D curves have no Z extent)
 - [Phase 08]: Used dotnet SDK 8.0 with net48 target, local DLL refs (Private=false), PostBuild .dll-to-.gha copy
+- [Phase 08]: Icon => null placeholder for all components (icons added when plan 08-02 completes)
 
 ## Performance Metrics
 
@@ -91,8 +92,9 @@ Roadmap updated 2026-03-30:
 | 07 | 01 | 2min | 1 | 1 |
 | 07 | 02 | 2min | 1 | 1 |
 | 08 | 01 | 5min | 2 | 5 |
+| 08 | 04 | 4min | 2 | 4 |
 
 ## Session
 
-**Last session:** 2026-03-31T17:13:26.944Z
-**Stopped at:** Completed 08-01-PLAN.md (project scaffold)
+**Last session:** 2026-03-31T17:19:53Z
+**Stopped at:** Completed 08-04-PLAN.md (nesting+export components)
