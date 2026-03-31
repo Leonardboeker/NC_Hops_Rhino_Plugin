@@ -1,3 +1,7 @@
 .planning/
 output/
 output/*.hop
+
+# .NET build artifacts
+**/bin/
+**/obj/

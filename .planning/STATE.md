@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — GH Post-Processor
 status: executing
-stopped_at: Completed 07-01-PLAN.md (HopPart component)
-last_updated: "2026-03-31T16:22:56.997Z"
+stopped_at: Completed 07-02-PLAN.md (HopSheetExport component)
+last_updated: "2026-03-31T16:27:17.825Z"
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -49,7 +49,7 @@ Roadmap updated 2026-03-30:
 | 4 -- 3D Milling | - | 0/4 | 0% |
 | 5 -- Visual Preview | DONE ✓ | 1/1 | 100% |
 | 6 -- UX Polish + HopSheet | DONE ✓ | 1/1 | 100% |
-| 7 -- OpenNest Integration | IN PROGRESS | 1/3 | 33% |
+| 7 -- OpenNest Integration | IN PROGRESS | 2/3 | 67% |
 | 8 -- Plugin Packaging | - | 0/4 | 0% |
 | --- v2.0 Milestone --- | | | |
 | 9 -- Korpus Model | - | 0/4 | 0% |
@@ -75,6 +75,7 @@ Roadmap updated 2026-03-30:
 - [Phase 06]: GH canvas cleanup deferred to Phase 8 — script components are temporary; plugin packaging is the right venue
 - [Phase 07]: operationLines stored as List<List<string>> (grouped) for HopSheetExport grouping compatibility
 - [Phase 07]: HopPart default color cornflower blue (100,149,237) to distinguish from yellow op-component previews
+- [Phase 07]: HopSheetExport mirrors HopExport header character-for-character; sheet dz is explicit input (2D curves have no Z extent)
 
 ## Performance Metrics
 
@@ -87,8 +88,9 @@ Roadmap updated 2026-03-30:
 | 05 | 05 | ~60min (incl. UAT) | 7 | 6 |
 | 06 | 06 | ~2 days | 4 tasks (Task 5 skipped) | 7 files (1 created, 1 deleted, 6 modified) |
 | 07 | 01 | 2min | 1 | 1 |
+| 07 | 02 | 2min | 1 | 1 |
 
 ## Session
 
-**Last session:** 2026-03-31T16:22:56.995Z
-**Stopped at:** Completed 07-01-PLAN.md (HopPart component)
+**Last session:** 2026-03-31T16:27:17.823Z
+**Stopped at:** Completed 07-02-PLAN.md (HopSheetExport component)

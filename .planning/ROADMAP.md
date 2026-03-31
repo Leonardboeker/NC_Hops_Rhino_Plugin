@@ -1,7 +1,7 @@
 # Roadmap: DYNESTIC NC-Hops Post-Processor
 
 **Created:** 2026-03-22
-**Last updated:** 2026-03-31 — Phase 7 planned (3 plans, 07-01 through 07-03)
+**Last updated:** 2026-03-31 — Phase 8 planned (5 plans, 08-01 through 08-05)
 
 ---
 
@@ -87,7 +87,7 @@ Note: PREVIEW-03 (3D plane glyphs) depends on Phase 4 HopIso component — defer
 
 Plans:
 - [x] 07-01-PLAN.md — HopPart component (bundles part outline + operationLines into Dictionary, grain arrow + sheet-colored preview)
-- [ ] 07-02-PLAN.md — HopSheetExport component (per-sheet .hop file export from HopPart dictionaries, mirrors HopExport structure)
+- [x] 07-02-PLAN.md — HopSheetExport component (per-sheet .hop file export from HopPart dictionaries, mirrors HopExport structure)
 - [ ] 07-03-PLAN.md — Integration verification checkpoint (human verifies full nesting workflow end-to-end)
 
 **Exit criteria:** Multiple parts fed into OpenNest, nested on one or more sheets, each sheet exports a valid .hop file with correct XY offsets.
@@ -95,17 +95,18 @@ Plans:
 ---
 
 ### Phase 8 — Plugin Packaging
-**Goal:** All components compiled as a proper `.gha` Grasshopper plugin — installable, with icons, tooltips, GH category, no script editor needed.
+**Goal:** All 10 script components compiled as a proper `.gha` Grasshopper plugin — installable, with icons, tooltips, GH category "DYNESTIC", no script editor needed.
 **Requirements:** PLUGIN-01, PLUGIN-02, PLUGIN-03
+**Plans:** 5 plans
 
-| Plan | Task |
-|------|------|
-| 8.1 | Visual Studio project setup — .gha target, GH SDK references, component base classes |
-| 8.2 | Port all C# Script components to compiled GhComponent classes |
-| 8.3 | Icons per component (24×24 px) + tooltips + GH category "DYNESTIC" |
-| 8.4 | Build + install script; test in clean Rhino install |
+Plans:
+- [ ] 08-01-PLAN.md — .NET SDK install + VS project scaffold (DynesticPostProcessor.csproj, DynesticInfo.cs, net48 build verification)
+- [ ] 08-02-PLAN.md — Icon generation (10 icons via nano-banana) + .resx embedding
+- [ ] 08-03-PLAN.md — Port 6 Operations components (HopContour, HopDrill, HopRectPocket, HopCircPocket, HopCircPath, HopFreeSlot)
+- [ ] 08-04-PLAN.md — Port 4 Nesting+Export components (HopPart, HopSheet, HopSheetExport, HopExport)
+- [ ] 08-05-PLAN.md — Release build + Yak packaging + local install verification (checkpoint)
 
-**Exit criteria:** Plugin installs via yak or manual .gha drop; all components appear in GH component panel under "DYNESTIC"; no script editor required.
+**Exit criteria:** Plugin installs via yak or manual .gha drop; all 10 components appear in GH component panel under "DYNESTIC" with icons and descriptions; no script editor required.
 
 ---
 
@@ -239,3 +240,4 @@ v2.0:  Phase 9 (Korpus) ──► Phase 10 (Parts+Nesting) ──► Phase 11 (D
 *Updated: 2026-03-30 — Phase 3 closed; Phase 5 planned (1 plan, 05-01-PLAN.md); Phase 6 extended with HopSheet; Phase 7 (OpenNest) + Phase 8 (Plugin) added to v1.0; Milestone v2.0 (Korpus-Generator, Phases 9–11) added*
 *Updated: 2026-03-31 — Phase 6 closed DONE; canvas cleanup deferred to Phase 8*
 *Updated: 2026-03-31 — Phase 7 planned: 3 plans (07-01 HopPart, 07-02 HopSheetExport, 07-03 Integration checkpoint)*
+*Updated: 2026-03-31 — Phase 8 planned: 5 plans (08-01 SDK+scaffold, 08-02 Icons, 08-03 Ops port, 08-04 Nesting+Export port, 08-05 Build+Yak+verify)*

@@ -60,8 +60,8 @@
 ### Nesting Integration (NEST) — Phase 7
 
 - [x] **NEST-01**: OpenNest integration — nest parts before generating toolpaths
-- [ ] **NEST-02**: Multi-sheet output (separate .hop file per sheet, auto-numbered)
-- [ ] **NEST-03**: Sheet origin/offset applied to all operation components after nesting
+- [x] **NEST-02**: Multi-sheet output (separate .hop file per sheet, auto-numbered)
+- [x] **NEST-03**: Sheet origin/offset applied to all operation components after nesting
 
 ### Plugin Packaging (PLUGIN) — Phase 8
 
