@@ -30,5 +30,55 @@ namespace DynesticPostProcessor.Properties
             get { return resourceCulture; }
             set { resourceCulture = value; }
         }
+
+        internal static System.Drawing.Bitmap HopContour
+        {
+            get { return ((System.Drawing.Bitmap)(ResourceManager.GetObject("HopContour", resourceCulture))); }
+        }
+
+        internal static System.Drawing.Bitmap HopDrill
+        {
+            get { return ((System.Drawing.Bitmap)(ResourceManager.GetObject("HopDrill", resourceCulture))); }
+        }
+
+        internal static System.Drawing.Bitmap HopRectPocket
+        {
+            get { return ((System.Drawing.Bitmap)(ResourceManager.GetObject("HopRectPocket", resourceCulture))); }
+        }
+
+        internal static System.Drawing.Bitmap HopCircPocket
+        {
+            get { return ((System.Drawing.Bitmap)(ResourceManager.GetObject("HopCircPocket", resourceCulture))); }
+        }
+
+        internal static System.Drawing.Bitmap HopCircPath
+        {
+            get { return ((System.Drawing.Bitmap)(ResourceManager.GetObject("HopCircPath", resourceCulture))); }
+        }
+
+        internal static System.Drawing.Bitmap HopFreeSlot
+        {
+            get { return ((System.Drawing.Bitmap)(ResourceManager.GetObject("HopFreeSlot", resourceCulture))); }
+        }
+
+        internal static System.Drawing.Bitmap HopPart
+        {
+            get { return ((System.Drawing.Bitmap)(ResourceManager.GetObject("HopPart", resourceCulture))); }
+        }
+
+        internal static System.Drawing.Bitmap HopSheet
+        {
+            get { return ((System.Drawing.Bitmap)(ResourceManager.GetObject("HopSheet", resourceCulture))); }
+        }
+
+        internal static System.Drawing.Bitmap HopExport
+        {
+            get { return ((System.Drawing.Bitmap)(ResourceManager.GetObject("HopExport", resourceCulture))); }
+        }
+
+        internal static System.Drawing.Bitmap HopSheetExport
+        {
+            get { return ((System.Drawing.Bitmap)(ResourceManager.GetObject("HopSheetExport", resourceCulture))); }
+        }
     }
 }
