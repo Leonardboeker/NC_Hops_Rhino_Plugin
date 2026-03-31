@@ -5,6 +5,8 @@
 // Outputs: operationLines
 //
 // Extracts center and dimensions from the rectangle curve bounding box.
+// surfaceZ is derived from rectCurve bounding box Min.Z (bottom of input geometry).
+// Tiefe = surfaceZ - depth (absolute Z the machine cuts to).
 // Emits WZF tool call + CALL _RechteckTasche_V5 macro for HopExport.
 // toolType and feedFactor are hardcoded (WZF / 1.0) -- handled at machine level.
 
@@ -175,7 +177,9 @@ public class Script_Instance : GH_ScriptInstance
     // ---------------------------------------------------------------
     // 6. BUILD CALL MACRO
     // ---------------------------------------------------------------
-    double negDepth   = -Math.Abs(depth);
+    // surfaceZ: bottom of input geometry bounding box (plate top surface)
+    double surfaceZ   = bb.Min.Z;
+    double cutZ       = surfaceZ - Math.Abs(depth);
     double zustellung = (stepdown > 0) ? stepdown : 0;
 
     lines.Add("CALL _RechteckTasche_V5(VAL "
@@ -185,7 +189,7 @@ public class Script_Instance : GH_ScriptInstance
       + "Taschenbreite:=" + height.ToString(CultureInfo.InvariantCulture) + ","
       + "Radius:=" + cornerRadius.ToString(CultureInfo.InvariantCulture) + ","
       + "Winkel:=" + angle.ToString(CultureInfo.InvariantCulture) + ","
-      + "Tiefe:=" + negDepth.ToString(CultureInfo.InvariantCulture) + ","
+      + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
       + "Zustellung:=" + zustellung.ToString(CultureInfo.InvariantCulture) + ","
       + "AB:=2,ABF:=_ANF,Interpol:=1,umkehren:=0,esxy:=0,esmd:=0,laser:=0)");
 
