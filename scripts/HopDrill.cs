@@ -58,6 +58,19 @@ public class Script_Instance : GH_ScriptInstance
         Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
   }
 
+  public override void BeforeRunScript()
+  {
+    // Mark toolDB optional — suppress orange warning when not connected (per D-12)
+    for (int i = 0; i < this.Component.Params.Input.Count; i++)
+    {
+      if (this.Component.Params.Input[i].Name == "toolDB")
+      {
+        this.Component.Params.Input[i].Optional = true;
+        break;
+      }
+    }
+  }
+
   private void RunScript(
     List<Point3d> points,
     double zSurface,
@@ -68,6 +81,7 @@ public class Script_Instance : GH_ScriptInstance
     double feedFactor,
     string toolType,
     Color colour,
+    object toolDB,
     ref object operationLines)
   {
     // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
@@ -80,6 +94,35 @@ public class Script_Instance : GH_ScriptInstance
     // 1. DEFAULTS -- downstream gets these if guards trigger
     // ---------------------------------------------------------------
     operationLines = new List<string>();
+
+    // ---------------------------------------------------------------
+    // 1b. TOOLDB LOOKUP — overrides individual inputs when connected (per D-12)
+    // ---------------------------------------------------------------
+    if (toolDB != null)
+    {
+      var db = toolDB as Dictionary<string, object>;
+      if (db == null)
+      {
+        this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+          "toolDB input is not a valid HopToolDB object");
+        return;
+      }
+      int activeNr = db.ContainsKey("activeToolNr") ? (int)db["activeToolNr"] : toolNr;
+      string toolKey = "tool_" + activeNr.ToString();
+      if (!db.ContainsKey(toolKey))
+      {
+        this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+          "Tool not found in HopToolDB: toolNr=" + activeNr.ToString());
+        return;
+      }
+      var entry = db[toolKey] as Dictionary<string, object>;
+      if (entry != null)
+      {
+        toolNr     = (int)entry["toolNr"];
+        toolType   = (string)entry["toolType"];
+        feedFactor = (double)entry["feedFactor"];
+      }
+    }
 
     // ---------------------------------------------------------------
     // 2. GUARDS -- required inputs
