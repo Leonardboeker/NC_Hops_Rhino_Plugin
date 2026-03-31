@@ -3,26 +3,26 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Korpus-Generator
 status: in_progress
-stopped_at: Completed 09-01-PLAN.md (HopKorpus base component)
-last_updated: "2026-03-31T21:00:19Z"
+stopped_at: Completed 09-02-PLAN.md (3D viewport preview, human-verify approved)
+last_updated: "2026-03-31T21:30:00Z"
 progress:
   total_phases: 11
   completed_phases: 8
   total_plans: 25
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
 
 **Last updated:** 2026-03-31
-**Status:** v2.0 Phase 9.1 in progress — Plan 09-01 complete
+**Status:** v2.0 Phase 9.1 complete — Plans 09-01 + 09-02 done, human UAT approved
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** One GH definition takes geometry to a ready-to-run .hop file for the DYNESTIC -- no CAM middleman.
-**Current focus:** v2.0 Milestone — Korpus-Generator Phase 9.1 (Plan 09-01 complete, next: 09-02)
+**Current focus:** v2.0 Milestone — Korpus-Generator Phase 9.1 complete (next: Phase 9.2 Rueckwand + Verbinder)
 
 ## Milestone v1.0 — COMPLETE ✓
 
@@ -56,7 +56,7 @@ Roadmap updated 2026-03-30:
 | 7 -- OpenNest Integration | DONE ✓ | 3/3 | 100% |
 | 8 -- Plugin Packaging | DONE ✓ | 5/5 | 100% |
 | --- v2.0 Milestone --- | | | |
-| 9 -- Korpus Model | IN PROGRESS | 1/4 | 25% |
+| 9 -- Korpus Model | IN PROGRESS | 2/4 | 50% |
 | 10 -- Part Export | - | 0/4 | 0% |
 | 11 -- Technical Drawings | - | 0/4 | 0% |
 
@@ -90,6 +90,9 @@ Roadmap updated 2026-03-30:
 - [Phase 09-01]: PlaneToPlane transforms for assembled panel positioning (cleaner than rotation composition)
 - [Phase 09-01]: Rueckwand placeholder at same MS thickness -- Phase 9.2 will replace with Rueckwand options component
 - [Phase 09-01]: 5 panels (not 6): open front = absence, not a zero-size panel
+- [Phase 09-02]: Face-normal extrusion for 3D preview (orientation-agnostic, works for all 5 panel orientations)
+- [Phase 09-02]: Transparency 0.3 (vs 0.5 in HopContour) for more opaque furniture preview
+- [Phase 09-02]: Default warm brown colour (180,140,100) to distinguish from op-component yellows/reds
 
 ## Performance Metrics
 
@@ -108,8 +111,9 @@ Roadmap updated 2026-03-30:
 | Phase 08 P02 | 6min | 2 tasks | 12 files |
 | 08 | 03 | 6min | 2 | 7 |
 | 09 | 01 | 2min | 2 | 2 |
+| 09 | 02 | 2min | 2 | 1 |
 
 ## Session
 
-**Last session:** 2026-03-31T21:00:19Z
-**Stopped at:** Completed 09-01-PLAN.md (HopKorpus base component + KorpusPanel data class)
+**Last session:** 2026-03-31T21:30:00Z
+**Stopped at:** Completed 09-02-PLAN.md (3D viewport preview, human-verify approved -- Phase 9.1 complete)

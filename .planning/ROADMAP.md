@@ -156,9 +156,9 @@ Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 5 ──► Phase 6 
 
 Plans:
 - [x] 09-01-PLAN.md — HopKorpus base component: KorpusPanel data class + HopKorpusComponent (B/H/T/MS sliders → 5 flat panels + KorpusData dictionary + panel list output)
-- [ ] 09-02-PLAN.md — 3D viewport preview (assembled korpus as solid/shaded geometry via DrawViewportMeshes/Wires) + human verification checkpoint
+- [x] 09-02-PLAN.md — 3D viewport preview (assembled korpus as solid/shaded geometry via DrawViewportMeshes/Wires) + human verification checkpoint
 
-**Exit criteria:** Slider input → 3D korpus visible in viewport + flat named panels output.
+**Exit criteria:** Slider input → 3D korpus visible in viewport + flat named panels output. **MET** -- Human UAT approved 2026-03-31.
 
 #### Phase 9.2 — Rückwand + Verbinder
 | Plan | Task |
