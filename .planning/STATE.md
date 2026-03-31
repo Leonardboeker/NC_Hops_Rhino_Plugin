@@ -1,36 +1,40 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: — GH Post-Processor
-status: executing
-stopped_at: Completed 08-03-PLAN.md (Operations components)
-last_updated: "2026-03-31T17:23:00Z"
+milestone: v2.0
+milestone_name: Korpus-Generator
+status: in_progress
+stopped_at: Completed 09-01-PLAN.md (HopKorpus base component)
+last_updated: "2026-03-31T21:00:19Z"
 progress:
-  total_phases: 7
-  completed_phases: 5
-  total_plans: 16
-  completed_plans: 16
+  total_phases: 11
+  completed_phases: 8
+  total_plans: 25
+  completed_plans: 22
 ---
 
 # Project State
 
 **Last updated:** 2026-03-31
-**Status:** Executing Phase 08
+**Status:** v2.0 Phase 9.1 in progress — Plan 09-01 complete
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** One GH definition takes geometry to a ready-to-run .hop file for the DYNESTIC -- no CAM middleman.
-**Current focus:** Phase 08 — plugin-packaging
+**Current focus:** v2.0 Milestone — Korpus-Generator Phase 9.1 (Plan 09-01 complete, next: 09-02)
 
-## Current Phase
+## Milestone v1.0 — COMPLETE ✓
 
 **Phase 3: COMPLETE ✓** — Human UAT passed 2026-03-30. All 3 tests confirmed.
 
 **Phase 5 (Visual Preview): COMPLETE ✓** — Human UAT passed 2026-03-30. All 7 tasks confirmed. DrawViewportWires preview working in all 6 operation components.
 
-**Phase 6 (UX Polish + HopSheet): COMPLETE ✓** — 2026-03-31. HopSheet live; Z-reference fixed in all 6 components; HopContour kerf compensation added; HopToolDB removed (machine-level constants); canvas cleanup deferred to Phase 8.
+**Phase 6 (UX Polish + HopSheet): COMPLETE ✓** — 2026-03-31. HopSheet live; Z-reference fixed in all 6 components; HopContour kerf compensation added; HopToolDB removed (machine-level constants).
+
+**Phase 7 (OpenNest Integration): COMPLETE ✓** — 2026-03-31. HopPart, HopSheet, HopSheetExport working; user confirmed "ok super".
+
+**Phase 8 (Plugin Packaging): COMPLETE ✓** — 2026-03-31. .gha auto-installs, icons embedded, AutoWire on all 10 components, Yak .yak built. User confirmed "ok top now looks good".
 
 Roadmap updated 2026-03-30:
 
@@ -49,10 +53,10 @@ Roadmap updated 2026-03-30:
 | 4 -- 3D Milling | - | 0/4 | 0% |
 | 5 -- Visual Preview | DONE ✓ | 1/1 | 100% |
 | 6 -- UX Polish + HopSheet | DONE ✓ | 1/1 | 100% |
-| 7 -- OpenNest Integration | IN PROGRESS | 2/3 | 67% |
-| 8 -- Plugin Packaging | IN PROGRESS | 3/5 | 60% |
+| 7 -- OpenNest Integration | DONE ✓ | 3/3 | 100% |
+| 8 -- Plugin Packaging | DONE ✓ | 5/5 | 100% |
 | --- v2.0 Milestone --- | | | |
-| 9 -- Korpus Model | - | 0/4 | 0% |
+| 9 -- Korpus Model | IN PROGRESS | 1/4 | 25% |
 | 10 -- Part Export | - | 0/4 | 0% |
 | 11 -- Technical Drawings | - | 0/4 | 0% |
 
@@ -82,6 +86,10 @@ Roadmap updated 2026-03-30:
 - [Phase 08]: PIL-generated placeholder icons (nano-banana CLI unavailable); real icons replaceable later via same .resx structure
 - [Phase 08-03]: Used Properties.Resources.HopXxx for Icon (icon PNGs already exist)
 - [Phase 08-03]: Added System.Resources.Extensions NuGet + GenerateResourceUsePreserializedResources to fix .resx build error
+- [Phase 09-01]: Butt-joint construction: side panels full height, Boden/Deckel sit between sides (innerB = B - 2*MS)
+- [Phase 09-01]: PlaneToPlane transforms for assembled panel positioning (cleaner than rotation composition)
+- [Phase 09-01]: Rueckwand placeholder at same MS thickness -- Phase 9.2 will replace with Rueckwand options component
+- [Phase 09-01]: 5 panels (not 6): open front = absence, not a zero-size panel
 
 ## Performance Metrics
 
@@ -99,8 +107,9 @@ Roadmap updated 2026-03-30:
 | 08 | 04 | 4min | 2 | 4 |
 | Phase 08 P02 | 6min | 2 tasks | 12 files |
 | 08 | 03 | 6min | 2 | 7 |
+| 09 | 01 | 2min | 2 | 2 |
 
 ## Session
 
-**Last session:** 2026-03-31T17:23:00Z
-**Stopped at:** Completed 08-03-PLAN.md (Operations components)
+**Last session:** 2026-03-31T21:00:19Z
+**Stopped at:** Completed 09-01-PLAN.md (HopKorpus base component + KorpusPanel data class)

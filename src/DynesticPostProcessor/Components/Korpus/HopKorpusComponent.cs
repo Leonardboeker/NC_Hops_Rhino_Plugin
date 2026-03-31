@@ -9,6 +9,13 @@ namespace DynesticPostProcessor.Components.Korpus
 {
     public class HopKorpusComponent : GH_Component
     {
+        // ---------------------------------------------------------------
+        // PREVIEW FIELDS
+        // ---------------------------------------------------------------
+        private static readonly Color _defaultColor = Color.FromArgb(180, 140, 100);
+        private List<Brep> _previewBreps = null;
+        private Color _drawColor = Color.FromArgb(180, 140, 100);
+
         public HopKorpusComponent()
             : base("HopKorpus", "HopKorpus",
                 "Parametric cabinet body generator. Produces 5 flat panels (Boden, Deckel, LinkeSeite, RechteSeite, Rueckwand, open front) from dimension sliders. Outputs KorpusData dictionary and individual panel objects for HopPart nesting.",
@@ -45,6 +52,11 @@ namespace DynesticPostProcessor.Components.Korpus
                 "Cabinet type label (e.g. Unterschrank, Hochschrank). Label only, no structural effect.",
                 GH_ParamAccess.item, "Korpus");
             pManager[4].Optional = true;
+
+            pManager.AddColourParameter("Colour", "colour",
+                "Preview colour for the 3D korpus model in the Rhino viewport. Default warm brown.",
+                GH_ParamAccess.item, Color.FromArgb(180, 140, 100));
+            pManager[5].Optional = true;
         }
 
         // -----------------------------------------------------------------
@@ -62,19 +74,35 @@ namespace DynesticPostProcessor.Components.Korpus
         }
 
         // -----------------------------------------------------------------
+        // CLEAR DATA (prevent ghost geometry on disconnect)
+        // -----------------------------------------------------------------
+        public override void ClearData()
+        {
+            base.ClearData();
+            _previewBreps = null;
+        }
+
+        // -----------------------------------------------------------------
         // SOLVE
         // -----------------------------------------------------------------
         protected override void SolveInstance(IGH_DataAccess DA)
         {
+            // 0. Clear preview state
+            _previewBreps = null;
+
             // 1. Get inputs with defaults
             double B = 600, H = 720, T = 560, MS = 19;
             string korpusTyp = "Korpus";
+            Color colour = Color.Empty;
 
             DA.GetData(0, ref B);
             DA.GetData(1, ref H);
             DA.GetData(2, ref T);
             DA.GetData(3, ref MS);
             DA.GetData(4, ref korpusTyp);
+            DA.GetData(5, ref colour);
+
+            _drawColor = colour.IsEmpty ? _defaultColor : colour;
 
             // 2. Guards
             if (B <= 0 || H <= 0 || T <= 0)
@@ -156,6 +184,30 @@ namespace DynesticPostProcessor.Components.Korpus
             korpusDict["type"] = korpusTyp;
             korpusDict["panels"] = panels;
 
+            // 6b. Build 3D preview -- transform each flat panel to assembled position, then extrude by thickness
+            _previewBreps = new List<Brep>();
+            foreach (var panel in panels)
+            {
+                Brep assembled = panel.FlatBrep.DuplicateBrep();
+                assembled.Transform(panel.AssembledTransform);
+
+                // Get the face normal of the assembled planar Brep
+                Vector3d normal = assembled.Faces[0].NormalAt(
+                    assembled.Faces[0].Domain(0).Mid,
+                    assembled.Faces[0].Domain(1).Mid);
+
+                // Create extrusion path along the normal by thickness
+                Point3d extStart = Point3d.Origin;
+                Point3d extEnd = extStart + normal * panel.Thickness;
+                LineCurve extPath = new LineCurve(new Line(extStart, extEnd));
+
+                Brep solid = assembled.Faces[0].CreateExtrusion(extPath, true);
+                if (solid != null)
+                {
+                    _previewBreps.Add(solid);
+                }
+            }
+
             // 7. Output 1: KorpusData
             DA.SetData(0, new GH_ObjectWrapper(korpusDict));
 
@@ -180,7 +232,44 @@ namespace DynesticPostProcessor.Components.Korpus
             new Guid("a3b7c1d2-e4f5-6789-0abc-def123456789");
 
         // -----------------------------------------------------------------
-        // AUTO-WIRE (5 inputs)
+        // PREVIEW OVERRIDES
+        // -----------------------------------------------------------------
+        public override BoundingBox ClippingBox
+        {
+            get
+            {
+                BoundingBox bb = BoundingBox.Empty;
+                if (_previewBreps != null)
+                {
+                    foreach (var brep in _previewBreps)
+                        bb.Union(brep.GetBoundingBox(true));
+                }
+                return bb;
+            }
+        }
+
+        public override void DrawViewportMeshes(IGH_PreviewArgs args)
+        {
+            if (_previewBreps != null)
+            {
+                var mat = new Rhino.Display.DisplayMaterial(_drawColor);
+                mat.Transparency = 0.3;
+                foreach (var brep in _previewBreps)
+                    args.Display.DrawBrepShaded(brep, mat);
+            }
+        }
+
+        public override void DrawViewportWires(IGH_PreviewArgs args)
+        {
+            if (_previewBreps != null)
+            {
+                foreach (var brep in _previewBreps)
+                    args.Display.DrawBrepWires(brep, _drawColor, 1);
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // AUTO-WIRE (6 inputs)
         // -----------------------------------------------------------------
         public override void AddedToDocument(GH_Document doc)
         {
@@ -192,6 +281,7 @@ namespace DynesticPostProcessor.Components.Korpus
                 DynesticPostProcessor.AutoWire.Spec.Float("100<560<800"),   // T
                 DynesticPostProcessor.AutoWire.Spec.Float("8<19<38"),       // MS
                 DynesticPostProcessor.AutoWire.Spec.Panel("Korpus"),        // typ
+                DynesticPostProcessor.AutoWire.Spec.Skip(),                 // colour
             });
         }
     }

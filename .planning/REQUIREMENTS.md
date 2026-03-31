@@ -81,7 +81,7 @@
 
 ### Parametric Model (KORPUS)
 
-- [ ] **KORPUS-01**: Parametric box/carcass from B × H × T × material thickness — 6 panels as flat Brep geometry
+- [x] **KORPUS-01**: Parametric box/carcass from B × H × T × material thickness — 5 flat panels (open front)
 - [ ] **KORPUS-02**: Joint generation — Schlitz/Zapfen, Überblattung, Dübelbohrungen; selectable per edge
 - [ ] **KORPUS-03**: Part extraction — each panel as named flat outline curve (label: "Boden", "Rückwand", etc.)
 - [ ] **KORPUS-04**: Parts feed directly into v1.0 nesting + toolpath pipeline (Phase 7 OpenNest wiring)
