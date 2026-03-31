@@ -1,13 +1,13 @@
 // HopDrill -- Vertical drilling operation via Bohrung macro
 // Inputs: points (List), zSurface (Item), depth (Item), diameter (Item),
-//         stepdown (Item), toolNr (Item), feedFactor (Item), toolType (Item),
-//         colour (Item)
+//         stepdown (Item), toolNr (Item), colour (Item)
 // Outputs: operationLines
 //
 // Converts a list of Grasshopper points into NC-Hops Bohrung macro strings.
 // Each point becomes one Bohrung call with the specified depth and diameter.
 // When stepdown > 0, drilling is split into multiple passes at increasing depths.
 // Output wires into HopExport.cs operationLines input.
+// toolType and feedFactor are hardcoded (WZB / 1.0) -- handled at machine level.
 
 using System;
 using System.Collections;
@@ -29,46 +29,40 @@ public class Script_Instance : GH_ScriptInstance
   // PREVIEW FIELDS
   // ---------------------------------------------------------------
   private static readonly Color _defaultColor = Color.Red;
-  private List<Circle> _drillCircles    = new List<Circle>();
-  private List<Line>   _drillDepthLines = new List<Line>();
-  private Line         _approachLine    = Line.Unset;
-  private Color        _drawColor       = Color.Red;
+  private List<Brep> _previewVolumes   = new List<Brep>();
+  private Line       _approachLine     = Line.Unset;
+  private Color      _drawColor        = Color.Red;
 
   public override BoundingBox ClippingBox
   {
     get
     {
       BoundingBox bb = BoundingBox.Empty;
-      foreach (var c in _drillCircles) bb.Union(c.BoundingBox);
-      foreach (var l in _drillDepthLines) { bb.Union(l.From); bb.Union(l.To); }
+      foreach (Brep b in _previewVolumes) bb.Union(b.GetBoundingBox(true));
       if (_approachLine.IsValid) { bb.Union(_approachLine.From); bb.Union(_approachLine.To); }
       return bb;
     }
   }
 
+  public override void DrawViewportMeshes(IGH_PreviewArgs args)
+  {
+    if (_previewVolumes.Count > 0)
+    {
+      Rhino.Display.DisplayMaterial mat = new Rhino.Display.DisplayMaterial(_drawColor);
+      mat.Transparency = 0.55;
+      foreach (Brep b in _previewVolumes)
+        args.Display.DrawBrepShaded(b, mat);
+    }
+  }
+
   public override void DrawViewportWires(IGH_PreviewArgs args)
   {
-    foreach (var c in _drillCircles)
-      args.Display.DrawCircle(c, _drawColor, 2);
-    foreach (var l in _drillDepthLines)
-      args.Display.DrawLine(l, _drawColor, 1);
+    foreach (Brep b in _previewVolumes)
+      args.Display.DrawBrepWires(b, _drawColor, 1);
     if (_approachLine.IsValid)
       args.Display.DrawPatternedLine(
         _approachLine.From, _approachLine.To,
         Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
-  }
-
-  public override void BeforeRunScript()
-  {
-    // Mark toolDB optional — suppress orange warning when not connected (per D-12)
-    for (int i = 0; i < this.Component.Params.Input.Count; i++)
-    {
-      if (this.Component.Params.Input[i].Name == "toolDB")
-      {
-        this.Component.Params.Input[i].Optional = true;
-        break;
-      }
-    }
   }
 
   private void RunScript(
@@ -78,15 +72,15 @@ public class Script_Instance : GH_ScriptInstance
     double diameter,
     double stepdown,
     int toolNr,
-    double feedFactor,
-    string toolType,
     Color colour,
-    object toolDB,
     ref object operationLines)
   {
+    // Hardcoded tool params -- handled at machine level
+    string toolType   = "WZB";
+    double feedFactor = 1.0;
+
     // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
-    _drillCircles.Clear();
-    _drillDepthLines.Clear();
+    _previewVolumes.Clear();
     _approachLine = Line.Unset;
     _drawColor    = colour.IsEmpty ? _defaultColor : colour;
 
@@ -94,35 +88,6 @@ public class Script_Instance : GH_ScriptInstance
     // 1. DEFAULTS -- downstream gets these if guards trigger
     // ---------------------------------------------------------------
     operationLines = new List<string>();
-
-    // ---------------------------------------------------------------
-    // 1b. TOOLDB LOOKUP — overrides individual inputs when connected (per D-12)
-    // ---------------------------------------------------------------
-    if (toolDB != null)
-    {
-      var db = toolDB as Dictionary<string, object>;
-      if (db == null)
-      {
-        this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-          "toolDB input is not a valid HopToolDB object");
-        return;
-      }
-      int activeNr = db.ContainsKey("activeToolNr") ? (int)db["activeToolNr"] : toolNr;
-      string toolKey = "tool_" + activeNr.ToString();
-      if (!db.ContainsKey(toolKey))
-      {
-        this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-          "Tool not found in HopToolDB: toolNr=" + activeNr.ToString());
-        return;
-      }
-      var entry = db[toolKey] as Dictionary<string, object>;
-      if (entry != null)
-      {
-        toolNr     = (int)entry["toolNr"];
-        toolType   = (string)entry["toolType"];
-        feedFactor = (double)entry["feedFactor"];
-      }
-    }
 
     // ---------------------------------------------------------------
     // 2. GUARDS -- required inputs
@@ -143,18 +108,21 @@ public class Script_Instance : GH_ScriptInstance
     // ---------------------------------------------------------------
     // 3. INPUT DEFAULTS -- fallback for disconnected optional inputs
     // ---------------------------------------------------------------
-    if (feedFactor <= 0) feedFactor = 1.0;
-    if (string.IsNullOrEmpty(toolType)) toolType = "WZB";
     if (depth <= 0) depth = 1.0;
     if (diameter <= 0) diameter = 8.0;
 
-    // PREVIEW: circle + depth line per drill point (after diameter default applied)
+    // PREVIEW: cylinder per drill point (after diameter default applied)
     double radius = diameter / 2.0;
+    double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
     for (int i = 0; i < points.Count; i++)
     {
       Point3d pt = new Point3d(points[i].X, points[i].Y, zSurface);
-      _drillCircles.Add(new Circle(new Plane(pt, Vector3d.ZAxis), radius));
-      _drillDepthLines.Add(new Line(pt, new Point3d(pt.X, pt.Y, zSurface - Math.Abs(depth))));
+      Plane cylPlane = new Plane(pt, Vector3d.ZAxis);
+      Circle cylCircle = new Circle(cylPlane, radius);
+      Cylinder cyl = new Cylinder(cylCircle, -Math.Abs(depth));
+      Brep cylBrep = cyl.ToBrep(true, true);
+      if (cylBrep != null)
+        _previewVolumes.Add(cylBrep);
     }
     // PREVIEW: approach line above first point
     if (points.Count > 0)
