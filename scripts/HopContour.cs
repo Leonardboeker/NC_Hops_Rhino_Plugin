@@ -1,12 +1,16 @@
 // HopContour -- 2D contour cutting component for DYNESTIC CNC
 // Inputs: curve (Item), depth (Item), plungeZ (Item), tolerance (Item),
-//         toolNr (Item), toolDiameter (Item), stepdown (Item), colour (Item)
+//         toolNr (Item), toolDiameter (Item), side (Item), stepdown (Item), colour (Item)
 // Outputs: operationLines
 //
-// Converts Grasshopper curves (NURBS, arcs, polylines) into NC-Hops 2D contour
-// macro blocks: SP / G01 / G03M / G02M / EP.
-// True arcs detected via Curve.ToArcsAndLines, emitted as G03M (CCW) or G02M (CW).
-// Preview: channel volume (inner+outer offset by toolDiameter/2, extruded by depth).
+// side: -1 = left of travel direction (inside cut)
+//        0 = center (tool center on curve, no offset)
+//       +1 = right of travel direction (outside cut)
+//
+// When side != 0, the curve is geometrically pre-offset by toolDiameter/2
+// before building the SP/G01/G03M blocks. The machine receives the offset path.
+// Preview shows the actual material-removal volume on the chosen side.
+//
 // toolType and feedFactor hardcoded (WZF / 1.0) -- handled at machine level.
 
 using System;
@@ -27,8 +31,6 @@ public class Script_Instance : GH_ScriptInstance
 {
   // ---------------------------------------------------------------
   // PREVIEW FIELDS
-  // Channel volume: inner + outer offset curves extruded downward.
-  // Shows the actual material removed by the endmill along the path.
   // ---------------------------------------------------------------
   private static readonly Color _defaultColor = Color.Yellow;
   private Brep  _previewVolume = null;
@@ -68,15 +70,13 @@ public class Script_Instance : GH_ScriptInstance
 
   private void RunScript(
     Curve curve, double depth, double plungeZ, double tolerance,
-    int toolNr, double toolDiameter, double stepdown,
+    int toolNr, double toolDiameter, int side, double stepdown,
     Color colour,
     ref object operationLines)
   {
-    // Hardcoded tool params -- handled at machine level
     string toolType   = "WZF";
     double feedFactor = 1.0;
 
-    // PREVIEW: clear first so disconnecting inputs removes stale geometry
     _previewVolume = null;
     _approachLine  = Line.Unset;
     _drawColor     = colour.IsEmpty ? _defaultColor : colour;
@@ -97,7 +97,7 @@ public class Script_Instance : GH_ScriptInstance
     if (toolNr <= 0)
     {
       this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-        "toolNr is required and must be > 0");
+        "toolNr must be > 0");
       return;
     }
 
@@ -107,7 +107,10 @@ public class Script_Instance : GH_ScriptInstance
     if (tolerance    <= 0) tolerance    = 0.1;
     if (depth        <= 0) depth        = 1.0;
     if (plungeZ      <= 0) plungeZ      = depth;
-    if (toolDiameter <= 0) toolDiameter = 8.0;   // visual default -- not written to NC output
+    if (toolDiameter <= 0) toolDiameter = 8.0;
+    // side: clamp to -1 / 0 / +1
+    if (side > 0)  side =  1;
+    if (side < 0)  side = -1;
 
     // ---------------------------------------------------------------
     // 4. PLANARITY CHECK
@@ -118,70 +121,92 @@ public class Script_Instance : GH_ScriptInstance
         "Curve is not planar -- cannot use for 2D contour");
       return;
     }
-    BoundingBox curveBB = curve.GetBoundingBox(true);
-    if (Math.Abs(curveBB.Max.Z - curveBB.Min.Z) > tolerance)
-    {
-      this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
-        "Curve has Z variation -- using XY projection for 2D contour");
-    }
 
     // ---------------------------------------------------------------
-    // 5. CHANNEL VOLUME PREVIEW
-    //    Offset curve inward and outward by toolDiameter/2.
-    //    Build planar region between offsets, extrude downward by depth.
-    //    For open curves: offset both sides to form a slot shape.
+    // 5. GEOMETRIC PRE-OFFSET (when side != 0)
+    //    Offset the input curve by toolDiameter/2 in the chosen direction.
+    //    The machine receives the offset path -- tool center tracks it exactly.
+    //    side = -1 (left / inside):  positive offset distance in Rhino convention
+    //    side = +1 (right / outside): negative offset distance
+    //    Note: Rhino Curve.Offset with positive distance offsets to the LEFT
+    //    of the curve direction. Negate for right.
     // ---------------------------------------------------------------
     double tol    = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
     double radius = toolDiameter / 2.0;
-    double cutZ   = -Math.Abs(plungeZ > 0 ? plungeZ : depth);
 
-    // Project curve to Z=cutZ for the channel base
-    Curve baseCrv = curve.DuplicateCurve();
-    baseCrv.Translate(new Vector3d(0, 0, cutZ - baseCrv.PointAtStart.Z));
+    Curve cuttingCurve = curve;  // curve actually sent to machine
 
-    Curve[] outerOffsets = baseCrv.Offset(Plane.WorldXY, radius,  tol, CurveOffsetCornerStyle.Sharp);
-    Curve[] innerOffsets = baseCrv.Offset(Plane.WorldXY, -radius, tol, CurveOffsetCornerStyle.Sharp);
-
-    if (outerOffsets != null && outerOffsets.Length > 0 &&
-        innerOffsets != null && innerOffsets.Length > 0)
+    if (side != 0)
     {
-      // Join offset curves into single closed loops if needed
-      Curve outerLoop = outerOffsets.Length == 1 ? outerOffsets[0]
-        : Curve.JoinCurves(outerOffsets, tol)[0];
-      Curve innerLoop = innerOffsets.Length == 1 ? innerOffsets[0]
-        : Curve.JoinCurves(innerOffsets, tol)[0];
-
-      // Create planar Brep from the ring region between inner and outer offset
-      Curve[] regionBoundaries = new Curve[] { outerLoop, innerLoop };
-      Brep[] planarBreps = Brep.CreatePlanarBreps(regionBoundaries, tol);
-
-      if (planarBreps != null && planarBreps.Length > 0)
+      double offsetDist = side * radius;  // -1*r = left offset, +1*r = right offset
+      Curve[] offsets = curve.Offset(Plane.WorldXY, offsetDist, tol,
+        CurveOffsetCornerStyle.Sharp);
+      if (offsets != null && offsets.Length > 0)
       {
-        // Extrude the ring face downward by depth to get the channel volume
-        Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
-        Brep channelBrep = planarBreps[0].Faces[0].CreateExtrusion(extDir, true);
-        if (channelBrep != null)
-          _previewVolume = channelBrep;
-        else
-          _previewVolume = planarBreps[0];
+        cuttingCurve = offsets.Length == 1 ? offsets[0]
+          : Curve.JoinCurves(offsets, tol)[0];
+      }
+      else
+      {
+        this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+          "Side offset failed -- using center path");
       }
     }
 
-    // Fallback: if offset fails (e.g. very small curve), show plain curve
-    if (_previewVolume == null)
+    // ---------------------------------------------------------------
+    // 6. PREVIEW VOLUME
+    //    Show the material-removal channel on the chosen side.
+    //    side = 0: symmetric channel (toolDiameter wide)
+    //    side != 0: one-sided strip between original curve and offset curve
+    // ---------------------------------------------------------------
+    double cutZ = -Math.Abs(plungeZ > 0 ? plungeZ : depth);
+
+    Curve baseCrv = curve.DuplicateCurve();
+    baseCrv.Translate(new Vector3d(0, 0, cutZ - baseCrv.PointAtStart.Z));
+
+    Curve cuttingBase = cuttingCurve.DuplicateCurve();
+    cuttingBase.Translate(new Vector3d(0, 0, cutZ - cuttingBase.PointAtStart.Z));
+
+    Curve innerBoundary;
+    Curve outerBoundary;
+
+    if (side == 0)
     {
-      // Store curve for wire fallback -- just reuse approach line slot for ClippingBox
+      // Symmetric channel: offset both sides of original curve
+      Curve[] outerArr = baseCrv.Offset(Plane.WorldXY,  radius, tol, CurveOffsetCornerStyle.Sharp);
+      Curve[] innerArr = baseCrv.Offset(Plane.WorldXY, -radius, tol, CurveOffsetCornerStyle.Sharp);
+      outerBoundary = (outerArr != null && outerArr.Length > 0) ? outerArr[0] : null;
+      innerBoundary = (innerArr != null && innerArr.Length > 0) ? innerArr[0] : null;
+    }
+    else
+    {
+      // One-sided: between original curve and offset curve
+      outerBoundary = baseCrv;
+      innerBoundary = cuttingBase;
     }
 
-    // Dashed approach line from safeZ to curve start
+    if (outerBoundary != null && innerBoundary != null)
+    {
+      Brep[] planar = Brep.CreatePlanarBreps(
+        new Curve[] { outerBoundary, innerBoundary }, tol);
+      if (planar != null && planar.Length > 0)
+      {
+        Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
+        Brep vol = planar[0].Faces[0].CreateExtrusion(extDir, true);
+        if (vol != null) _previewVolume = vol;
+      }
+    }
+
+    // Dashed approach line
+    BoundingBox curveBB = curve.GetBoundingBox(true);
     double safeZ   = curveBB.Max.Z + 20.0;
-    Point3d startP = baseCrv.PointAtStart;
+    Point3d startP = cuttingBase.PointAtStart;
     _approachLine  = new Line(new Point3d(startP.X, startP.Y, safeZ), startP);
 
     // ---------------------------------------------------------------
-    // 6. CURVE DECOMPOSITION
+    // 7. CURVE DECOMPOSITION on cuttingCurve (offset or original)
     // ---------------------------------------------------------------
-    PolyCurve pc = curve.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0) as PolyCurve;
+    PolyCurve pc = cuttingCurve.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0) as PolyCurve;
     if (pc == null)
     {
       this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
@@ -190,16 +215,13 @@ public class Script_Instance : GH_ScriptInstance
     }
 
     // ---------------------------------------------------------------
-    // 7. BUILD TOOL CALL
+    // 8. BUILD NC OUTPUT
     // ---------------------------------------------------------------
     List<string> lines = new List<string>();
     lines.Add(toolType + " (" + toolNr.ToString()
       + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
       + ",_VA,_SD,0,'')");
 
-    // ---------------------------------------------------------------
-    // 8. MULTI-PASS OR SINGLE-PASS
-    // ---------------------------------------------------------------
     if (stepdown > 0)
     {
       int passCount = (int)Math.Ceiling(depth / stepdown);
@@ -217,24 +239,18 @@ public class Script_Instance : GH_ScriptInstance
     // ---------------------------------------------------------------
     // 9. REMARK + OUTPUT
     // ---------------------------------------------------------------
-    int arcCount  = 0;
-    int lineCount = 0;
-    for (int i = 0; i < pc.SegmentCount; i++)
-    {
-      if (pc.SegmentCurve(i) as ArcCurve != null) arcCount++;
-      else lineCount++;
-    }
+    string sideLabel = side == 0 ? "center" : (side < 0 ? "left (inside)" : "right (outside)");
     this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-      "Contour: " + pc.SegmentCount.ToString() + " segments ("
-      + arcCount.ToString() + " arcs, " + lineCount.ToString() + " lines)"
+      "Contour: " + pc.SegmentCount.ToString() + " segments"
       + "  depth=" + (-Math.Abs(depth)).ToString(CultureInfo.InvariantCulture)
-      + "  toolDiam=" + toolDiameter.ToString(CultureInfo.InvariantCulture));
+      + "  side=" + sideLabel
+      + "  toolD=" + toolDiameter.ToString(CultureInfo.InvariantCulture));
 
     operationLines = lines;
   }
 
   // ---------------------------------------------------------------
-  // HELPER: Build one SP...moves...EP contour block at a given Z
+  // HELPER: Build one SP...moves...EP contour block
   // ---------------------------------------------------------------
   private void BuildContourBlock(List<string> lines, PolyCurve pc, double zEintauch)
   {
