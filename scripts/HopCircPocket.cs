@@ -4,6 +4,8 @@
 //         toolNr (Item), colour (Item)
 // Outputs: operationLines
 //
+// surfaceZ is derived from center.Z (the Z of the input point).
+// Tiefe = surfaceZ - depth (absolute Z the machine cuts to).
 // Emits WZF tool call + CALL _Kreistasche_V5 macro for HopExport.
 // toolType and feedFactor are hardcoded (WZF / 1.0) -- handled at machine level.
 
@@ -125,14 +127,16 @@ public class Script_Instance : GH_ScriptInstance
       + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
       + ",_VA,_SD,0,'')");
 
-    double negDepth   = -Math.Abs(depth);
+    // surfaceZ: Z of the input center point
+    double surfaceZ   = center.Z;
+    double cutZ       = surfaceZ - Math.Abs(depth);
     double zustellung = (stepdown > 0) ? stepdown : 0;
 
     lines.Add("CALL _Kreistasche_V5(VAL "
       + "X_Mitte:=" + center.X.ToString(CultureInfo.InvariantCulture) + ","
       + "Y_Mitte:=" + center.Y.ToString(CultureInfo.InvariantCulture) + ","
       + "Radius:=" + radius.ToString(CultureInfo.InvariantCulture) + ","
-      + "Tiefe:=" + negDepth.ToString(CultureInfo.InvariantCulture) + ","
+      + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
       + "Zustellung:=" + zustellung.ToString(CultureInfo.InvariantCulture) + ","
       + "AB:=2,ABF:=_ANF,Interpol:=0,umkehren:=0,esxy:=0,esmd:=0,laser:=0)");
 
