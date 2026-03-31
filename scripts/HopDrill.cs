@@ -1,10 +1,11 @@
 // HopDrill -- Vertical drilling operation via Bohrung macro
-// Inputs: points (List), zSurface (Item), depth (Item), diameter (Item),
+// Inputs: points (List), depth (Item), diameter (Item),
 //         stepdown (Item), toolNr (Item), colour (Item)
 // Outputs: operationLines
 //
 // Converts a list of Grasshopper points into NC-Hops Bohrung macro strings.
 // Each point becomes one Bohrung call with the specified depth and diameter.
+// surfaceZ is derived from the maximum Z across all input points.
 // When stepdown > 0, drilling is split into multiple passes at increasing depths.
 // Output wires into HopExport.cs operationLines input.
 // toolType and feedFactor are hardcoded (WZB / 1.0) -- handled at machine level.
@@ -67,7 +68,6 @@ public class Script_Instance : GH_ScriptInstance
 
   private void RunScript(
     List<Point3d> points,
-    double zSurface,
     double depth,
     double diameter,
     double stepdown,
@@ -111,12 +111,16 @@ public class Script_Instance : GH_ScriptInstance
     if (depth <= 0) depth = 1.0;
     if (diameter <= 0) diameter = 8.0;
 
+    // surfaceZ: highest Z across all input points
+    double surfaceZ = points[0].Z;
+    foreach (Point3d p in points) if (p.Z > surfaceZ) surfaceZ = p.Z;
+
     // PREVIEW: cylinder per drill point (after diameter default applied)
     double radius = diameter / 2.0;
     double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
     for (int i = 0; i < points.Count; i++)
     {
-      Point3d pt = new Point3d(points[i].X, points[i].Y, zSurface);
+      Point3d pt = new Point3d(points[i].X, points[i].Y, surfaceZ);
       Plane cylPlane = new Plane(pt, Vector3d.ZAxis);
       Circle cylCircle = new Circle(cylPlane, radius);
       Cylinder cyl = new Cylinder(cylCircle, -Math.Abs(depth));
@@ -127,8 +131,8 @@ public class Script_Instance : GH_ScriptInstance
     // PREVIEW: approach line above first point
     if (points.Count > 0)
     {
-      Point3d firstPt = new Point3d(points[0].X, points[0].Y, zSurface);
-      double safeZ = zSurface + 20.0;
+      Point3d firstPt = new Point3d(points[0].X, points[0].Y, surfaceZ);
+      double safeZ = surfaceZ + 20.0;
       _approachLine = new Line(new Point3d(firstPt.X, firstPt.Y, safeZ), firstPt);
     }
 
@@ -151,15 +155,15 @@ public class Script_Instance : GH_ScriptInstance
       for (int p = 0; p < passCount; p++)
       {
         double passDepth = Math.Min((p + 1) * stepdown, depth);
-        double negPassDepth = -passDepth;
+        double cutZ = surfaceZ - passDepth;
         for (int i = 0; i < points.Count; i++)
         {
           Point3d pt = points[i];
           lines.Add("Bohrung ("
             + pt.X.ToString(CultureInfo.InvariantCulture) + ","
             + pt.Y.ToString(CultureInfo.InvariantCulture) + ","
-            + zSurface.ToString(CultureInfo.InvariantCulture) + ","
-            + negPassDepth.ToString(CultureInfo.InvariantCulture) + ","
+            + surfaceZ.ToString(CultureInfo.InvariantCulture) + ","
+            + cutZ.ToString(CultureInfo.InvariantCulture) + ","
             + diameter.ToString(CultureInfo.InvariantCulture)
             + ",0,0,0,0,0,0,0)");
         }
@@ -168,15 +172,15 @@ public class Script_Instance : GH_ScriptInstance
     else
     {
       // Single pass at full depth per D-08
-      double negDepth = -Math.Abs(depth);
+      double cutZ = surfaceZ - Math.Abs(depth);
       for (int i = 0; i < points.Count; i++)
       {
         Point3d pt = points[i];
         lines.Add("Bohrung ("
           + pt.X.ToString(CultureInfo.InvariantCulture) + ","
           + pt.Y.ToString(CultureInfo.InvariantCulture) + ","
-          + zSurface.ToString(CultureInfo.InvariantCulture) + ","
-          + negDepth.ToString(CultureInfo.InvariantCulture) + ","
+          + surfaceZ.ToString(CultureInfo.InvariantCulture) + ","
+          + cutZ.ToString(CultureInfo.InvariantCulture) + ","
           + diameter.ToString(CultureInfo.InvariantCulture)
           + ",0,0,0,0,0,0,0)");
       }
@@ -187,7 +191,8 @@ public class Script_Instance : GH_ScriptInstance
     // ---------------------------------------------------------------
     this.Component.AddRuntimeMessage(
       GH_RuntimeMessageLevel.Remark,
-      points.Count.ToString() + " drill points, depth=" + (-Math.Abs(depth)).ToString(CultureInfo.InvariantCulture)
+      points.Count.ToString() + " drill points, surfaceZ=" + surfaceZ.ToString(CultureInfo.InvariantCulture)
+      + ", cutZ=" + (surfaceZ - Math.Abs(depth)).ToString(CultureInfo.InvariantCulture)
       + ", diameter=" + diameter.ToString(CultureInfo.InvariantCulture));
     operationLines = lines;
   }
