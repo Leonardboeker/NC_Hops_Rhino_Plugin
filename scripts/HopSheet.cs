@@ -110,8 +110,8 @@ public class Script_Instance : GH_ScriptInstance
     // ---------------------------------------------------------------
     // 5. EXTRACT DIMENSIONS — World-XY BoundingBox spans (per D-08)
     // ---------------------------------------------------------------
-    double detDx = bbox.X.Length;  // World-X span
-    double detDy = bbox.Y.Length;  // World-Y span
+    double detDx = bbox.Max.X - bbox.Min.X;  // World-X span
+    double detDy = bbox.Max.Y - bbox.Min.Y;  // World-Y span
 
     // ---------------------------------------------------------------
     // 6. MINIMUM SIZE WARNING — catch wrong model units (Claude's discretion)
