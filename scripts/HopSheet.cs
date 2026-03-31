@@ -1,19 +1,19 @@
 // HopSheet -- Sheet dimension extractor for DYNESTIC CNC
-// Inputs:  geometry (Item, GeometryBase), dz (Item, double)
-// Outputs: dx, dy, dzOut
+// Inputs:  geometry (Item, GeometryBase)
+// Outputs: dx, dy, dz
 //
-// Accepts a closed curve OR a planar surface (single-face Brep) drawn in Rhino.
-// Extracts dx/dy from the World-XY BoundingBox of the input geometry.
-// dz (material thickness) is always a manual slider input — not derived from geometry.
+// Accepts a closed curve (flat plate outline) OR a solid Brep (3D part/plate model).
+// Extracts dx/dy/dz from the World-XY BoundingBox of the input geometry.
+// For a 3D Brep: dz = Z extent (plate thickness derived automatically).
+// For a flat curve: dz = 0 (user must set thickness via HopExport directly if needed).
 // Outputs wire directly into HopExport dx/dy/dz inputs.
-// Shows a grey sheet outline rectangle in the GH viewport.
+// Shows a grey sheet footprint rectangle in the GH viewport.
 //
 // GH canvas setup:
 //   Input  geometry: Type Hint -> GeometryBase
-//   Input  dz:       Type Hint -> Number (double)
 //   Output dx:       rename to "dx"
 //   Output dy:       rename to "dy"
-//   Output dzOut:    rename to "dz"   (matches HopExport input name)
+//   Output dz:       rename to "dz"   (matches HopExport input name)
 //   Component display name: "HopSheet"
 
 using System;
@@ -42,22 +42,22 @@ public class Script_Instance : GH_ScriptInstance
   public override void DrawViewportWires(IGH_PreviewArgs args)
   {
     if (_sheetOutline != null)
-      args.Display.DrawCurve(_sheetOutline, Color.FromArgb(180, 180, 180), 1);
+      args.Display.DrawCurve(_sheetOutline, Color.FromArgb(180, 180, 180), 2);
   }
 
-  private void RunScript(GeometryBase geometry, double dz,
-    ref object dx, ref object dy, ref object dzOut)
+  private void RunScript(GeometryBase geometry,
+    ref object dx, ref object dy, ref object dz)
   {
     // ---------------------------------------------------------------
-    // 1. DEFAULTS — downstream gets these if guards trigger
+    // 1. DEFAULTS
     // ---------------------------------------------------------------
-    dx          = 0.0;
-    dy          = 0.0;
-    dzOut       = dz;
+    dx  = 0.0;
+    dy  = 0.0;
+    dz  = 0.0;
     _sheetOutline = null;
 
     // ---------------------------------------------------------------
-    // 2. NULL GUARD — GH Warning (not Error), allows downstream to compute (per D-05)
+    // 2. NULL GUARD — Warning (not Error) so downstream still computes
     // ---------------------------------------------------------------
     if (geometry == null)
     {
@@ -67,71 +67,68 @@ public class Script_Instance : GH_ScriptInstance
     }
 
     // ---------------------------------------------------------------
-    // 3. BOUNDING BOX EXTRACTION — branch on Curve vs Brep (per D-01, D-02, D-03)
+    // 3. BOUNDING BOX EXTRACTION
+    //    Curve  -> closed plate outline -> bbox of curve
+    //    Brep   -> full solid or surface -> bbox of entire Brep
+    //    For a solid Brep, brep.GetBoundingBox(true) is correct and gives all 3 spans.
+    //    Do NOT use Faces[0] only -- that gives the bbox of one face, not the whole part.
     // ---------------------------------------------------------------
     BoundingBox bbox = BoundingBox.Empty;
 
-    // Branch A: Curve input (per D-02)
     Curve crv = geometry as Curve;
     if (crv != null)
     {
       if (!crv.IsClosed)
       {
         this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
-          "HopSheet: curve must be closed");
+          "HopSheet: curve must be closed to define a plate outline");
         return;
       }
-      bbox = crv.GetBoundingBox(true);  // World-axis-aligned, accurate
+      bbox = crv.GetBoundingBox(true);
     }
     else
     {
-      // Branch B: Brep/surface input — surfaces arrive as single-face Breps (per D-03)
-      // IMPORTANT: do NOT check 'is BrepFace' directly — surfaces arrive wrapped in a Brep
       Brep brep = geometry as Brep;
-      if (brep != null && brep.IsValid && brep.Faces.Count > 0)
+      if (brep != null && brep.IsValid)
       {
-        // CRITICAL: face.GetBoundingBox(true) returns UNTRIMMED surface bounds — BUG in RhinoCommon
-        // Always use DuplicateFace(false).GetBoundingBox(true) for correct trimmed-face bbox
-        Brep singleFace = brep.Faces[0].DuplicateFace(false);
-        bbox = singleFace.GetBoundingBox(true);
+        // Use full-Brep bbox -- correct for both solids and single-face surfaces
+        bbox = brep.GetBoundingBox(true);
       }
     }
 
-    // ---------------------------------------------------------------
-    // 4. UNSUPPORTED GEOMETRY FALLTHROUGH — covers Mesh, Point, empty Brep, etc.
-    // ---------------------------------------------------------------
     if (!bbox.IsValid)
     {
       this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
-        "HopSheet: unsupported geometry type — use a closed curve or planar surface");
+        "HopSheet: unsupported geometry type -- connect a closed curve or a Brep");
       return;
     }
 
     // ---------------------------------------------------------------
-    // 5. EXTRACT DIMENSIONS — World-XY BoundingBox spans (per D-08)
+    // 4. EXTRACT ALL THREE DIMENSIONS FROM BBOX
     // ---------------------------------------------------------------
-    double detDx = bbox.Max.X - bbox.Min.X;  // World-X span
-    double detDy = bbox.Max.Y - bbox.Min.Y;  // World-Y span
+    double detDx = bbox.Max.X - bbox.Min.X;
+    double detDy = bbox.Max.Y - bbox.Min.Y;
+    double detDz = bbox.Max.Z - bbox.Min.Z;
 
     // ---------------------------------------------------------------
-    // 6. MINIMUM SIZE WARNING — catch wrong model units (Claude's discretion)
+    // 5. SMALL-VALUE WARNING -- likely wrong model units
     // ---------------------------------------------------------------
     if (detDx < 10.0 || detDy < 10.0)
       this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
         string.Format(CultureInfo.InvariantCulture,
-          "HopSheet: sheet dimensions seem small — dx={0:F1}mm dy={1:F1}mm — check model units",
+          "HopSheet: dimensions seem small (dx={0:F1} dy={1:F1}) -- check model units are mm",
           detDx, detDy));
 
     // ---------------------------------------------------------------
-    // 7. REMARK WITH DETECTED VALUES — user verification (per D-09)
+    // 6. REMARK WITH ALL THREE VALUES FOR USER VERIFICATION
     // ---------------------------------------------------------------
     this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
       string.Format(CultureInfo.InvariantCulture,
-        "HopSheet: dx={0:F1}mm dy={1:F1}mm (World-XY bbox — rotate geometry to align if needed)",
-        detDx, detDy));
+        "HopSheet: dx={0:F1}mm  dy={1:F1}mm  dz={2:F1}mm",
+        detDx, detDy, detDz));
 
     // ---------------------------------------------------------------
-    // 8. BUILD SHEET OUTLINE RECTANGLE FOR VIEWPORT PREVIEW (per D-07)
+    // 7. VIEWPORT PREVIEW -- grey footprint rectangle at Z=0
     // ---------------------------------------------------------------
     var rect = new Rectangle3d(Plane.WorldXY,
       new Interval(bbox.Min.X, bbox.Max.X),
@@ -139,10 +136,10 @@ public class Script_Instance : GH_ScriptInstance
     _sheetOutline = rect.ToNurbsCurve();
 
     // ---------------------------------------------------------------
-    // 9. OUTPUTS — match HopExport's dx/dy/dz input types exactly (per D-06)
+    // 8. OUTPUTS
     // ---------------------------------------------------------------
-    dx    = detDx;
-    dy    = detDy;
-    dzOut = dz;
+    dx = detDx;
+    dy = detDy;
+    dz = detDz;
   }
 }
