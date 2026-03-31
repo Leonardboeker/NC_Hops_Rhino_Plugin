@@ -1,13 +1,13 @@
 // HopContour -- 2D contour cutting component for DYNESTIC CNC
 // Inputs: curve (Item), depth (Item), plungeZ (Item), tolerance (Item),
-//         toolNr (Item), feedFactor (Item), toolType (Item), stepdown (Item),
-//         colour (Item)
+//         toolNr (Item), stepdown (Item), colour (Item)
 // Outputs: operationLines
 //
 // Converts Grasshopper curves (NURBS, arcs, polylines) into NC-Hops 2D contour
 // macro blocks: SP / G01 / G03M / G02M / EP.
 // True arcs are detected via Curve.ToArcsAndLines and emitted as G03M (CCW) or G02M (CW).
 // Output wires into HopExport.cs operationLines input.
+// toolType and feedFactor are hardcoded (WZF / 1.0) -- handled at machine level.
 
 using System;
 using System.Collections;
@@ -29,17 +29,17 @@ public class Script_Instance : GH_ScriptInstance
   // PREVIEW FIELDS
   // ---------------------------------------------------------------
   private static readonly Color _defaultColor = Color.Yellow;
-  private Curve  _previewCurve  = null;
-  private Line   _approachLine  = Line.Unset;
-  private Color  _drawColor     = Color.Yellow;
+  private Brep  _previewVolume = null;
+  private Line  _approachLine  = Line.Unset;
+  private Color _drawColor     = Color.Yellow;
 
   public override BoundingBox ClippingBox
   {
     get
     {
       BoundingBox bb = BoundingBox.Empty;
-      if (_previewCurve != null)
-        bb.Union(_previewCurve.GetBoundingBox(true));
+      if (_previewVolume != null)
+        bb.Union(_previewVolume.GetBoundingBox(true));
       if (_approachLine.IsValid)
       {
         bb.Union(_approachLine.From);
@@ -49,74 +49,45 @@ public class Script_Instance : GH_ScriptInstance
     }
   }
 
+  public override void DrawViewportMeshes(IGH_PreviewArgs args)
+  {
+    if (_previewVolume != null)
+    {
+      Rhino.Display.DisplayMaterial mat = new Rhino.Display.DisplayMaterial(_drawColor);
+      mat.Transparency = 0.55;
+      args.Display.DrawBrepShaded(_previewVolume, mat);
+    }
+  }
+
   public override void DrawViewportWires(IGH_PreviewArgs args)
   {
-    if (_previewCurve != null)
-      args.Display.DrawCurve(_previewCurve, _drawColor, 2);
+    if (_previewVolume != null)
+      args.Display.DrawBrepWires(_previewVolume, _drawColor, 1);
     if (_approachLine.IsValid)
       args.Display.DrawPatternedLine(
         _approachLine.From, _approachLine.To,
         Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
   }
 
-  public override void BeforeRunScript()
-  {
-    // Mark toolDB optional — suppress orange warning when not connected (per D-12)
-    for (int i = 0; i < this.Component.Params.Input.Count; i++)
-    {
-      if (this.Component.Params.Input[i].Name == "toolDB")
-      {
-        this.Component.Params.Input[i].Optional = true;
-        break;
-      }
-    }
-  }
-
   private void RunScript(
     Curve curve, double depth, double plungeZ, double tolerance,
-    int toolNr, double feedFactor, string toolType, double stepdown,
+    int toolNr, double stepdown,
     Color colour,
-    object toolDB,
     ref object operationLines)
   {
+    // Hardcoded tool params -- handled at machine level
+    string toolType  = "WZF";
+    double feedFactor = 1.0;
+
     // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
-    _previewCurve = null;
-    _approachLine = Line.Unset;
-    _drawColor    = colour.IsEmpty ? _defaultColor : colour;
+    _previewVolume = null;
+    _approachLine  = Line.Unset;
+    _drawColor     = colour.IsEmpty ? _defaultColor : colour;
 
     // ---------------------------------------------------------------
     // 1. DEFAULTS -- downstream gets these if guards trigger
     // ---------------------------------------------------------------
     operationLines = new List<string>();
-
-    // ---------------------------------------------------------------
-    // 1b. TOOLDB LOOKUP — overrides individual inputs when connected (per D-12)
-    // ---------------------------------------------------------------
-    if (toolDB != null)
-    {
-      var db = toolDB as Dictionary<string, object>;
-      if (db == null)
-      {
-        this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-          "toolDB input is not a valid HopToolDB object");
-        return;
-      }
-      int activeNr = db.ContainsKey("activeToolNr") ? (int)db["activeToolNr"] : toolNr;
-      string toolKey = "tool_" + activeNr.ToString();
-      if (!db.ContainsKey(toolKey))
-      {
-        this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-          "Tool not found in HopToolDB: toolNr=" + activeNr.ToString());
-        return;
-      }
-      var entry = db[toolKey] as Dictionary<string, object>;
-      if (entry != null)
-      {
-        toolNr     = (int)entry["toolNr"];
-        toolType   = (string)entry["toolType"];
-        feedFactor = (double)entry["feedFactor"];
-      }
-    }
 
     // ---------------------------------------------------------------
     // 2. GUARDS -- required input validation
@@ -138,8 +109,6 @@ public class Script_Instance : GH_ScriptInstance
     // ---------------------------------------------------------------
     // 3. INPUT DEFAULTS -- fallback for disconnected inputs
     // ---------------------------------------------------------------
-    if (feedFactor <= 0) feedFactor = 1.0;
-    if (string.IsNullOrEmpty(toolType)) toolType = "WZF";
     if (tolerance <= 0) tolerance = 0.1;
     if (depth <= 0) depth = 1.0;
     if (plungeZ <= 0) plungeZ = depth;
@@ -161,13 +130,40 @@ public class Script_Instance : GH_ScriptInstance
         "Curve has Z variation -- using XY projection for 2D contour");
     }
 
-    // PREVIEW: cache curve at cut depth (after planarity check passes)
-    _previewCurve = curve.DuplicateCurve();
+    // PREVIEW: build extruded volume (curve extruded downward by depth)
+    double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
     double cutZ = -Math.Abs(plungeZ > 0 ? plungeZ : depth);
-    _previewCurve.Translate(new Vector3d(0, 0, cutZ - _previewCurve.PointAtStart.Z));
+
+    // Place curve at cut Z for extrusion base
+    Curve baseCurve = curve.DuplicateCurve();
+    baseCurve.Translate(new Vector3d(0, 0, cutZ - baseCurve.PointAtStart.Z));
+
+    if (baseCurve.IsClosed)
+    {
+      Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
+      Surface extSrf = Surface.CreateExtrusion(baseCurve, extDir);
+      if (extSrf != null)
+      {
+        Brep extBrep = extSrf.ToBrep();
+        if (extBrep != null)
+        {
+          Brep capped = extBrep.CapPlanarHoles(tol);
+          _previewVolume = capped != null ? capped : extBrep;
+        }
+      }
+    }
+    else
+    {
+      // Open curve: just extrude without capping
+      Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
+      Surface extSrf = Surface.CreateExtrusion(baseCurve, extDir);
+      if (extSrf != null)
+        _previewVolume = extSrf.ToBrep();
+    }
+
     // PREVIEW: approach line from safeZ above start point
     double safeZ = curve.GetBoundingBox(true).Max.Z + 20.0;
-    Point3d startPt = _previewCurve.PointAtStart;
+    Point3d startPt = baseCurve.PointAtStart;
     _approachLine = new Line(new Point3d(startPt.X, startPt.Y, safeZ), startPt);
 
     // ---------------------------------------------------------------
