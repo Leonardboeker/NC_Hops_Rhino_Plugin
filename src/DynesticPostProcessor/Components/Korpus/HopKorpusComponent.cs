@@ -18,8 +18,8 @@ namespace DynesticPostProcessor.Components.Korpus
 
         public HopKorpusComponent()
             : base("HopKorpus", "HopKorpus",
-                "Parametric cabinet body generator. Produces 5 flat panels (Boden, Deckel, LinkeSeite, RechteSeite, Rueckwand, open front) from dimension sliders. Outputs KorpusData dictionary and individual panel objects for HopPart nesting.",
-                "DYNESTIC", "Korpus")
+                "Parametric cabinet body generator. Produces 5 flat panels (Bottom, Top, LeftSide, RightSide, BackPanel, open front) from dimension sliders. Outputs CabinetData dictionary and individual panel objects for HopPart nesting.",
+                "DYNESTIC", "Cabinet")
         {
         }
 
@@ -28,29 +28,29 @@ namespace DynesticPostProcessor.Components.Korpus
         // -----------------------------------------------------------------
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddNumberParameter("Breite", "B",
+            pManager.AddNumberParameter("Width", "W",
                 "Cabinet width in mm (outer dimension).",
                 GH_ParamAccess.item, 600.0);
             pManager[0].Optional = true;
 
-            pManager.AddNumberParameter("Hoehe", "H",
+            pManager.AddNumberParameter("Height", "H",
                 "Cabinet height in mm (outer dimension).",
                 GH_ParamAccess.item, 720.0);
             pManager[1].Optional = true;
 
-            pManager.AddNumberParameter("Tiefe", "T",
+            pManager.AddNumberParameter("Depth", "D",
                 "Cabinet depth in mm (outer dimension).",
                 GH_ParamAccess.item, 560.0);
             pManager[2].Optional = true;
 
-            pManager.AddNumberParameter("Materialstaerke", "MS",
+            pManager.AddNumberParameter("Thickness", "t",
                 "Material thickness in mm. Typical: 16 or 19.",
                 GH_ParamAccess.item, 19.0);
             pManager[3].Optional = true;
 
-            pManager.AddTextParameter("KorpusTyp", "typ",
-                "Cabinet type label (e.g. Unterschrank, Hochschrank). Label only, no structural effect.",
-                GH_ParamAccess.item, "Korpus");
+            pManager.AddTextParameter("Type", "type",
+                "Cabinet type label (e.g. base cabinet, wall cabinet). Label only, no structural effect.",
+                GH_ParamAccess.item, "Cabinet");
             pManager[4].Optional = true;
 
             pManager.AddColourParameter("Colour", "colour",
@@ -64,8 +64,8 @@ namespace DynesticPostProcessor.Components.Korpus
         // -----------------------------------------------------------------
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
-            pManager.AddGenericParameter("KorpusData", "korpus",
-                "Complete korpus dictionary wrapped in GH_ObjectWrapper. Contains B, H, T, thickness, type, and panel list. Wire into downstream Korpus components (HopKorpusRueckwand, HopVerbinder, etc.).",
+            pManager.AddGenericParameter("CabinetData", "cabinet",
+                "Complete cabinet dictionary wrapped in GH_ObjectWrapper. Contains W, H, D, thickness, type, and panel list. Wire into downstream Cabinet components (HopCabinetBack, HopConnector, etc.).",
                 GH_ParamAccess.item);
 
             pManager.AddGenericParameter("Panels", "panels",
@@ -92,14 +92,14 @@ namespace DynesticPostProcessor.Components.Korpus
 
             // 1. Get inputs with defaults
             double B = 600, H = 720, T = 560, MS = 19;
-            string korpusTyp = "Korpus";
+            string cabinetType = "Cabinet";
             Color colour = Color.Empty;
 
             DA.GetData(0, ref B);
             DA.GetData(1, ref H);
             DA.GetData(2, ref T);
             DA.GetData(3, ref MS);
-            DA.GetData(4, ref korpusTyp);
+            DA.GetData(4, ref cabinetType);
             DA.GetData(5, ref colour);
 
             _drawColor = colour.IsEmpty ? _defaultColor : colour;
@@ -116,21 +116,21 @@ namespace DynesticPostProcessor.Components.Korpus
             if (MS <= 0 || MS >= minDim / 2.0)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-                    "Materialstaerke invalid (must be > 0 and < half the smallest dimension)");
+                    "Thickness invalid (must be > 0 and < half the smallest dimension)");
                 return;
             }
 
             // 3. Calculate inner dimensions (butt-joint construction)
             double innerB = B - 2.0 * MS;  // between side panels
-            double innerH = H - 2.0 * MS;  // between Boden and Deckel
+            double innerH = H - 2.0 * MS;  // between Bottom and Top
             double innerT = T;              // depth stays same for butt-joint
 
             // 4. Create 5 KorpusPanel objects (NO front panel -- open front)
-            var boden       = new KorpusPanel("Boden",       innerB, T, MS);
-            var deckel      = new KorpusPanel("Deckel",      innerB, T, MS);
-            var linkeSeite  = new KorpusPanel("LinkeSeite",  T,      H, MS);
-            var rechteSeite = new KorpusPanel("RechteSeite", T,      H, MS);
-            var rueckwand   = new KorpusPanel("Rueckwand",   innerB, innerH, MS);
+            var boden       = new KorpusPanel("Bottom",    innerB, T, MS);
+            var deckel      = new KorpusPanel("Top",       innerB, T, MS);
+            var linkeSeite  = new KorpusPanel("LeftSide",  T,      H, MS);
+            var rechteSeite = new KorpusPanel("RightSide", T,      H, MS);
+            var rueckwand   = new KorpusPanel("BackPanel", innerB, innerH, MS);
 
             // 5. Compute assembled transforms (flat XY → 3D position)
             // Korpus front-bottom-left corner at world origin (0,0,0).
@@ -177,11 +177,11 @@ namespace DynesticPostProcessor.Components.Korpus
             var panels = new List<KorpusPanel> { boden, deckel, linkeSeite, rechteSeite, rueckwand };
 
             var korpusDict = new Dictionary<string, object>();
-            korpusDict["B"] = B;
+            korpusDict["W"] = B;
             korpusDict["H"] = H;
-            korpusDict["T"] = T;
+            korpusDict["D"] = T;
             korpusDict["thickness"] = MS;
-            korpusDict["type"] = korpusTyp;
+            korpusDict["type"] = cabinetType;
             korpusDict["panels"] = panels;
 
             // 6b. Build 3D preview -- transform each flat panel to assembled position, then extrude by thickness
@@ -219,8 +219,8 @@ namespace DynesticPostProcessor.Components.Korpus
 
             // 9. Remark message
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                "HopKorpus: " + panels.Count + " panels, " + korpusTyp
-                + " " + B + "x" + H + "x" + T + " MS=" + MS);
+                "HopKorpus: " + panels.Count + " panels, " + cabinetType
+                + " " + B + "x" + H + "x" + T + " t=" + MS);
         }
 
         // -----------------------------------------------------------------
@@ -276,12 +276,12 @@ namespace DynesticPostProcessor.Components.Korpus
             base.AddedToDocument(doc);
             DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Float("100<600<2400"),  // B
-                DynesticPostProcessor.AutoWire.Spec.Float("100<720<2400"),  // H
-                DynesticPostProcessor.AutoWire.Spec.Float("100<560<800"),   // T
-                DynesticPostProcessor.AutoWire.Spec.Float("8<19<38"),       // MS
-                DynesticPostProcessor.AutoWire.Spec.Panel("Korpus"),        // typ
-                DynesticPostProcessor.AutoWire.Spec.Skip(),                 // colour
+                DynesticPostProcessor.AutoWire.Spec.Float("100<600<2400"),  // Width
+                DynesticPostProcessor.AutoWire.Spec.Float("100<720<2400"),  // Height
+                DynesticPostProcessor.AutoWire.Spec.Float("100<560<800"),   // Depth
+                DynesticPostProcessor.AutoWire.Spec.Float("8<19<38"),       // Thickness
+                DynesticPostProcessor.AutoWire.Spec.Panel("Cabinet"),       // Type
+                DynesticPostProcessor.AutoWire.Spec.Skip(),                 // Colour
             });
         }
     }

@@ -12,7 +12,7 @@ namespace DynesticPostProcessor.Components.Korpus
     /// </summary>
     public class KorpusPanel
     {
-        /// <summary>Panel name: Boden, Deckel, LinkeSeite, RechteSeite, Rueckwand</summary>
+        /// <summary>Panel name: Bottom, Top, LeftSide, RightSide, BackPanel</summary>
         public string Name { get; set; }
 
         /// <summary>Planar Brep lying at Z=0, sized to panel real-world dimensions (width x height)</summary>
