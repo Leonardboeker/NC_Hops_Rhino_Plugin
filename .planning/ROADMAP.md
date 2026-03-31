@@ -101,9 +101,9 @@ Plans:
 
 Plans:
 - [x] 08-01-PLAN.md — .NET SDK install + VS project scaffold (DynesticPostProcessor.csproj, DynesticInfo.cs, net48 build verification)
-- [ ] 08-02-PLAN.md — Icon generation (10 icons via nano-banana) + .resx embedding
+- [x] 08-02-PLAN.md — Icon generation (10 icons via nano-banana) + .resx embedding
 - [ ] 08-03-PLAN.md — Port 6 Operations components (HopContour, HopDrill, HopRectPocket, HopCircPocket, HopCircPath, HopFreeSlot)
-- [ ] 08-04-PLAN.md — Port 4 Nesting+Export components (HopPart, HopSheet, HopSheetExport, HopExport)
+- [x] 08-04-PLAN.md — Port 4 Nesting+Export components (HopPart, HopSheet, HopSheetExport, HopExport)
 - [ ] 08-05-PLAN.md — Release build + Yak packaging + local install verification (checkpoint)
 
 **Exit criteria:** Plugin installs via yak or manual .gha drop; all 10 components appear in GH component panel under "DYNESTIC" with icons and descriptions; no script editor required.

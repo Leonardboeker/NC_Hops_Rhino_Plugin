@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — GH Post-Processor
 status: executing
-stopped_at: Completed 08-04-PLAN.md (nesting+export components)
-last_updated: "2026-03-31T17:13:26.946Z"
+stopped_at: Completed 08-03-PLAN.md (Operations components)
+last_updated: "2026-03-31T17:23:00Z"
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 16
 ---
 
 # Project State
@@ -50,7 +50,7 @@ Roadmap updated 2026-03-30:
 | 5 -- Visual Preview | DONE ✓ | 1/1 | 100% |
 | 6 -- UX Polish + HopSheet | DONE ✓ | 1/1 | 100% |
 | 7 -- OpenNest Integration | IN PROGRESS | 2/3 | 67% |
-| 8 -- Plugin Packaging | IN PROGRESS | 2/5 | 40% |
+| 8 -- Plugin Packaging | IN PROGRESS | 3/5 | 60% |
 | --- v2.0 Milestone --- | | | |
 | 9 -- Korpus Model | - | 0/4 | 0% |
 | 10 -- Part Export | - | 0/4 | 0% |
@@ -78,6 +78,10 @@ Roadmap updated 2026-03-30:
 - [Phase 07]: HopSheetExport mirrors HopExport header character-for-character; sheet dz is explicit input (2D curves have no Z extent)
 - [Phase 08]: Used dotnet SDK 8.0 with net48 target, local DLL refs (Private=false), PostBuild .dll-to-.gha copy
 - [Phase 08]: Icon => null placeholder for all components (icons added when plan 08-02 completes)
+- [Phase 08]: Base64-embedded bitmaps in .resx (not ResXFileRef) to avoid System.Resources.Extensions dependency on net48
+- [Phase 08]: PIL-generated placeholder icons (nano-banana CLI unavailable); real icons replaceable later via same .resx structure
+- [Phase 08-03]: Used Properties.Resources.HopXxx for Icon (icon PNGs already exist)
+- [Phase 08-03]: Added System.Resources.Extensions NuGet + GenerateResourceUsePreserializedResources to fix .resx build error
 
 ## Performance Metrics
 
@@ -93,8 +97,10 @@ Roadmap updated 2026-03-30:
 | 07 | 02 | 2min | 1 | 1 |
 | 08 | 01 | 5min | 2 | 5 |
 | 08 | 04 | 4min | 2 | 4 |
+| Phase 08 P02 | 6min | 2 tasks | 12 files |
+| 08 | 03 | 6min | 2 | 7 |
 
 ## Session
 
-**Last session:** 2026-03-31T17:19:53Z
-**Stopped at:** Completed 08-04-PLAN.md (nesting+export components)
+**Last session:** 2026-03-31T17:23:00Z
+**Stopped at:** Completed 08-03-PLAN.md (Operations components)
