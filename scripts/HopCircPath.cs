@@ -1,12 +1,12 @@
 // HopCircPath -- Circular profile path operation for DYNESTIC CNC
 // Inputs: center (Item), radius (Item), radiusCorr (Item),
 //         depth (Item), stepdown (Item), angle (Item),
-//         toolNr (Item), feedFactor (Item), toolType (Item),
-//         colour (Item)
+//         toolNr (Item), colour (Item)
 // Outputs: operationLines
 //
 // radiusCorr: 1 = inside, -1 = outside, 0 = center
 // Emits WZF tool call + CALL _Kreisbahn_V5 macro for HopExport.
+// toolType and feedFactor are hardcoded (WZF / 1.0) -- handled at machine level.
 
 using System;
 using System.Collections;
@@ -28,54 +28,54 @@ public class Script_Instance : GH_ScriptInstance
   // PREVIEW FIELDS
   // ---------------------------------------------------------------
   private static readonly Color _defaultColor = Color.LimeGreen;
-  private Circle _previewCircle  = Circle.Unset;
-  private Line   _approachLine   = Line.Unset;
-  private Color  _drawColor      = Color.LimeGreen;
+  private Brep  _previewVolume = null;
+  private Line  _approachLine  = Line.Unset;
+  private Color _drawColor     = Color.LimeGreen;
 
   public override BoundingBox ClippingBox
   {
     get
     {
       BoundingBox bb = BoundingBox.Empty;
-      if (_previewCircle.IsValid) bb.Union(_previewCircle.BoundingBox);
+      if (_previewVolume != null) bb.Union(_previewVolume.GetBoundingBox(true));
       if (_approachLine.IsValid) { bb.Union(_approachLine.From); bb.Union(_approachLine.To); }
       return bb;
     }
   }
 
+  public override void DrawViewportMeshes(IGH_PreviewArgs args)
+  {
+    if (_previewVolume != null)
+    {
+      Rhino.Display.DisplayMaterial mat = new Rhino.Display.DisplayMaterial(_drawColor);
+      mat.Transparency = 0.55;
+      args.Display.DrawBrepShaded(_previewVolume, mat);
+    }
+  }
+
   public override void DrawViewportWires(IGH_PreviewArgs args)
   {
-    if (_previewCircle.IsValid)
-      args.Display.DrawCircle(_previewCircle, _drawColor, 2);
+    if (_previewVolume != null)
+      args.Display.DrawBrepWires(_previewVolume, _drawColor, 1);
     if (_approachLine.IsValid)
       args.Display.DrawPatternedLine(
         _approachLine.From, _approachLine.To,
         Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
   }
 
-  public override void BeforeRunScript()
-  {
-    // Mark toolDB optional — suppress orange warning when not connected (per D-12)
-    for (int i = 0; i < this.Component.Params.Input.Count; i++)
-    {
-      if (this.Component.Params.Input[i].Name == "toolDB")
-      {
-        this.Component.Params.Input[i].Optional = true;
-        break;
-      }
-    }
-  }
-
   private void RunScript(
     Point3d center, double radius, int radiusCorr,
     double depth, double stepdown, double angle,
-    int toolNr, double feedFactor, string toolType,
+    int toolNr,
     Color colour,
-    object toolDB,
     ref object operationLines)
   {
+    // Hardcoded tool params -- handled at machine level
+    string toolType   = "WZF";
+    double feedFactor = 1.0;
+
     // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
-    _previewCircle = Circle.Unset;
+    _previewVolume = null;
     _approachLine  = Line.Unset;
     _drawColor     = colour.IsEmpty ? _defaultColor : colour;
 
@@ -83,35 +83,6 @@ public class Script_Instance : GH_ScriptInstance
     // 1. DEFAULTS
     // ---------------------------------------------------------------
     operationLines = new List<string>();
-
-    // ---------------------------------------------------------------
-    // 1b. TOOLDB LOOKUP — overrides individual inputs when connected (per D-12)
-    // ---------------------------------------------------------------
-    if (toolDB != null)
-    {
-      var db = toolDB as Dictionary<string, object>;
-      if (db == null)
-      {
-        this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-          "toolDB input is not a valid HopToolDB object");
-        return;
-      }
-      int activeNr = db.ContainsKey("activeToolNr") ? (int)db["activeToolNr"] : toolNr;
-      string toolKey = "tool_" + activeNr.ToString();
-      if (!db.ContainsKey(toolKey))
-      {
-        this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-          "Tool not found in HopToolDB: toolNr=" + activeNr.ToString());
-        return;
-      }
-      var entry = db[toolKey] as Dictionary<string, object>;
-      if (entry != null)
-      {
-        toolNr     = (int)entry["toolNr"];
-        toolType   = (string)entry["toolType"];
-        feedFactor = (double)entry["feedFactor"];
-      }
-    }
 
     // ---------------------------------------------------------------
     // 2. GUARDS
@@ -133,16 +104,32 @@ public class Script_Instance : GH_ScriptInstance
     // ---------------------------------------------------------------
     // 3. INPUT DEFAULTS
     // ---------------------------------------------------------------
-    if (feedFactor <= 0) feedFactor = 1.0;
-    if (string.IsNullOrEmpty(toolType)) toolType = "WZF";
     if (depth <= 0) depth = 1.0;
     if (angle <= 0) angle = 360.0;
 
-    // PREVIEW: circle at cut depth (the circular path the tool follows)
-    double previewZ = center.Z - Math.Abs(depth);
+    // PREVIEW: cylinder at the circular path -- extrude the path circle downward by depth
+    // The path circle sits at center.Z; extrude it downward to show the cutting volume.
+    double previewZ = center.Z;
     Point3d circlePt = new Point3d(center.X, center.Y, previewZ);
-    _previewCircle = new Circle(new Plane(circlePt, Vector3d.ZAxis), radius);
-    // PREVIEW: approach line from safeZ to the 3 o'clock point (standard entry for circular moves)
+    Plane cylPlane = new Plane(circlePt, Vector3d.ZAxis);
+    Circle pathCircle = new Circle(cylPlane, radius);
+    // Build a thin cylindrical shell to represent the path (not a solid pocket)
+    // Extrude the circle curve (as a closed NurbsCurve) downward
+    Curve pathCurve = pathCircle.ToNurbsCurve();
+    double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
+    Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
+    Surface extSrf = Surface.CreateExtrusion(pathCurve, extDir);
+    if (extSrf != null)
+    {
+      Brep extBrep = extSrf.ToBrep();
+      if (extBrep != null)
+      {
+        Brep capped = extBrep.CapPlanarHoles(tol);
+        _previewVolume = capped != null ? capped : extBrep;
+      }
+    }
+
+    // PREVIEW: approach line from safeZ to the 3 o'clock entry point
     double safeZ = center.Z + 20.0;
     Point3d entryPt = new Point3d(center.X + radius, center.Y, previewZ);
     _approachLine = new Line(new Point3d(entryPt.X, entryPt.Y, safeZ), entryPt);
@@ -155,8 +142,8 @@ public class Script_Instance : GH_ScriptInstance
       + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
       + ",_VA,_SD,0,'')");
 
-    double negDepth = -Math.Abs(depth);
-    double zuTiefe = (stepdown > 0) ? stepdown : 0;
+    double negDepth  = -Math.Abs(depth);
+    double zuTiefe   = (stepdown > 0) ? stepdown : 0;
 
     lines.Add("CALL _Kreisbahn_V5(VAL "
       + "X_Mitte:=" + center.X.ToString(CultureInfo.InvariantCulture) + ","
