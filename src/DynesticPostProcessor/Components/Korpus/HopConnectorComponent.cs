@@ -128,7 +128,12 @@ namespace DynesticPostProcessor.Components.Korpus
             base.AddedToDocument(doc);
             DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Int("0<0<4"),       // Type
+                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                    ("Holzd\u00fcbel 8\u00d730", "0"),
+                    ("Holzd\u00fcbel 8\u00d740", "1"),
+                    ("Cabineo 8", "2"),
+                    ("Clamex P-14", "3"),
+                    ("Nesting-D\u00fcbel", "4")),       // Type
                 DynesticPostProcessor.AutoWire.Spec.Toggle(),           // AutoCount
                 DynesticPostProcessor.AutoWire.Spec.Int("1<2<6"),       // Count
             });
