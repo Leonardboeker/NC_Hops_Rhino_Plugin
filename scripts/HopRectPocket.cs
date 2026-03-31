@@ -1,12 +1,12 @@
 // HopRectPocket -- Rectangular pocket operation for DYNESTIC CNC
 // Inputs: rectCurve (Item), cornerRadius (Item), angle (Item),
 //         depth (Item), stepdown (Item),
-//         toolNr (Item), feedFactor (Item), toolType (Item),
-//         colour (Item)
+//         toolNr (Item), colour (Item)
 // Outputs: operationLines
 //
 // Extracts center and dimensions from the rectangle curve bounding box.
 // Emits WZF tool call + CALL _RechteckTasche_V5 macro for HopExport.
+// toolType and feedFactor are hardcoded (WZF / 1.0) -- handled at machine level.
 
 using System;
 using System.Collections;
@@ -28,90 +28,61 @@ public class Script_Instance : GH_ScriptInstance
   // PREVIEW FIELDS
   // ---------------------------------------------------------------
   private static readonly Color _defaultColor = Color.Cyan;
-  private Curve _previewRect  = null;
-  private Line  _approachLine = Line.Unset;
-  private Color _drawColor    = Color.Cyan;
+  private Brep  _previewVolume = null;
+  private Line  _approachLine  = Line.Unset;
+  private Color _drawColor     = Color.Cyan;
 
   public override BoundingBox ClippingBox
   {
     get
     {
       BoundingBox bb = BoundingBox.Empty;
-      if (_previewRect != null) bb.Union(_previewRect.GetBoundingBox(true));
+      if (_previewVolume != null) bb.Union(_previewVolume.GetBoundingBox(true));
       if (_approachLine.IsValid) { bb.Union(_approachLine.From); bb.Union(_approachLine.To); }
       return bb;
     }
   }
 
+  public override void DrawViewportMeshes(IGH_PreviewArgs args)
+  {
+    if (_previewVolume != null)
+    {
+      Rhino.Display.DisplayMaterial mat = new Rhino.Display.DisplayMaterial(_drawColor);
+      mat.Transparency = 0.55;
+      args.Display.DrawBrepShaded(_previewVolume, mat);
+    }
+  }
+
   public override void DrawViewportWires(IGH_PreviewArgs args)
   {
-    if (_previewRect != null)
-      args.Display.DrawCurve(_previewRect, _drawColor, 2);
+    if (_previewVolume != null)
+      args.Display.DrawBrepWires(_previewVolume, _drawColor, 1);
     if (_approachLine.IsValid)
       args.Display.DrawPatternedLine(
         _approachLine.From, _approachLine.To,
         Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
   }
 
-  public override void BeforeRunScript()
-  {
-    // Mark toolDB optional — suppress orange warning when not connected (per D-12)
-    for (int i = 0; i < this.Component.Params.Input.Count; i++)
-    {
-      if (this.Component.Params.Input[i].Name == "toolDB")
-      {
-        this.Component.Params.Input[i].Optional = true;
-        break;
-      }
-    }
-  }
-
   private void RunScript(
     Curve rectCurve, double cornerRadius, double angle,
     double depth, double stepdown,
-    int toolNr, double feedFactor, string toolType,
+    int toolNr,
     Color colour,
-    object toolDB,
     ref object operationLines)
   {
+    // Hardcoded tool params -- handled at machine level
+    string toolType   = "WZF";
+    double feedFactor = 1.0;
+
     // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
-    _previewRect  = null;
-    _approachLine = Line.Unset;
-    _drawColor    = colour.IsEmpty ? _defaultColor : colour;
+    _previewVolume = null;
+    _approachLine  = Line.Unset;
+    _drawColor     = colour.IsEmpty ? _defaultColor : colour;
 
     // ---------------------------------------------------------------
     // 1. DEFAULTS
     // ---------------------------------------------------------------
     operationLines = new List<string>();
-
-    // ---------------------------------------------------------------
-    // 1b. TOOLDB LOOKUP — overrides individual inputs when connected (per D-12)
-    // ---------------------------------------------------------------
-    if (toolDB != null)
-    {
-      var db = toolDB as Dictionary<string, object>;
-      if (db == null)
-      {
-        this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-          "toolDB input is not a valid HopToolDB object");
-        return;
-      }
-      int activeNr = db.ContainsKey("activeToolNr") ? (int)db["activeToolNr"] : toolNr;
-      string toolKey = "tool_" + activeNr.ToString();
-      if (!db.ContainsKey(toolKey))
-      {
-        this.Component.AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-          "Tool not found in HopToolDB: toolNr=" + activeNr.ToString());
-        return;
-      }
-      var entry = db[toolKey] as Dictionary<string, object>;
-      if (entry != null)
-      {
-        toolNr     = (int)entry["toolNr"];
-        toolType   = (string)entry["toolType"];
-        feedFactor = (double)entry["feedFactor"];
-      }
-    }
 
     // ---------------------------------------------------------------
     // 2. GUARDS
@@ -134,8 +105,6 @@ public class Script_Instance : GH_ScriptInstance
     // 3. INPUT DEFAULTS
     // ---------------------------------------------------------------
     if (cornerRadius < 0) cornerRadius = 0;
-    if (feedFactor <= 0) feedFactor = 1.0;
-    if (string.IsNullOrEmpty(toolType)) toolType = "WZF";
     if (depth <= 0) depth = 1.0;
 
     // ---------------------------------------------------------------
@@ -144,36 +113,54 @@ public class Script_Instance : GH_ScriptInstance
     BoundingBox bb = rectCurve.GetBoundingBox(true);
     double cx = (bb.Min.X + bb.Max.X) / 2.0;
     double cy = (bb.Min.Y + bb.Max.Y) / 2.0;
-    double width = bb.Max.X - bb.Min.X;
+    double width  = bb.Max.X - bb.Min.X;
     double height = bb.Max.Y - bb.Min.Y;
 
-    // PREVIEW: rectangle outline at pocket depth
-    double previewZ = -Math.Abs(depth > 0 ? depth : 1.0);
+    // PREVIEW: box from bounding rect at surface down to -depth
+    double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
+    double topZ  = bb.Max.Z;
+    double botZ  = topZ - Math.Abs(depth);
+
+    // Build rotated box: create base rect at topZ, extrude down
+    double previewZ = topZ;
     Rectangle3d previewBounds = new Rectangle3d(
       new Plane(new Point3d(cx, cy, previewZ), Vector3d.XAxis, Vector3d.YAxis),
       new Interval(-width / 2.0, width / 2.0),
       new Interval(-height / 2.0, height / 2.0));
-    Curve previewCurve = previewBounds.ToNurbsCurve();
+    Curve baseCurve = previewBounds.ToNurbsCurve();
 
-    // Bug fix 1: apply corner radius fillet when cornerRadius > 0
     if (cornerRadius > 0)
     {
-      Curve filleted = Curve.CreateFilletCornersCurve(previewCurve, cornerRadius, 1e-6, 1e-6);
-      if (filleted != null) previewCurve = filleted;
+      Curve filleted = Curve.CreateFilletCornersCurve(baseCurve, cornerRadius, 1e-6, 1e-6);
+      if (filleted != null) baseCurve = filleted;
     }
 
-    // Bug fix 2: rotate by angle (degrees) around center point
     if (angle != 0)
     {
       double angleRad = angle * Math.PI / 180.0;
       Point3d centerPoint = new Point3d(cx, cy, previewZ);
-      previewCurve.Transform(Transform.Rotation(angleRad, Vector3d.ZAxis, centerPoint));
+      baseCurve.Transform(Transform.Rotation(angleRad, Vector3d.ZAxis, centerPoint));
     }
 
-    _previewRect = previewCurve;
-    // PREVIEW: approach line from safeZ to bottom-left corner of rect
+    // Extrude the closed base curve downward
+    if (baseCurve.IsClosed)
+    {
+      Vector3d extDir = new Vector3d(0, 0, -(topZ - botZ));
+      Surface extSrf = Surface.CreateExtrusion(baseCurve, extDir);
+      if (extSrf != null)
+      {
+        Brep extBrep = extSrf.ToBrep();
+        if (extBrep != null)
+        {
+          Brep capped = extBrep.CapPlanarHoles(tol);
+          _previewVolume = capped != null ? capped : extBrep;
+        }
+      }
+    }
+
+    // PREVIEW: approach line from safeZ to bottom-left corner
     double safeZ = rectCurve.GetBoundingBox(true).Max.Z + 20.0;
-    Point3d startPt = new Point3d(bb.Min.X, bb.Min.Y, previewZ);
+    Point3d startPt = new Point3d(bb.Min.X, bb.Min.Y, topZ);
     _approachLine = new Line(new Point3d(startPt.X, startPt.Y, safeZ), startPt);
 
     // ---------------------------------------------------------------
@@ -188,7 +175,7 @@ public class Script_Instance : GH_ScriptInstance
     // ---------------------------------------------------------------
     // 6. BUILD CALL MACRO
     // ---------------------------------------------------------------
-    double negDepth = -Math.Abs(depth);
+    double negDepth   = -Math.Abs(depth);
     double zustellung = (stepdown > 0) ? stepdown : 0;
 
     lines.Add("CALL _RechteckTasche_V5(VAL "
