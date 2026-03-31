@@ -155,11 +155,12 @@ public class Script_Instance : GH_ScriptInstance
 
     // ---------------------------------------------------------------
     // 6. PREVIEW VOLUME
-    //    Show the material-removal channel on the chosen side.
-    //    side = 0: symmetric channel (toolDiameter wide)
-    //    side != 0: one-sided strip between original curve and offset curve
+    //    Z reference = curve's own Z position (surface of material).
+    //    depth is subtracted from that -- so curves at Z=19 cut from Z=19 downward.
+    //    This matches how the model is built: draw plate at correct Z, operations on top face.
     // ---------------------------------------------------------------
-    double cutZ = -Math.Abs(plungeZ > 0 ? plungeZ : depth);
+    double surfaceZ = curve.GetBoundingBox(true).Min.Z;
+    double cutZ     = surfaceZ - Math.Abs(plungeZ > 0 ? plungeZ : depth);
 
     Curve baseCrv = curve.DuplicateCurve();
     baseCrv.Translate(new Vector3d(0, 0, cutZ - baseCrv.PointAtStart.Z));
@@ -224,18 +225,19 @@ public class Script_Instance : GH_ScriptInstance
       + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
       + ",_VA,_SD,0,'')");
 
+    // Z reference: surface at curve's own Z, depth subtracted from there
     if (stepdown > 0)
     {
       int passCount = (int)Math.Ceiling(depth / stepdown);
       for (int p = 0; p < passCount; p++)
       {
         double passDepth = Math.Min((p + 1) * stepdown, depth);
-        BuildContourBlock(lines, pc, -Math.Abs(passDepth));
+        BuildContourBlock(lines, pc, surfaceZ - passDepth);
       }
     }
     else
     {
-      BuildContourBlock(lines, pc, -Math.Abs(plungeZ));
+      BuildContourBlock(lines, pc, surfaceZ - Math.Abs(plungeZ));
     }
 
     // ---------------------------------------------------------------
