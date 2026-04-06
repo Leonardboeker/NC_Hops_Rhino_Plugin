@@ -13,8 +13,27 @@ namespace DynesticPostProcessor.Components.Korpus
         // PREVIEW FIELDS
         // ---------------------------------------------------------------
         private static readonly Color _defaultColor = Color.FromArgb(180, 140, 100);
-        private List<Brep> _previewBreps = null;
+        private List<Brep>  _previewBreps  = null;
+        private List<Color> _previewColors = null;
+        private List<Brep>  _drillBreps    = null;
         private Color _drawColor = Color.FromArgb(180, 140, 100);
+
+        // Panel color palette (distinct wood tones for visual separation)
+        private static Color PanelColor(string name)
+        {
+            switch (name)
+            {
+                case "Bottom":    return Color.FromArgb(200, 160,  80); // golden oak
+                case "Top":       return Color.FromArgb(170, 130,  70); // darker oak
+                case "LeftSide":  return Color.FromArgb(160, 100,  50); // walnut brown
+                case "RightSide": return Color.FromArgb(150,  90,  45); // slightly diff
+                case "BackPanel": return Color.FromArgb(120, 100,  80); // slate brown
+                default:
+                    if (name.StartsWith("Shelf")) return Color.FromArgb(210, 185, 140); // light pine
+                    if (name.StartsWith("Door"))  return Color.FromArgb( 90,  55,  30); // dark mahogany
+                    return Color.FromArgb(180, 140, 100);
+            }
+        }
 
         public HopKorpusComponent()
             : base("HopKorpus", "HopKorpus",
@@ -93,6 +112,13 @@ namespace DynesticPostProcessor.Components.Korpus
                 "Tool magazine number used for all generated drill holes (connectors, hinges, feet, shelf holes). Must be > 0. Default 1.",
                 GH_ParamAccess.item, 1);
             pManager[11].Optional = true;
+
+            // Index 12
+            pManager.AddIntegerParameter("RouterToolNr", "router",
+                "Tool magazine number for the router/end mill used for Nut/Falz grooves and outer formatting contour. " +
+                "Set to 0 to skip all milling operations. Default 0.",
+                GH_ParamAccess.item, 0);
+            pManager[12].Optional = true;
         }
 
         // -----------------------------------------------------------------
@@ -107,6 +133,10 @@ namespace DynesticPostProcessor.Components.Korpus
             pManager.AddGenericParameter("Panels", "panels",
                 "Individual flat panel dictionaries (GH_ObjectWrapper), one per panel. Each contains outline curve, operationLines, grainDir, panelName. Wire into HopPart for nesting.",
                 GH_ParamAccess.list);
+
+            pManager.AddBrepParameter("AssembledBreps", "breps",
+                "Assembled 3D solid Breps of all panels in their corpus positions. Wire into HopDrawing for automatic drawing generation.",
+                GH_ParamAccess.list);
         }
 
         // -----------------------------------------------------------------
@@ -115,7 +145,9 @@ namespace DynesticPostProcessor.Components.Korpus
         public override void ClearData()
         {
             base.ClearData();
-            _previewBreps = null;
+            _previewBreps  = null;
+            _previewColors = null;
+            _drillBreps    = null;
         }
 
         // -----------------------------------------------------------------
@@ -124,7 +156,9 @@ namespace DynesticPostProcessor.Components.Korpus
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             // 0. Clear preview state
-            _previewBreps = null;
+            _previewBreps  = null;
+            _previewColors = null;
+            _drillBreps    = null;
 
             // 1. Get inputs with defaults
             double B = 600, H = 720, T = 560, MS = 19;
@@ -150,6 +184,9 @@ namespace DynesticPostProcessor.Components.Korpus
             DA.GetData(10, ref doorWrap);
             DA.GetData(11, ref drillToolNr);
             if (drillToolNr <= 0) drillToolNr = 1;
+
+            int routerToolNr = 0;
+            DA.GetData(12, ref routerToolNr);
 
             Dictionary<string, object> backDict     = backWrap?.Value as Dictionary<string, object>;
             Dictionary<string, object> connDict     = connWrap?.Value as Dictionary<string, object>;
@@ -230,46 +267,97 @@ namespace DynesticPostProcessor.Components.Korpus
             // PROCESS OPTION INPUTS
             // ---------------------------------------------------------------
 
+            // Collect world-space preview elements built during processing
+            var extraDrillBreps = new List<Brep>();
+
             // -- Process Back (adjust BackPanel geometry) --
             if (backDict != null)
             {
-                int backType = Convert.ToInt32(backDict["type"]);
-                double backThickness = Convert.ToDouble(backDict["thickness"]);
-                double backOffset = Convert.ToDouble(backDict["offset"]);
-                double rabbet = Convert.ToDouble(backDict["rabbet"]); // 10.0
+                int backType      = Convert.ToInt32(backDict["type"]);
+                double backThick  = Convert.ToDouble(backDict["thickness"]);
+                double setback    = Convert.ToDouble(backDict["setback"]);        // Eingelegt: dist from back edge
+                double cutDepth   = Convert.ToDouble(backDict["cutDepth"]);       // Eingefälzt/Eingenutert: rabbet/groove depth
+                double falzWidth  = Convert.ToDouble(backDict["falzWidth"]);      // = backThick + 0.5
+                double reststegD  = Convert.ToDouble(backDict["reststegDist"]);   // Eingenutert: dist from back edge to groove rear
 
-                if (backType == 0) // SurfaceMounted: back panel placed against back face, no groove
+                if (backType == 0) // Eingelegt: back panel sits inside, positioned by setback from back
                 {
-                    // Recreate rueckwand with actual back thickness (was using MS as placeholder)
-                    rueckwand = new KorpusPanel("BackPanel", innerB, innerH, backThickness);
-                    // Assembled: flush with back face (Y = T - backThickness)
+                    rueckwand = new KorpusPanel("BackPanel", innerB, innerH, backThick);
                     rueckwand.AssembledTransform = Transform.PlaneToPlane(Plane.WorldXY,
-                        new Plane(new Point3d(MS, T - backThickness, MS), new Vector3d(1, 0, 0), new Vector3d(0, 0, 1)));
+                        new Plane(new Point3d(MS, T - backThick - setback, MS),
+                                  new Vector3d(1, 0, 0), new Vector3d(0, 0, 1)));
                 }
-                else if (backType == 1) // Rabbeted: back panel fits inside rabbet cuts
+                else if (backType == 1) // Eingefälzt: Falznut rabbet in all 4 outer panels
                 {
-                    // Back panel is smaller (sits in rabbet in all 4 outer panels)
-                    double bpW = innerB - 2 * rabbet;
-                    double bpH = innerH - 2 * rabbet;
-                    rueckwand = new KorpusPanel("BackPanel", Math.Max(1, bpW), Math.Max(1, bpH), backThickness);
+                    // Back panel (innerB x innerH) slides into the Falz; front face at T - falzWidth
+                    rueckwand = new KorpusPanel("BackPanel", innerB, innerH, backThick);
                     rueckwand.AssembledTransform = Transform.PlaneToPlane(Plane.WorldXY,
-                        new Plane(new Point3d(MS + rabbet, T - backThickness, MS + rabbet), new Vector3d(1, 0, 0), new Vector3d(0, 0, 1)));
-                    // Note: rabbet routing ops in outer panels would be added here in a future phase
+                        new Plane(new Point3d(MS, T - falzWidth, MS),
+                                  new Vector3d(1, 0, 0), new Vector3d(0, 0, 1)));
                 }
-                else // Grooved (type == 2): back panel same size, fits in groove at backOffset from back
+                else // Eingenutert: Nut groove in outer panels, back sits at reststegDist from back
                 {
-                    rueckwand = new KorpusPanel("BackPanel", innerB, innerH, backThickness);
-                    double grooveY = T - backOffset - backThickness;
+                    rueckwand = new KorpusPanel("BackPanel", innerB, innerH, backThick);
+                    double backY = T - reststegD - backThick;
                     rueckwand.AssembledTransform = Transform.PlaneToPlane(Plane.WorldXY,
-                        new Plane(new Point3d(MS, grooveY, MS), new Vector3d(1, 0, 0), new Vector3d(0, 0, 1)));
-                    // Note: groove routing ops in side/top/bottom panels would be added in a future phase
+                        new Plane(new Point3d(MS, Math.Max(0, backY), MS),
+                                  new Vector3d(1, 0, 0), new Vector3d(0, 0, 1)));
                 }
-                rueckwand.AssembledOrigin = rueckwand.FlatBrep.GetBoundingBox(false).Center;
             }
 
             // -- Build panels list (after back processing) --
-            var panels = new List<KorpusPanel> { boden, deckel, linkeSeite, rechteSeite, rueckwand };
             var extraPanels = new List<KorpusPanel>(); // shelves, doors added here
+
+            // -- Falz/Nut recesses in side panels (visible viewport geometry) --
+            if (backDict != null)
+            {
+                int backType     = Convert.ToInt32(backDict["type"]);
+                double cutDepth  = Convert.ToDouble(backDict["cutDepth"]);
+                double falzWidth = Convert.ToDouble(backDict["falzWidth"]);
+                double nutWidth  = Convert.ToDouble(backDict["nutWidth"]);
+                double reststegD = Convert.ToDouble(backDict["reststegDist"]);
+
+                if (backType == 1) // Eingefälzt: L-shaped rabbet at back edge of all 4 panels
+                {
+                    // LeftSide (X=0..MS): inner face at X=MS, Falz at Y=T-falzWidth..T
+                    AddRecessBox(new BoundingBox(
+                        new Point3d(MS - cutDepth, T - falzWidth, 0),
+                        new Point3d(MS, T, H)), extraDrillBreps);
+                    // RightSide (X=B-MS..B): inner face at X=B-MS
+                    AddRecessBox(new BoundingBox(
+                        new Point3d(B - MS, T - falzWidth, 0),
+                        new Point3d(B - MS + cutDepth, T, H)), extraDrillBreps);
+                    // Boden (Z=0..MS): inner face at Z=MS
+                    AddRecessBox(new BoundingBox(
+                        new Point3d(MS, T - falzWidth, MS - cutDepth),
+                        new Point3d(B - MS, T, MS)), extraDrillBreps);
+                    // Deckel (Z=H-MS..H): inner face at Z=H-MS
+                    AddRecessBox(new BoundingBox(
+                        new Point3d(MS, T - falzWidth, H - MS),
+                        new Point3d(B - MS, T, H - MS + cutDepth)), extraDrillBreps);
+                }
+                else if (backType == 2) // Eingenutert: groove at distance reststegDist from back
+                {
+                    double nutY1 = T - reststegD - nutWidth;
+                    double nutY2 = T - reststegD;
+                    // LeftSide
+                    AddRecessBox(new BoundingBox(
+                        new Point3d(MS - cutDepth, Math.Max(0, nutY1), 0),
+                        new Point3d(MS, nutY2, H)), extraDrillBreps);
+                    // RightSide
+                    AddRecessBox(new BoundingBox(
+                        new Point3d(B - MS, Math.Max(0, nutY1), 0),
+                        new Point3d(B - MS + cutDepth, nutY2, H)), extraDrillBreps);
+                    // Boden
+                    AddRecessBox(new BoundingBox(
+                        new Point3d(MS, Math.Max(0, nutY1), MS - cutDepth),
+                        new Point3d(B - MS, nutY2, MS)), extraDrillBreps);
+                    // Deckel
+                    AddRecessBox(new BoundingBox(
+                        new Point3d(MS, Math.Max(0, nutY1), H - MS),
+                        new Point3d(B - MS, nutY2, H - MS + cutDepth)), extraDrillBreps);
+                }
+            }
 
             // -- Process Connectors --
             if (connDict != null)
@@ -279,123 +367,139 @@ namespace DynesticPostProcessor.Components.Korpus
                 bool autoCount    = Convert.ToBoolean(connDict["autoCount"]);
                 int connCount     = Convert.ToInt32(connDict["count"]);
                 bool isRouting    = Convert.ToBoolean(connDict["isRouting"]);
-                double grid       = Convert.ToDouble(connDict["grid"]);   // 32mm
-                double edge       = Convert.ToDouble(connDict["edge"]);   // 37mm
+                double edge       = Convert.ToDouble(connDict["edge"]);  // 37mm
 
                 if (!isRouting && drillDia > 0)
                 {
-                    // Auto-count by depth
                     if (autoCount)
                         connCount = T <= 300 ? 2 : (T <= 500 ? 3 : 4);
+                    connCount = Math.Max(1, connCount);
 
-                    // Generate connector positions along depth (T dimension)
+                    // Even distribution along depth T
+                    double spacing = connCount > 1 ? (T - 2 * edge) / (connCount - 1) : 0;
                     var xPositions = new List<double>();
                     for (int i = 0; i < connCount; i++)
-                    {
-                        double xPos = edge + i * grid;
-                        if (xPos < T - edge + 0.1) xPositions.Add(xPos);
-                    }
-                    if (xPositions.Count == 0) xPositions.Add(edge);
+                        xPositions.Add(edge + i * spacing);
 
-                    // LeftSide panel (width=T along X, height=H along Y):
-                    // Holes at bottom zone (Y = MS/2) and top zone (Y = H - MS/2)
+                    // Side panels: face drilling at joint zones (Y = MS/2 for Boden, Y = H-MS/2 for Deckel)
                     foreach (double xp in xPositions)
                     {
-                        linkeSeite.AddDrillGroup(xp, MS / 2.0, drillDia, drillDepth, drillToolNr);
-                        linkeSeite.AddDrillGroup(xp, H - MS / 2.0, drillDia, drillDepth, drillToolNr);
-                    }
-                    // RightSide: same pattern
-                    foreach (double xp in xPositions)
-                    {
-                        rechteSeite.AddDrillGroup(xp, MS / 2.0, drillDia, drillDepth, drillToolNr);
+                        linkeSeite.AddDrillGroup(xp, MS / 2.0,      drillDia, drillDepth, drillToolNr);
+                        linkeSeite.AddDrillGroup(xp, H - MS / 2.0,  drillDia, drillDepth, drillToolNr);
+                        rechteSeite.AddDrillGroup(xp, MS / 2.0,     drillDia, drillDepth, drillToolNr);
                         rechteSeite.AddDrillGroup(xp, H - MS / 2.0, drillDia, drillDepth, drillToolNr);
                     }
-                    // Bottom panel (width=innerB along X, height=T along Y):
-                    // Holes at left zone (X = MS/2) and right zone (X = innerB - MS/2)
+
+                    // Boden/Deckel: edge drillings from left/right sides (horizontal, visual preview only)
+                    // In world space: Boden assembled at Z=0..MS, center Z=MS/2
+                    //                 Deckel assembled at Z=H-MS..H, center Z=H-MS/2
+                    double edgeR = drillDia / 2.0;
                     foreach (double xp in xPositions)
                     {
-                        boden.AddDrillGroup(MS / 2.0, xp, drillDia, drillDepth, drillToolNr);
-                        boden.AddDrillGroup(innerB - MS / 2.0, xp, drillDia, drillDepth, drillToolNr);
-                    }
-                    // Top panel: same as bottom
-                    foreach (double xp in xPositions)
-                    {
-                        deckel.AddDrillGroup(MS / 2.0, xp, drillDia, drillDepth, drillToolNr);
-                        deckel.AddDrillGroup(innerB - MS / 2.0, xp, drillDia, drillDepth, drillToolNr);
+                        // Boden left edge (X=MS, going +X)
+                        BuildEdgeCylinder(new Point3d(MS, xp, MS / 2.0),
+                            new Vector3d(1, 0, 0), edgeR, drillDepth, extraDrillBreps);
+                        // Boden right edge (X=B-MS, going -X)
+                        BuildEdgeCylinder(new Point3d(B - MS, xp, MS / 2.0),
+                            new Vector3d(-1, 0, 0), edgeR, drillDepth, extraDrillBreps);
+                        // Deckel left edge
+                        BuildEdgeCylinder(new Point3d(MS, xp, H - MS / 2.0),
+                            new Vector3d(1, 0, 0), edgeR, drillDepth, extraDrillBreps);
+                        // Deckel right edge
+                        BuildEdgeCylinder(new Point3d(B - MS, xp, H - MS / 2.0),
+                            new Vector3d(-1, 0, 0), edgeR, drillDepth, extraDrillBreps);
                     }
                 }
             }
 
-            // -- Process Shelves --
+            // Compute effective cabinet depth (front to back panel inner face),
+            // accounting for back panel type and setback. Shelves and S32 holes respect this limit.
+            double effectiveDepth = T;
+            if (backDict != null)
+            {
+                int bt = Convert.ToInt32(backDict["type"]);
+                double bThick = Convert.ToDouble(backDict["thickness"]);
+                if (bt == 0) // Eingelegt: back panel front face at T - bThick - setback
+                    effectiveDepth = T - bThick - Convert.ToDouble(backDict["setback"]);
+                else if (bt == 1) // Eingefälzt: front face at T - falzWidth
+                    effectiveDepth = T - Convert.ToDouble(backDict["falzWidth"]);
+                else // Eingenutert: front face at T - reststegDist - thickness
+                    effectiveDepth = T - Convert.ToDouble(backDict["reststegDist"]) - bThick;
+                effectiveDepth = Math.Max(MS + 10, effectiveDepth); // minimum sanity
+            }
+
+            // -- Process Shelves (N shelves evenly distributed, System-32 holes in sides) --
             if (shelvesDict != null)
             {
-                bool fixedShelf   = Convert.ToBoolean(shelvesDict["fixedShelf"]);
-                double fixedH     = Convert.ToDouble(shelvesDict["fixedHeight"]);
-                int adjCount      = Convert.ToInt32(shelvesDict["adjustableCount"]);
-                double s32raster  = Convert.ToDouble(shelvesDict["s32_raster"]);  // 32
-                double s32edge    = Convert.ToDouble(shelvesDict["s32_edge"]);    // 37
-                double s32dia     = Convert.ToDouble(shelvesDict["s32_drill_d"]); // 5
-                double s32depth   = Convert.ToDouble(shelvesDict["s32_depth"]);   // 13
+                int shelfCount   = Convert.ToInt32(shelvesDict["count"]);
+                double s32raster = Convert.ToDouble(shelvesDict["s32_raster"]);  // 32
+                double s32edge   = Convert.ToDouble(shelvesDict["s32_edge"]);    // 37
+                double s32dia    = Convert.ToDouble(shelvesDict["s32_drill_d"]); // 5
+                double s32depth  = Convert.ToDouble(shelvesDict["s32_depth"]);   // 13
 
-                // Fixed shelf: add as extra panel
-                if (fixedShelf && fixedH > 0 && fixedH < innerH)
+                if (shelfCount > 0)
                 {
-                    double shelfDepth = T - 2 * MS; // fits between front opening and back panel
-                    var fixedShelfPanel = new KorpusPanel("FixedShelf", innerB, Math.Max(1, shelfDepth), MS);
-                    fixedShelfPanel.AssembledTransform = Transform.PlaneToPlane(Plane.WorldXY,
-                        new Plane(new Point3d(MS, MS, MS + fixedH), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0)));
-                    extraPanels.Add(fixedShelfPanel);
-                }
+                    // Evenly distribute shelves in inner height
+                    double shelfSpacing = innerH / (shelfCount + 1);
+                    // Shelf runs from front opening to back panel face (effectiveDepth)
+                    double shelfDepth = Math.Max(1, effectiveDepth);
 
-                // Adjustable shelf holes: 2 rows (front + back) in both side panels
-                if (adjCount > 0)
-                {
-                    // Determine available height range for holes (avoid connector zone)
-                    double yStart = s32edge;
-                    double yEnd   = H - s32edge;
-                    // Generate full rows from yStart to yEnd in 32mm increments
-                    var yPositions = new List<double>();
-                    for (double yp = yStart; yp <= yEnd + 0.1; yp += s32raster)
-                        yPositions.Add(yp);
-
-                    // 2 columns: front (X = s32edge) and back (X = T - s32edge)
-                    // LeftSide panel: width=T (X is depth direction), height=H (Y is height direction)
-                    foreach (double yp in yPositions)
+                    for (int i = 1; i <= shelfCount; i++)
                     {
-                        linkeSeite.AddDrillGroup(s32edge,     yp, s32dia, s32depth, drillToolNr);
-                        linkeSeite.AddDrillGroup(T - s32edge, yp, s32dia, s32depth, drillToolNr);
+                        double shelfZ = MS + i * shelfSpacing;
+                        var shelf = new KorpusPanel("Shelf" + i, innerB, shelfDepth, MS);
+                        shelf.AssembledTransform = Transform.Translation(MS, 0, shelfZ);
+                        extraPanels.Add(shelf);
                     }
-                    // RightSide: same
-                    foreach (double yp in yPositions)
+
+                    // System-32 hole rows in both side panels
+                    // Front column at X=s32edge, back column at X=effectiveDepth-s32edge
+                    double hStart    = s32edge;
+                    double hEnd      = H - s32edge;
+                    double backColX  = Math.Max(s32edge + s32raster, effectiveDepth - s32edge);
+                    var hPos = new List<double>();
+                    for (double yp = hStart; yp <= hEnd + 0.1; yp += s32raster)
+                        hPos.Add(yp);
+
+                    foreach (double yp in hPos)
                     {
-                        rechteSeite.AddDrillGroup(s32edge,     yp, s32dia, s32depth, drillToolNr);
-                        rechteSeite.AddDrillGroup(T - s32edge, yp, s32dia, s32depth, drillToolNr);
+                        linkeSeite.AddDrillGroup(s32edge,  yp, s32dia, s32depth, drillToolNr);
+                        linkeSeite.AddDrillGroup(backColX, yp, s32dia, s32depth, drillToolNr);
+                        rechteSeite.AddDrillGroup(s32edge,  yp, s32dia, s32depth, drillToolNr);
+                        rechteSeite.AddDrillGroup(backColX, yp, s32dia, s32depth, drillToolNr);
                     }
                 }
             }
 
-            // -- Process Feet --
+            // -- Process Feet (Befestigungsplatte: 4 holes in 64x64mm grid per corner) --
             if (feetDict != null)
             {
                 double footDia    = Convert.ToDouble(feetDict["drillDiameter"]);
                 double footDepth  = Convert.ToDouble(feetDict["drillDepth"]);
-                double edgeOffset = Convert.ToDouble(feetDict["edgeOffset"]);
+                double footOffset = Convert.ToDouble(feetDict["footOffset"]);
+                double halfGrid   = Convert.ToDouble(feetDict["footGrid"]) / 2.0; // 32mm
 
-                // Bottom panel: width=innerB along X, height=T along Y
-                // 4 feet for W <= 800, 6 feet for W > 800
-                bool sixFeet = B > 800;
-
-                // 4 corner positions (in flat panel local coords):
-                boden.AddDrillGroup(edgeOffset,         edgeOffset,         footDia, footDepth, drillToolNr);
-                boden.AddDrillGroup(innerB - edgeOffset, edgeOffset,        footDia, footDepth, drillToolNr);
-                boden.AddDrillGroup(edgeOffset,          T - edgeOffset,    footDia, footDepth, drillToolNr);
-                boden.AddDrillGroup(innerB - edgeOffset, T - edgeOffset,    footDia, footDepth, drillToolNr);
-
-                if (sixFeet)
+                // Foot plate centers in flat Boden coords (X=0..innerB, Y=0..T)
+                var footCenters = new List<(double x, double y)>
                 {
-                    // 2 centre feet
-                    boden.AddDrillGroup(innerB / 2.0, edgeOffset,     footDia, footDepth, drillToolNr);
-                    boden.AddDrillGroup(innerB / 2.0, T - edgeOffset, footDia, footDepth, drillToolNr);
+                    (footOffset,          footOffset),
+                    (innerB - footOffset, footOffset),
+                    (footOffset,          T - footOffset),
+                    (innerB - footOffset, T - footOffset),
+                };
+                if (B > 800)
+                {
+                    footCenters.Add((innerB / 2.0, footOffset));
+                    footCenters.Add((innerB / 2.0, T - footOffset));
+                }
+
+                foreach (var (refX, refY) in footCenters)
+                {
+                    // 4 holes at ±halfGrid from center
+                    boden.AddDrillGroup(refX - halfGrid, refY - halfGrid, footDia, footDepth, drillToolNr);
+                    boden.AddDrillGroup(refX + halfGrid, refY - halfGrid, footDia, footDepth, drillToolNr);
+                    boden.AddDrillGroup(refX - halfGrid, refY + halfGrid, footDia, footDepth, drillToolNr);
+                    boden.AddDrillGroup(refX + halfGrid, refY + halfGrid, footDia, footDepth, drillToolNr);
                 }
             }
 
@@ -411,20 +515,22 @@ namespace DynesticPostProcessor.Components.Korpus
                 double firstPos  = Convert.ToDouble(doorDict["hinge_s32Pos"]);    // 128
 
                 // Compute door dimensions based on overlay type
+                // For 2 doors: account for center gap (doorCount+1 total gaps)
                 double doorW, doorH;
+                int totalGaps = doorCount + 1; // left gap + center gap(s) + right gap
                 if (overlay == 0) // FullOverlay
                 {
-                    doorW = (innerB + 2 * MS - 2 * gap) / doorCount;
+                    doorW = (B - totalGaps * gap) / doorCount;
                     doorH = H - 2 * gap;
                 }
                 else if (overlay == 1) // HalfOverlay
                 {
-                    doorW = (innerB + MS - 2 * gap) / doorCount;
+                    doorW = (B - MS - totalGaps * gap) / doorCount;
                     doorH = H - 2 * gap;
                 }
                 else // Inset
                 {
-                    doorW = (innerB - 2 * gap) / doorCount;
+                    doorW = (innerB - totalGaps * gap) / doorCount;
                     doorH = innerH - 2 * gap;
                 }
                 doorW = Math.Max(1, doorW);
@@ -463,6 +569,29 @@ namespace DynesticPostProcessor.Components.Korpus
                     foreach (double yp in hingeYPositions)
                         doorPanel.AddDrillGroup(hingeX, yp, cupDia, cupDepth, drillToolNr);
 
+                    // Assemble door vertically at Y=0 (front face of cabinet)
+                    // Flat panel: width=doorW along X, height=doorH along Y
+                    // Assembled: width along X, height along Z, front face at Y=0
+                    double dxOffset, dzOffset;
+                    if (overlay == 0) // FullOverlay
+                    {
+                        dxOffset = gap + d * (doorW + gap);
+                        dzOffset = gap;
+                    }
+                    else if (overlay == 1) // HalfOverlay
+                    {
+                        dxOffset = gap + d * (doorW + gap);
+                        dzOffset = gap;
+                    }
+                    else // Inset
+                    {
+                        dxOffset = MS + gap + d * (doorW + gap);
+                        dzOffset = MS + gap;
+                    }
+                    doorPanel.AssembledTransform = Transform.PlaneToPlane(Plane.WorldXY,
+                        new Plane(new Point3d(dxOffset, 0, dzOffset),
+                                  new Vector3d(1, 0, 0), new Vector3d(0, 0, 1)));
+
                     extraPanels.Add(doorPanel);
                 }
             }
@@ -473,6 +602,72 @@ namespace DynesticPostProcessor.Components.Korpus
             var allPanels = new List<KorpusPanel> { boden, deckel, linkeSeite, rechteSeite, rueckwand };
             allPanels.AddRange(extraPanels);
 
+            // ---------------------------------------------------------------
+            // ROUTER OPERATIONS: Nut/Falz grooves + outer formatting contour
+            // Only generated when RouterToolNr > 0
+            // ---------------------------------------------------------------
+            if (routerToolNr > 0)
+            {
+                // -- Nut/Falz grooves in the 4 outer panels --
+                if (backDict != null)
+                {
+                    int backType    = Convert.ToInt32(backDict["type"]);
+                    double falzWidth  = Convert.ToDouble(backDict["falzWidth"]);
+                    double nutWidth   = Convert.ToDouble(backDict["nutWidth"]);
+                    double cutDepth   = Convert.ToDouble(backDict["cutDepth"]);
+                    double reststegD  = Convert.ToDouble(backDict["reststegDist"]);
+
+                    // LeftSide/RightSide: flat Width = T (depth). Back edge at X = Width.
+                    // Boden/Deckel: flat Height = T (depth). Back edge at Y = Height.
+
+                    if (backType == 1) // Eingefälzt: Falznut at back edge
+                    {
+                        double sideCenterX  = linkeSeite.Width - falzWidth / 2.0;
+                        double horizCenterY = boden.Height     - falzWidth / 2.0;
+
+                        linkeSeite.AddNutFrei(sideCenterX, 0, sideCenterX, linkeSeite.Height,
+                            falzWidth, cutDepth, routerToolNr);
+                        rechteSeite.AddNutFrei(sideCenterX, 0, sideCenterX, rechteSeite.Height,
+                            falzWidth, cutDepth, routerToolNr);
+                        boden.AddNutFrei(0, horizCenterY, boden.Width, horizCenterY,
+                            falzWidth, cutDepth, routerToolNr);
+                        deckel.AddNutFrei(0, horizCenterY, deckel.Width, horizCenterY,
+                            falzWidth, cutDepth, routerToolNr);
+
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
+                            "Router: Falznut generated in 4 panels, Falzbreite="
+                            + falzWidth.ToString("F1") + "mm, Tiefe=" + cutDepth + "mm");
+                    }
+                    else if (backType == 2) // Eingenutert: Nut at reststegDist from back edge
+                    {
+                        // Groove rear at (Width - reststegD), front at (Width - reststegD - nutWidth)
+                        double sideCenterX  = linkeSeite.Width - reststegD - nutWidth / 2.0;
+                        double horizCenterY = boden.Height     - reststegD - nutWidth / 2.0;
+
+                        linkeSeite.AddNutFrei(sideCenterX, 0, sideCenterX, linkeSeite.Height,
+                            nutWidth, cutDepth, routerToolNr);
+                        rechteSeite.AddNutFrei(sideCenterX, 0, sideCenterX, rechteSeite.Height,
+                            nutWidth, cutDepth, routerToolNr);
+                        boden.AddNutFrei(0, horizCenterY, boden.Width, horizCenterY,
+                            nutWidth, cutDepth, routerToolNr);
+                        deckel.AddNutFrei(0, horizCenterY, deckel.Width, horizCenterY,
+                            nutWidth, cutDepth, routerToolNr);
+
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
+                            "Router: Nut generated in 4 panels, Nutbreite="
+                            + nutWidth.ToString("F1") + "mm, Tiefe=" + cutDepth
+                            + "mm, Reststeg=" + reststegD + "mm");
+                    }
+                }
+
+                // -- Formatierung: outer contour cut for every panel --
+                foreach (var panel in allPanels)
+                    panel.AddFormattingContour(routerToolNr);
+
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
+                    "Router: Formatierung contour added to " + allPanels.Count + " panels");
+            }
+
             var korpusDict = new Dictionary<string, object>();
             korpusDict["W"] = B;
             korpusDict["H"] = H;
@@ -482,26 +677,95 @@ namespace DynesticPostProcessor.Components.Korpus
             korpusDict["panels"] = allPanels;
 
             // 6b. Build 3D preview -- transform each flat panel to assembled position, then extrude by thickness
-            _previewBreps = new List<Brep>();
+            _previewBreps  = new List<Brep>();
+            _previewColors = new List<Color>();
             foreach (var panel in allPanels)
             {
                 Brep assembled = panel.FlatBrep.DuplicateBrep();
                 assembled.Transform(panel.AssembledTransform);
 
-                // Get the face normal of the assembled planar Brep
                 Vector3d normal = assembled.Faces[0].NormalAt(
                     assembled.Faces[0].Domain(0).Mid,
                     assembled.Faces[0].Domain(1).Mid);
 
-                // Create extrusion path along the normal by thickness
-                Point3d extStart = Point3d.Origin;
-                Point3d extEnd = extStart + normal * panel.Thickness;
-                LineCurve extPath = new LineCurve(new Line(extStart, extEnd));
+                Point3d extEnd = Point3d.Origin + normal * panel.Thickness;
+                LineCurve extPath = new LineCurve(new Line(Point3d.Origin, extEnd));
 
                 Brep solid = assembled.Faces[0].CreateExtrusion(extPath, true);
                 if (solid != null)
                 {
                     _previewBreps.Add(solid);
+                    _previewColors.Add(PanelColor(panel.Name));
+                }
+            }
+
+            // 6c. Build drill cylinder previews (connector, feet, hinge holes + world-space extras)
+            _drillBreps = new List<Brep>(extraDrillBreps); // start with recesses + edge drillings
+            foreach (var panel in allPanels)
+            {
+                if (panel.OperationGroups.Count == 0) continue;
+                // Parse Bohrung lines to get drill positions in flat panel space
+                // Then apply AssembledTransform to get world position
+                // Normal of assembled panel face = extrusion direction used for the drill
+                Brep tmpBrep = panel.FlatBrep.DuplicateBrep();
+                tmpBrep.Transform(panel.AssembledTransform);
+                Vector3d panelNormal = tmpBrep.Faces[0].NormalAt(
+                    tmpBrep.Faces[0].Domain(0).Mid,
+                    tmpBrep.Faces[0].Domain(1).Mid);
+                panelNormal.Unitize();
+
+                foreach (var group in panel.OperationGroups)
+                {
+                    foreach (var line in group)
+                    {
+                        if (!line.StartsWith("Bohrung")) continue;
+                        // Format: Bohrung (x,y,surfZ,cutZ,dia,...)
+                        int p1 = line.IndexOf('(');
+                        int p2 = line.IndexOf(')');
+                        if (p1 < 0 || p2 < 0) continue;
+                        string[] parts = line.Substring(p1 + 1, p2 - p1 - 1).Split(',');
+                        if (parts.Length < 5) continue;
+                        double hx, hy, hCutZ, hDia;
+                        if (!double.TryParse(parts[0].Trim(), System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out hx)) continue;
+                        if (!double.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out hy)) continue;
+                        if (!double.TryParse(parts[3].Trim(), System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out hCutZ)) continue;
+                        if (!double.TryParse(parts[4].Trim(), System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out hDia)) continue;
+                        double depth = Math.Abs(hCutZ);
+                        double radius = hDia / 2.0;
+                        if (radius <= 0 || depth <= 0) continue;
+
+                        // Flat Z=0 = machined face of the panel (inner face for vertical panels,
+                        // bottom face for horizontal panels).
+                        // For horizontal panels (Boden/Deckel): Z=0 maps to bottom/top face,
+                        //   normal points up/down = drill goes into material correctly.
+                        // For vertical panels (LeftSide/RightSide): Z=0 maps to OUTER face after
+                        //   PlaneToPlane, but machining is from the INNER face.
+                        //   → Shift point by thickness*normal to reach inner face, then drill inward.
+                        Point3d flatPt = new Point3d(hx, hy, 0);
+                        flatPt.Transform(panel.AssembledTransform);
+
+                        bool isVertical = Math.Abs(panelNormal.Z) < 0.5;
+                        Circle drillCircle;
+                        if (isVertical)
+                        {
+                            // Move from outer face to inner face, drill in -panelNormal direction
+                            Point3d innerPt = flatPt + panelNormal * panel.Thickness;
+                            drillCircle = new Circle(new Plane(innerPt, -panelNormal), radius);
+                        }
+                        else
+                        {
+                            // Horizontal: drill from flatPt into material (in panelNormal direction)
+                            drillCircle = new Circle(new Plane(flatPt, panelNormal), radius);
+                        }
+                        Cylinder cyl = new Cylinder(drillCircle, depth);
+                        Brep cylBrep = cyl.ToBrep(true, true);
+                        if (cylBrep != null) _drillBreps.Add(cylBrep);
+                        break; // one Bohrung line per group is enough
+                    }
                 }
             }
 
@@ -514,7 +778,10 @@ namespace DynesticPostProcessor.Components.Korpus
                 panelOutputs.Add(new GH_ObjectWrapper(p.ToPartDict()));
             DA.SetDataList(1, panelOutputs);
 
-            // 9. Remark message
+            // 9. Output 3: AssembledBreps (the solid Breps from preview, already computed)
+            DA.SetDataList(2, _previewBreps ?? new List<Brep>());
+
+            // 10. Remark message
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                 "HopKorpus: " + allPanels.Count + " panels, " + cabinetType
                 + " " + B + "x" + H + "x" + T + " t=" + MS);
@@ -537,32 +804,65 @@ namespace DynesticPostProcessor.Components.Korpus
             {
                 BoundingBox bb = BoundingBox.Empty;
                 if (_previewBreps != null)
-                {
                     foreach (var brep in _previewBreps)
                         bb.Union(brep.GetBoundingBox(true));
-                }
+                if (_drillBreps != null)
+                    foreach (var brep in _drillBreps)
+                        bb.Union(brep.GetBoundingBox(true));
                 return bb;
             }
         }
 
         public override void DrawViewportMeshes(IGH_PreviewArgs args)
         {
-            if (_previewBreps != null)
+            if (_previewBreps != null && _previewColors != null)
             {
-                var mat = new Rhino.Display.DisplayMaterial(_drawColor);
-                mat.Transparency = 0.3;
-                foreach (var brep in _previewBreps)
-                    args.Display.DrawBrepShaded(brep, mat);
+                for (int i = 0; i < _previewBreps.Count; i++)
+                {
+                    var mat = new Rhino.Display.DisplayMaterial(_previewColors[i]);
+                    mat.Transparency = 0.25;
+                    args.Display.DrawBrepShaded(_previewBreps[i], mat);
+                }
+            }
+            if (_drillBreps != null)
+            {
+                var drillMat = new Rhino.Display.DisplayMaterial(Color.FromArgb(50, 50, 50));
+                drillMat.Transparency = 0.0;
+                foreach (var brep in _drillBreps)
+                    args.Display.DrawBrepShaded(brep, drillMat);
             }
         }
 
         public override void DrawViewportWires(IGH_PreviewArgs args)
         {
-            if (_previewBreps != null)
+            if (_previewBreps != null && _previewColors != null)
             {
-                foreach (var brep in _previewBreps)
-                    args.Display.DrawBrepWires(brep, _drawColor, 1);
+                for (int i = 0; i < _previewBreps.Count; i++)
+                    args.Display.DrawBrepWires(_previewBreps[i], _previewColors[i], 1);
             }
+            if (_drillBreps != null)
+                foreach (var brep in _drillBreps)
+                    args.Display.DrawBrepWires(brep, Color.FromArgb(40, 40, 40), 1);
+        }
+
+        // -----------------------------------------------------------------
+        // PREVIEW HELPERS (world-space geometry)
+        // -----------------------------------------------------------------
+        private static void BuildEdgeCylinder(Point3d center, Vector3d dir,
+            double radius, double depth, List<Brep> dest)
+        {
+            dir.Unitize();
+            var plane = new Plane(center, dir);
+            var cyl = new Cylinder(new Circle(plane, radius), depth);
+            var b = cyl.ToBrep(true, true);
+            if (b != null) dest.Add(b);
+        }
+
+        private static void AddRecessBox(BoundingBox bb, List<Brep> dest)
+        {
+            if (!bb.IsValid) return;
+            var b = Brep.CreateFromBox(bb);
+            if (b != null) dest.Add(b);
         }
 
         // -----------------------------------------------------------------
@@ -585,6 +885,7 @@ namespace DynesticPostProcessor.Components.Korpus
                 DynesticPostProcessor.AutoWire.Spec.Skip(),                 // Feet
                 DynesticPostProcessor.AutoWire.Spec.Skip(),                 // Door
                 DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),          // DrillToolNr
+                DynesticPostProcessor.AutoWire.Spec.Int("0<0<20"),          // RouterToolNr
             });
         }
     }

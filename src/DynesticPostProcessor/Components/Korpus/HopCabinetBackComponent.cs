@@ -22,33 +22,27 @@ namespace DynesticPostProcessor.Components.Korpus
         {
             // Index 0 — value list (see AddedToDocument)
             pManager.AddIntegerParameter("Type", "type",
-                "Back panel mounting type. 0=Eingelegt (sits inside, no groove), 1=Eingef\u00e4lzt (Falznut rabbet in sides), 2=Eingenutert (Nut groove in sides).",
-                GH_ParamAccess.item, 0);
+                "Back panel mounting type. 1=Eingef\u00e4lzt (Falznut rabbet in sides), 2=Eingenutert (Nut groove in sides).",
+                GH_ParamAccess.item, 1);
             pManager[0].Optional = true;
 
             // Index 1
             pManager.AddNumberParameter("Thickness", "t",
-                "Back panel thickness in mm. For Eingef\u00e4lzt this also sets the Falz width. Default 8.",
+                "Back panel thickness in mm. Also determines Falz/Nut width (thickness + 0.5mm play). Default 8.",
                 GH_ParamAccess.item, 8.0);
             pManager[1].Optional = true;
 
             // Index 2
-            pManager.AddNumberParameter("Ruecksprung", "setback",
-                "[Eingelegt only] Distance from back edge to back panel face, in mm. 0 = flush with back. Default 0.",
-                GH_ParamAccess.item, 0.0);
+            pManager.AddNumberParameter("Tiefe", "depth",
+                "Rabbet/groove depth into the panel face, in mm. Default 10.",
+                GH_ParamAccess.item, 10.0);
             pManager[2].Optional = true;
 
             // Index 3
-            pManager.AddNumberParameter("Tiefe", "depth",
-                "[Eingef\u00e4lzt/Eingenutert] Rabbet/groove depth into the panel face, in mm. Reststeg = panel thickness - this value. Default 10.",
-                GH_ParamAccess.item, 10.0);
-            pManager[3].Optional = true;
-
-            // Index 4
             pManager.AddNumberParameter("Reststeg", "reststeg",
                 "[Eingenutert only] Distance from back edge to groove rear, in mm. Minimum 6mm recommended. Default 19.",
                 GH_ParamAccess.item, 19.0);
-            pManager[4].Optional = true;
+            pManager[3].Optional = true;
         }
 
         // -----------------------------------------------------------------
@@ -70,40 +64,33 @@ namespace DynesticPostProcessor.Components.Korpus
         // -----------------------------------------------------------------
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            int type = 0;
-            double thickness = 8.0, setback = 0.0, cutDepth = 10.0, reststegDist = 19.0;
+            int type = 1;
+            double thickness = 8.0, cutDepth = 10.0, reststegDist = 19.0;
             DA.GetData(0, ref type);
             DA.GetData(1, ref thickness);
-            DA.GetData(2, ref setback);
-            DA.GetData(3, ref cutDepth);
-            DA.GetData(4, ref reststegDist);
+            DA.GetData(2, ref cutDepth);
+            DA.GetData(3, ref reststegDist);
 
-            if (type < 0 || type > 2) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Type must be 0, 1, or 2"); return; }
+            if (type < 1 || type > 2) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Type must be 1 (Eingef\u00e4lzt) or 2 (Eingenutert)"); return; }
             if (thickness <= 0) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Thickness must be > 0"); return; }
-            if (cutDepth <= 0 && type > 0) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Depth must be > 0 for this type"); return; }
+            if (cutDepth <= 0) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Depth must be > 0"); return; }
 
-            // Compute Reststeg (only relevant for type 1 and 2)
-            double reststeg = 0;
-            if (type == 1) reststeg = 0; // will be computed by HopKorpus from panel MS - cutDepth
-            if (type == 2) reststeg = reststegDist;
-
-            // For type 1 (Eingefaelzt): Falzbreite = thickness + 0.5mm play
+            // Falz/Nut width = back panel thickness + 0.5mm play
             double falzWidth = thickness + 0.5;
 
             var dict = new Dictionary<string, object>();
             dict["type"] = type;
-            string[] typeNames = { "Eingelegt", "Eingef\u00e4lzt", "Eingenutert" };
+            string[] typeNames = { "", "Eingef\u00e4lzt", "Eingenutert" };
             dict["typeName"] = typeNames[type];
             dict["thickness"] = thickness;
-            dict["setback"] = setback;         // for Eingelegt: position from back edge
-            dict["cutDepth"] = cutDepth;       // for Eingefaelzt/Eingenutert: how deep the Falz/Nut cuts in
-            dict["falzWidth"] = falzWidth;     // for Eingefaelzt: Falzbreite = thickness + 0.5
-            dict["nutWidth"]  = falzWidth;     // for Eingenutert: Nutbreite = thickness + 0.5
-            dict["reststegDist"] = reststegDist; // for Eingenutert: distance from back edge to groove rear
+            dict["setback"] = 0.0;             // unused, kept for dict key compatibility
+            dict["cutDepth"] = cutDepth;
+            dict["falzWidth"] = falzWidth;
+            dict["nutWidth"]  = falzWidth;
+            dict["reststegDist"] = reststegDist;
 
             DA.SetData(0, new GH_ObjectWrapper(dict));
-            // Output Reststeg value (computed by HopKorpus later; output from this component is the setback param for Eingenutert)
-            DA.SetData(1, reststeg);
+            DA.SetData(1, type == 2 ? reststegDist : 0.0);
 
             string remark = typeNames[type] + ", t=" + thickness + "mm";
             if (type == 1) remark += ", Falztiefe=" + cutDepth + "mm, Falzbreite=" + falzWidth.ToString("F1") + "mm";
@@ -128,11 +115,9 @@ namespace DynesticPostProcessor.Components.Korpus
             DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
             {
                 DynesticPostProcessor.AutoWire.Spec.ValueList(
-                    ("Eingelegt", "0"),
                     ("Eingef\u00e4lzt (Falznut)", "1"),
                     ("Eingenutert (Nut)", "2")),
                 DynesticPostProcessor.AutoWire.Spec.Float("3<8<25"),    // Thickness
-                DynesticPostProcessor.AutoWire.Spec.Float("0<0<50"),    // Ruecksprung
                 DynesticPostProcessor.AutoWire.Spec.Float("6<10<15"),   // Tiefe (cut depth)
                 DynesticPostProcessor.AutoWire.Spec.Float("6<19<50"),   // Reststeg dist
             });

@@ -1,0 +1,63 @@
+Hier ist die technische Spezifikation für die Montage der abgebildeten **Befestigungsplatte für Möbelfüße**. Diese Platten werden typischerweise unter den Korpusboden montiert, um Stellfüße (Sockelfüße) aufzunehmen.
+
+Ich habe die Daten so strukturiert, dass Claude daraus direkt Logiken für die Platzierung der Bohrungen (z.B. in Abhängigkeit von den Korpusecken) ableiten kann.
+
+---
+
+# Technische Spezifikation: Befestigungsplatte für Möbelfüße
+
+Diese Dokumentation beschreibt die notwendigen Bearbeitungen in der **Fläche des Bodenbauteils**. Die Befestigungsplatte existiert in zwei Montagevarianten: **zum Schrauben** und **zum Einpressen**.
+
+## 1. Geometrische Basisdaten (Platte)
+* **Außenmaße:** $92 \times 79\text{ mm}$
+* **Höhe der Platte:** $25\text{ mm}$
+* **Zentrale Aufnahme:** Aufnahme für den Stellfuß (mittig platziert).
+* **Bohrlochabstände (Rechteck):** $64 \times 64\text{ mm}$
+
+---
+
+## 2. Bearbeitungsvarianten (Bodenplatte - Fläche)
+
+### Variante A: Zum Schrauben (manuelle Montage)
+Bei dieser Variante hat die Platte Senkbohrungen. Im Korpusboden sind lediglich Markierungsbohrungen oder Vorbohrungen nötig.
+* **Bohrungen:** 4 Stück
+* **Durchmesser ($d$):** $3\text{ mm}$ bis $5\text{ mm}$ (je nach verwendeter Spanplattenschraube).
+* **Bohrtiefe ($t$):** ca. $10 - 12\text{ mm}$ (bei $19\text{ mm}$ Platte), um nicht durchzubohren.
+* **Lochbild:** Quadratisch $64 \times 64\text{ mm}$.
+
+### Variante B: Zum Einpressen (CNC-gefertigt)
+Diese Variante nutzt Spreizmuffen oder Zapfen, die direkt an der Platte sitzen (siehe Screenshot mit $\varnothing 10.4\text{ mm}$ Angabe).
+* **Bohrungen:** 4 Stück
+* **Durchmesser ($d$):** $10\text{ mm}$ (Standard für Presszapfen $10.4\text{ mm}$).
+* **Bohrtiefe ($t$):** $12\text{ mm}$ (gemäß technischer Zeichnung, Zapfenlänge ist $11\text{ mm}$).
+* **Lochbild:** Quadratisch $64 \times 64\text{ mm}$.
+
+---
+
+## 3. Positionierung am Korpus (Logik)
+
+Um die Stabilität zu gewährleisten, müssen die Platten in den Ecken des Bodens platziert werden, jedoch mit genügend Abstand zu den Kanten, um Kollisionen mit den Korpusseiten oder der Sockelblende zu vermeiden.
+
+### Abstandslogik für die Programmierung:
+* **X-Achse (Tiefe):** * Vordere Füße: Zentrum der Platte ca. $50 - 70\text{ mm}$ von der Vorderkante (Rücksicht auf Sockelrücksprung).
+    * Hintere Füße: Zentrum der Platte ca. $50\text{ mm}$ von der Hinterkante.
+* **Y-Achse (Breite):** * Zentrum der Platte mittig zur Seitenwandstärke oder leicht eingerückt (ca. $35 - 50\text{ mm}$ von der Außenkante).
+
+---
+
+## 4. Zusammenfassung der Bohrmaße für den Code
+
+| Parameter | Wert (Einpress-Version) | Wert (Schraub-Version) |
+| :--- | :--- | :--- |
+| **Anzahl Bohrungen** | 4 | 4 |
+| **Anordnung** | Raster $64 \times 64\text{ mm}$ | Raster $64 \times 64\text{ mm}$ |
+| **Durchmesser** | **$10\text{ mm}$** | **$3\text{ mm}$ / $5\text{ mm}$** |
+| **Tiefe** | **$12\text{ mm}$** | **$10\text{ mm}$** |
+| **Zentral-Ausschnitt** | Nicht erforderlich* | Nicht erforderlich* |
+
+*> Hinweis: Die Platte wird auf die Fläche aufgesetzt. Ein großer zentraler Durchbruch im Holz ist nur nötig, wenn der Fuß von oben verstellbar sein soll (Verstellloch $\varnothing 10 - 12\text{ mm}$ im Zentrum).*
+
+---
+
+> **Tipp für Claude:** Nutze ein Array für die 4 Bohrungen pro Ecke, ausgehend von einem Referenzpunkt `(RefX, RefY)`, der das Zentrum der Fußaufnahme beschreibt. Die Bohrpositionen lauten dann:
+> `(RefX ± 32, RefY ± 32)`

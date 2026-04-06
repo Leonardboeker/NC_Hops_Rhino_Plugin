@@ -1,0 +1,84 @@
+Hier ist eine detaillierte technische Spezifikation im Markdown-Format, die speziell darauf ausgelegt ist, von einer KI wie Claude als Grundlage für die Code-Generierung (z.B. für CNC-Bearbeitungen oder CAD-Skripte) genutzt zu werden.
+
+---
+
+# Technische Spezifikation: Möbel-Eckverbindungen
+
+Diese Dokumentation dient als Referenz für die Programmierung von Bohr- und Fräsbildern in Korpus-Eckverbindungen (Seite an Boden/Deckel).
+
+## 1. Holzdübel (8x30 / 8x40)
+Klassische, formschlüssige Verbindung. Erfordert zusätzliche Leimangabe oder zusätzliche Zugverbinder.
+
+### Geometrie & Positionierung
+* **Durchmesser ($d$):** $8\text{ mm}$
+* **Position Kante (Boden/Deckel):** Mittig in der Materialstärke. 
+* **Position Fläche (Seite):** Mittig zur Materialstärke des anstoßenden Bauteils.
+* **Bohrtiefen ($t$):**
+    * **$8\times 30$:** Kante $20\text{ mm}$ / Fläche $11\text{ mm}$ (bei $19\text{ mm}$ Platte) oder $12\text{ mm}$ (bei $16\text{ mm}$ Platte).
+    * **$8\times 40$:** Kante $25\text{ mm}$ / Fläche $16\text{ mm}$ (Vorsicht bei $16\text{ mm}$ Platten!).
+
+### Bohrparameter
+| Bauteil | Typ | Durchmesser | Tiefe |
+| :--- | :--- | :--- | :--- |
+| **Kante** | Horizontalbohrung | $8\text{ mm}$ | $20 / 25\text{ mm}$ |
+| **Fläche** | Vertikalbohrung | $8\text{ mm}$ | $11 - 16\text{ mm}$ |
+
+---
+
+## 2. Cabineo 8 (Lamello)
+Einteiliger Gehäuseverbinder auf Bohr- oder Fräsbasis. Hohe Spannkraft, rein oberflächenorientierte Bearbeitung.
+
+### Geometrie & Positionierung
+* **Typ:** Flächenverbinder (sitzt komplett in der Fläche des Bodens).
+* **Bohrung/Tasche:** Eine Sacklochbohrung in der Fläche des Bodens, die bis zur Kante reicht.
+* **Zentrum der Bohrung:** $9.7\text{ mm}$ von der Kante entfernt.
+
+### Bohrparameter
+| Bauteil | Typ | Durchmesser | Tiefe | Position |
+| :--- | :--- | :--- | :--- | :--- |
+| **Boden (Fläche)** | Stufenbohrung | $12\text{ mm}$ | $10\text{ mm}$ | $9.7\text{ mm}$ von Kante |
+| **Seite (Fläche)** | Vorbohrung | $5\text{ mm}$ | $8\text{ mm}$ | Fluchtend zu Cabineo |
+
+---
+
+## 3. Clamex P-14 (Lamello P-System)
+Wiederlösbarer Verbinder für Gehrungen oder stumpfe Verbindungen. Erfordert eine Profilnut (P-System).
+
+### Geometrie & Positionierung
+* **Boden (Kante):** Eine profilierte T-Nut mittig in der Kante.
+* **Seite (Fläche):** Eine profilierte T-Nut in der Fläche.
+* **Zugangsöffnung:** Ein kleines Loch ($\varnothing 6\text{ mm}$) in der Fläche des Bodens, um den Verbinder mit einem Inbusschlüssel zu schließen.
+
+### Bohr/Fräsparameter
+| Bauteil | Bearbeitung | Werkzeug | Tiefe |
+| :--- | :--- | :--- | :--- |
+| **Boden (Kante)** | P-System Nut | Profilnutfräser $100.4\times 7\times 22\text{ mm}$ | $14.7\text{ mm}$ |
+| **Seite (Fläche)** | P-System Nut | Profilnutfräser $100.4\times 7\times 22\text{ mm}$ | $14.7\text{ mm}$ |
+| **Boden (Fläche)** | Zugang Bohrung | $6\text{ mm}$ Bohrer | Durchgang oder $12\text{ mm}$ |
+
+---
+
+## 4. Nesting-Dübel (Typ: FixChip)
+Ein spezialisierter Verbinder für die Nesting-Fertigung, der ohne Horizontalbohrungen auskommt. Er ersetzt die Funktion des klassischen Dübels durch eine rein vertikale Bearbeitung.
+
+### Geometrie & Positionierung
+* **Konzept:** Der Verbinder wird in die Fläche der Seite geclipst/geschraubt und greift in eine Tasche/Ausfräsung im Boden.
+* **Bauteil 1 (Seite - Fläche):** Zwei Bohrungen für die Aufnahme des FixChip-Gehäuses.
+* **Bauteil 2 (Boden - Fläche/Kante):** Eine ausgefräste Tasche an der Unterseite des Bodens, die zur Kante hin offen ist.
+
+### Bohr/Fräsparameter (Referenz FixChip)
+| Bauteil | Typ | Maße | Position |
+| :--- | :--- | :--- | :--- |
+| **Seite (Fläche)** | Haltebohrung | $2\times \varnothing 8\text{ mm}$ | $32\text{ mm}$ Abstand zueinander |
+| **Boden (Fläche)** | Nesting-Tasche | Fräsung ca. $8-10\text{ mm}$ tief | Direkt an der Kante anliegend |
+
+---
+
+## Zusammenfassung für die Programmierung (Logik)
+
+1.  **Nullpunkt:** Alle Maße beziehen sich auf die Außenkante der Verbindung ($X=0$ ist die Vorderkante des Korpusses).
+2.  **Abstände:**
+    * Erster Verbinder meist bei $37\text{ mm}$ oder $50\text{ mm}$ von Vorderkante.
+    * Letzter Verbinder meist bei $37\text{ mm}$ oder $50\text{ mm}$ von Hinterkante.
+    * Dazwischen Aufteilung nach Systemrastung ($32\text{ mm}$).
+3.  **Materialstärke ($S$):** Standard ist $19\text{ mm}$ oder $16\text{ mm}$. Die Bohrtiefen in die Fläche müssen immer $S - \text{Restboden}$ (meist $3-4\text{ mm}$) beachten, um ein Durchbohren zu verhindern.

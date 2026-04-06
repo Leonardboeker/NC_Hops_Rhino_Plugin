@@ -7,12 +7,7 @@
     <OutputType>Library</OutputType>
     <LangVersion>latest</LangVersion>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="System.Resources.Extensions" Version="8.0.0" />
-  </ItemGroup>
 
   <!-- References to Rhino 8 assemblies (CopyLocal=false) -->
   <ItemGroup>
@@ -30,23 +25,17 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Embedded icon resources -->
+  <!-- Embedded PNG icons (loaded via IconHelper.Load) -->
   <ItemGroup>
-    <EmbeddedResource Update="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-    <Compile Update="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-      <DesignTime>True</DesignTime>
-    </Compile>
+    <EmbeddedResource Include="Icons\*.png" />
   </ItemGroup>
 
-  <!-- Post-build: rename .dll to .gha -->
+  <!-- Post-build: rename .dll to .gha and auto-install to GH Libraries -->
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Copy SourceFiles="$(TargetPath)"
           DestinationFiles="$(TargetDir)$(AssemblyName).gha" />
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).gha"
+          DestinationFolder="$(APPDATA)\Grasshopper\Libraries\" />
   </Target>
 
 </Project>

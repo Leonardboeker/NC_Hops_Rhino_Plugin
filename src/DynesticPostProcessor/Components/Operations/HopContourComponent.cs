@@ -27,7 +27,7 @@ namespace DynesticPostProcessor.Components.Operations
 
         public override Guid ComponentGuid => new Guid("e2902790-ccf6-4880-b284-80e0110f1e71");
 
-        protected override Bitmap Icon => Properties.Resources.HopContour;
+        protected override Bitmap Icon => IconHelper.Load("HopContour");
 
         public override GH_Exposure Exposure => GH_Exposure.primary;
 
@@ -342,6 +342,23 @@ namespace DynesticPostProcessor.Components.Operations
                 args.Display.DrawPatternedLine(
                     _approachLine.From, _approachLine.To,
                     Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
+        }
+
+        public override void AddedToDocument(GH_Document doc)
+        {
+            base.AddedToDocument(doc);
+            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            {
+                DynesticPostProcessor.AutoWire.Spec.Curve(),
+                DynesticPostProcessor.AutoWire.Spec.Float("1<10<100"),
+                DynesticPostProcessor.AutoWire.Spec.Float("0<0<100"),
+                DynesticPostProcessor.AutoWire.Spec.Float("0.001<0.1<1"),
+                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
+                DynesticPostProcessor.AutoWire.Spec.Float("1<8<50"),
+                DynesticPostProcessor.AutoWire.Spec.Int("-1<0<1"),
+                DynesticPostProcessor.AutoWire.Spec.Float("0<0<50"),
+                DynesticPostProcessor.AutoWire.Spec.Skip(),
+            });
         }
     }
 }

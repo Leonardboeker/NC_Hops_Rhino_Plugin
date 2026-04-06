@@ -67,7 +67,7 @@ namespace DynesticPostProcessor.Components.Korpus
 
         /// <summary>
         /// Returns a dictionary compatible with HopPart downstream wiring.
-        /// Keys: "outline", "operationLines", "grainDir", "panelName"
+        /// Keys: "outline", "operationLines", "grainDir", "panelName", "thickness"
         /// </summary>
         public Dictionary<string, object> ToPartDict()
         {
@@ -85,8 +85,52 @@ namespace DynesticPostProcessor.Components.Korpus
 
             dict["grainDir"] = GrainDir;
             dict["panelName"] = Name;
+            dict["thickness"] = Thickness;  // per-panel DZ for HopPartExport
 
             return dict;
+        }
+
+        /// <summary>
+        /// Adds a free-slot groove using the _nuten_frei_v5 macro.
+        /// X1/Y1 and X2/Y2 are the centerline start/end of the groove in flat panel 2D space.
+        /// width is the groove width (= nutWidth or falzWidth), depth is positive (tool goes DOWN).
+        /// </summary>
+        public void AddNutFrei(double x1, double y1, double x2, double y2,
+                               double width, double depth, int toolNr)
+        {
+            var group = new List<string>();
+            group.Add("WZF (" + toolNr + ",_VE,_V*1,_VA,_SD,0,'')");
+            group.Add("CALL _nuten_frei_v5(VAL "
+                + "X1:=" + x1.ToString(CultureInfo.InvariantCulture) + ","
+                + "Y1:=" + y1.ToString(CultureInfo.InvariantCulture) + ","
+                + "X2:=" + x2.ToString(CultureInfo.InvariantCulture) + ","
+                + "Y2:=" + y2.ToString(CultureInfo.InvariantCulture) + ","
+                + "NB:=" + width.ToString(CultureInfo.InvariantCulture) + ","
+                + "Tiefe:=" + (-Math.Abs(depth)).ToString(CultureInfo.InvariantCulture) + ","
+                + "LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)");
+            OperationGroups.Add(group);
+        }
+
+        /// <summary>
+        /// Adds a rectangular formatting contour (outer perimeter cut) using SP/G01/EP.
+        /// The tool follows the outer rectangle of this panel at full material depth.
+        /// Radius compensation must be configured at the machine level.
+        /// </summary>
+        public void AddFormattingContour(int toolNr)
+        {
+            string w  = Width.ToString(CultureInfo.InvariantCulture);
+            string h  = Height.ToString(CultureInfo.InvariantCulture);
+            string dz = (-Math.Abs(Thickness)).ToString(CultureInfo.InvariantCulture);
+
+            var group = new List<string>();
+            group.Add("WZF (" + toolNr + ",_VE,_V*1,_VA,_SD,0,'')");
+            group.Add("SP (0,0," + dz + ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)");
+            group.Add("G01 (" + w + ",0,0,0,0,2)");
+            group.Add("G01 (" + w + "," + h + ",0,0,0,2)");
+            group.Add("G01 (0," + h + ",0,0,0,2)");
+            group.Add("G01 (0,0,0,0,0,2)");
+            group.Add("EP (0,_ANF,0)");
+            OperationGroups.Add(group);
         }
 
         /// <summary>

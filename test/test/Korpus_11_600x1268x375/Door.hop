@@ -1,0 +1,31 @@
+;MAKROTYP=0
+;INSTVERSION=
+;EXEVERSION=
+;BILD=
+;INFO=
+;WZGV=7023K_681
+;WZGVCONFIG=
+;MASCHINE=HOLZHER
+;NCNAME=Door
+;KOMMENTAR=
+;DX=0.000
+;DY=0.000
+;DZ=0
+;DIALOGDLL=Dialoge.Dll
+;DIALOGPROC=StandardFormAnzeigen
+;AUTOSCRIPTSTART=1
+;BUTTONBILD=
+;DIMENSION_UNIT=0
+VARS
+   DX := 596;*VAR*Dimension X
+   DY := 1264;*VAR*Dimension Y
+   DZ := 19;*VAR*Dimension Z
+START
+Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)
+CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (22.5,128,0,-13.5,35,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (22.5,632,0,-13.5,35,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (22.5,1136,0,-13.5,35,0,0,0,0,0,0,0)
