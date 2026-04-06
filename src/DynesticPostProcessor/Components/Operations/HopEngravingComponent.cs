@@ -155,25 +155,12 @@ namespace DynesticPostProcessor.Components.Operations
                 double cutZ     = surfaceZ - Math.Abs(depth);
 
                 // ---------------------------------------------------------------
-                // PREVIEW: V-groove -- sweep a triangle profile along the curve
-                // 45deg V-bit: base width = 2*depth at surface, tip at -depth
+                // PREVIEW: V-groove footprint (45deg V-bit: width = 2*depth)
+                // halfWidth = depth, same slot approach as HopContour
                 // ---------------------------------------------------------------
-                Vector3d vTan  = curve.TangentAt(curve.Domain.Min);
-                vTan.Unitize();
-                Vector3d vPerp = Vector3d.CrossProduct(vTan, Vector3d.ZAxis);
-                vPerp.Unitize();
-
-                Point3d vs   = curve.PointAtStart;
-                Point3d vL   = vs + vPerp * Math.Abs(depth);
-                Point3d vR   = vs - vPerp * Math.Abs(depth);
-                Point3d vTip = vs - Vector3d.ZAxis * Math.Abs(depth);
-                Polyline triPoly = new Polyline(new Point3d[] { vL, vR, vTip, vL });
-                Curve triProfile = triPoly.ToNurbsCurve();
-
-                Brep[] swept = Brep.CreateFromSweep(curve, triProfile,
-                    curve.IsClosed, tol);
-                if (swept != null && swept.Length > 0)
-                    _previewVolumes.Add(swept[0]);
+                Brep vGroove = PreviewHelper.BuildSlotPreview(curve, Math.Abs(depth), Math.Abs(depth), tol);
+                if (vGroove != null)
+                    _previewVolumes.Add(vGroove);
 
                 BoundingBox bb = curve.GetBoundingBox(true);
                 Point3d startP = curve.PointAtStart;
