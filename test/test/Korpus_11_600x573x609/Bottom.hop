@@ -1,0 +1,57 @@
+;MAKROTYP=0
+;INSTVERSION=
+;EXEVERSION=
+;BILD=
+;INFO=
+;WZGV=7023K_681
+;WZGVCONFIG=
+;MASCHINE=HOLZHER
+;NCNAME=Bottom
+;KOMMENTAR=
+;DX=0.000
+;DY=0.000
+;DZ=0
+;DIALOGDLL=Dialoge.Dll
+;DIALOGPROC=StandardFormAnzeigen
+;AUTOSCRIPTSTART=1
+;BUTTONBILD=
+;DIMENSION_UNIT=0
+VARS
+   DX := 562;*VAR*Dimension X
+   DY := 609;*VAR*Dimension Y
+   DZ := 19;*VAR*Dimension Z
+START
+Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)
+CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (18,18,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (82,18,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (18,82,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (82,82,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (480,18,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (544,18,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (480,82,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (544,82,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (18,527,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (82,527,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (18,591,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (82,591,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (480,527,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (544,527,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (480,591,0,-10,4,0,0,0,0,0,0,0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (544,591,0,-10,4,0,0,0,0,0,0,0)

@@ -221,8 +221,24 @@ namespace DynesticPostProcessor.Components.Export
             DA.SetData(1, "Exported: " + fullPath);
         }
 
-        protected override System.Drawing.Bitmap Icon => null; // real icon added when 08-02 completes
+        protected override System.Drawing.Bitmap Icon => IconHelper.Load("HopExport");
 
         public override Guid ComponentGuid => new Guid("4add04a3-cef7-437f-84f5-e4b13f9ceed7");
+
+        public override void AddedToDocument(GH_Document doc)
+        {
+            base.AddedToDocument(doc);
+            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            {
+                DynesticPostProcessor.AutoWire.Spec.FilePath(),
+                DynesticPostProcessor.AutoWire.Spec.Panel("output"),
+                DynesticPostProcessor.AutoWire.Spec.Toggle(),
+                DynesticPostProcessor.AutoWire.Spec.Float("0<2440<5000"),
+                DynesticPostProcessor.AutoWire.Spec.Float("0<1220<5000"),
+                DynesticPostProcessor.AutoWire.Spec.Float("0<18<200"),
+                DynesticPostProcessor.AutoWire.Spec.Panel(""),
+                DynesticPostProcessor.AutoWire.Spec.Skip(),
+            });
+        }
     }
 }

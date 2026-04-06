@@ -43,6 +43,9 @@ namespace DynesticPostProcessor.Components.Nesting
             pManager.AddNumberParameter("DZ", "dz",
                 "Sheet thickness in mm (bounding box Z extent). 0 for flat curves.",
                 GH_ParamAccess.item);
+            pManager.AddCurveParameter("SheetCurve", "sheetCurve",
+                "Flat rectangle at Z=0 with sheet dimensions. Wire into OpenNest Sheets input.",
+                GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -140,6 +143,7 @@ namespace DynesticPostProcessor.Components.Nesting
             DA.SetData(0, detDx);
             DA.SetData(1, detDy);
             DA.SetData(2, detDz);
+            DA.SetData(3, _sheetOutline); // flat rectangle for OpenNest Sheets
         }
 
         // ---------------------------------------------------------------
@@ -156,8 +160,17 @@ namespace DynesticPostProcessor.Components.Nesting
                 args.Display.DrawCurve(_sheetOutline, Color.FromArgb(180, 180, 180), 2);
         }
 
-        protected override System.Drawing.Bitmap Icon => null; // real icon added when 08-02 completes
+        protected override System.Drawing.Bitmap Icon => IconHelper.Load("HopSheet");
 
         public override Guid ComponentGuid => new Guid("e9729b96-017f-4fc9-8e9f-5ba628a24ca7");
+
+        public override void AddedToDocument(GH_Document doc)
+        {
+            base.AddedToDocument(doc);
+            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            {
+                DynesticPostProcessor.AutoWire.Spec.Brep(),
+            });
+        }
     }
 }

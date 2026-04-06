@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.db
+token.json
+credentials.json
+.DS_Store
+out/

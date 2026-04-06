@@ -1,0 +1,15 @@
+---
+name: dynestic-postprocessor
+version: 0.1.0
+authors:
+- DYNESTIC
+description: >
+  Grasshopper plugin for generating NC-Hops .hop files for the DYNESTIC CNC.
+  10 components: contour cutting, drilling, pocketing, slots, nesting, and export.
+url: ""
+keywords:
+- cnc
+- dynestic
+- grasshopper
+- nchops
+- postprocessor
