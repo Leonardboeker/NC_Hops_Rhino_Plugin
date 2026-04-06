@@ -179,60 +179,31 @@ namespace DynesticPostProcessor.Components.Operations
             if (Math.Abs(crvZ - surfaceZ) > 0.01)
                 previewCrv.Translate(new Vector3d(0, 0, surfaceZ - crvZ));
 
-            // Build preview: kerf ring volume = 4 Breps joined
-            // Flatten to Z=0 first -- Extrusion.Create/CreatePlanarBreps are unreliable at Z != 0
-            bool previewBuilt = false;
-            double topZ = previewCrv.PointAtStart.Z;
-            Curve flat = previewCrv.DuplicateCurve();
-            flat.Translate(new Vector3d(0, 0, -topZ));
+            // Build preview: pipe along the cutting curve with radius = toolDiameter/2
+            // This shows exactly the volume swept by the tool.
+            // Curve.CreatePipe works reliably at any Z height.
+            double angleToleranceRad = RhinoDoc.ActiveDoc != null
+                ? RhinoDoc.ActiveDoc.ModelAngleToleranceRadians : 0.01;
 
-            Curve[] outerOff = flat.Offset(Plane.WorldXY,  radius, tol, CurveOffsetCornerStyle.Sharp);
-            Curve[] innerOff = flat.Offset(Plane.WorldXY, -radius, tol, CurveOffsetCornerStyle.Sharp);
+            Brep[] pipe = Brep.CreatePipe(
+                previewCrv,
+                radius,
+                false,
+                PipeCapMode.Flat,
+                true,
+                tol,
+                angleToleranceRad);
 
-            if (outerOff != null && outerOff.Length > 0 && innerOff != null && innerOff.Length > 0)
+            if (pipe != null && pipe.Length > 0)
             {
-                Curve ot = outerOff[0];
-                Curve it = innerOff[0];
-                Vector3d down = new Vector3d(0, 0, -Math.Abs(depth));
-                Curve ob = ot.DuplicateCurve(); ob.Translate(down);
-                Curve ib = it.DuplicateCurve(); ib.Translate(down);
-
-                var parts = new List<Brep>();
-
-                // Top and bottom ring caps
-                Brep[] topCap = Brep.CreatePlanarBreps(new Curve[] { ot, it }, tol);
-                if (topCap != null) foreach (Brep b in topCap) parts.Add(b);
-
-                Brep[] botCap = Brep.CreatePlanarBreps(new Curve[] { ob, ib }, tol);
-                if (botCap != null) foreach (Brep b in botCap) parts.Add(b);
-
-                // Outer and inner side walls
-                Surface outerWall = Surface.CreateExtrusion(ot, down);
-                if (outerWall != null) parts.Add(outerWall.ToBrep());
-
-                Surface innerWall = Surface.CreateExtrusion(it, down);
-                if (innerWall != null) parts.Add(innerWall.ToBrep());
-
-                if (parts.Count >= 2)
-                {
-                    Brep[] joined = Brep.JoinBreps(parts, tol * 10);
-                    Brep result = (joined != null && joined.Length > 0) ? joined[0] : parts[0];
-                    result.Translate(new Vector3d(0, 0, topZ));
-                    _previewVolumes.Add(result);
-                    previewBuilt = true;
-                }
+                _previewVolumes.Add(pipe[0]);
             }
-
-            // Fallback: offset failed -- show extruded surface along path
-            if (!previewBuilt)
+            else
             {
-                Surface wall = Surface.CreateExtrusion(flat, new Vector3d(0, 0, -Math.Abs(depth)));
-                if (wall != null)
-                {
-                    Brep b = wall.ToBrep();
-                    b.Translate(new Vector3d(0, 0, topZ));
-                    _previewVolumes.Add(b);
-                }
+                // Fallback: extruded surface
+                Surface wall = Surface.CreateExtrusion(previewCrv,
+                    new Vector3d(0, 0, -Math.Abs(depth)));
+                if (wall != null) _previewVolumes.Add(wall.ToBrep());
             }
 
             // Dashed approach line above start point

@@ -155,17 +155,23 @@ namespace DynesticPostProcessor.Components.Operations
                 double cutZ     = surfaceZ - Math.Abs(depth);
 
                 // ---------------------------------------------------------------
-                // PREVIEW: thin extruded surface along the engraving path
+                // PREVIEW: V-groove shape -- pipe with radius = depth (45deg V-bit)
+                // At 45 degrees: surface width = 2 * depth = 2 * radius
                 // ---------------------------------------------------------------
-                Curve flat = curve.DuplicateCurve();
-                flat.Translate(new Vector3d(0, 0, -flat.PointAtStart.Z));
-                Surface wall = Surface.CreateExtrusion(flat, new Vector3d(0, 0, -Math.Abs(depth)));
-                if (wall != null)
-                {
-                    Brep b = wall.ToBrep();
-                    b.Translate(new Vector3d(0, 0, surfaceZ));
-                    _previewVolumes.Add(b);
-                }
+                double angleToleranceRad = RhinoDoc.ActiveDoc != null
+                    ? RhinoDoc.ActiveDoc.ModelAngleToleranceRadians : 0.01;
+
+                Brep[] pipe = Brep.CreatePipe(
+                    curve,
+                    Math.Abs(depth),
+                    false,
+                    PipeCapMode.Flat,
+                    true,
+                    tol,
+                    angleToleranceRad);
+
+                if (pipe != null && pipe.Length > 0)
+                    _previewVolumes.Add(pipe[0]);
 
                 BoundingBox bb = curve.GetBoundingBox(true);
                 Point3d startP = curve.PointAtStart;
