@@ -203,54 +203,58 @@ namespace DynesticPostProcessor.Components.Operations
                 }
 
                 // ---------------------------------------------------------------
-                // SP...moves...EP per piece
+                // SP...moves...EP per piece  (gap-safe: Explode + connectivity)
+                // If a PolyCurve has internal disconnections, each connected run
+                // becomes its own SP/EP block instead of emitting orphaned moves.
                 // ---------------------------------------------------------------
                 foreach (PolyCurve pc in polyCurves)
                 {
-                    Point3d sp = pc.PointAtStart;
-                    allLines.Add("SP ("
-                        + sp.X.ToString(CultureInfo.InvariantCulture) + ","
-                        + sp.Y.ToString(CultureInfo.InvariantCulture) + ","
-                        + cutZ.ToString(CultureInfo.InvariantCulture)
-                        + ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)");
+                    Curve[] flat = pc.Explode();
+                    if (flat == null || flat.Length == 0) continue;
 
-                    for (int i = 0; i < pc.SegmentCount; i++)
+                    int gStart = 0;
+                    while (gStart < flat.Length)
                     {
-                        Curve seg = pc.SegmentCurve(i);
+                        int gEnd = gStart;
+                        while (gEnd + 1 < flat.Length &&
+                               flat[gEnd].PointAtEnd.DistanceTo(
+                                   flat[gEnd + 1].PointAtStart) <= tol * 10)
+                            gEnd++;
 
-                        ArcCurve arcSeg = seg as ArcCurve;
-                        if (arcSeg != null)
-                        {
-                            Arc arc    = arcSeg.Arc;
-                            Point3d ep = arc.EndPoint;
-                            Point3d cp = arc.Center;
-                            bool isCCW = arc.Plane.Normal.Z >= 0;
-                            string cmd = isCCW ? "G03M" : "G02M";
-                            allLines.Add(cmd + " ("
-                                + ep.X.ToString(CultureInfo.InvariantCulture) + ","
-                                + ep.Y.ToString(CultureInfo.InvariantCulture) + ",0,"
-                                + cp.X.ToString(CultureInfo.InvariantCulture) + ","
-                                + cp.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,2,0)");
-                            continue;
-                        }
+                        Point3d sp = flat[gStart].PointAtStart;
+                        allLines.Add("SP ("
+                            + sp.X.ToString(CultureInfo.InvariantCulture) + ","
+                            + sp.Y.ToString(CultureInfo.InvariantCulture) + ","
+                            + cutZ.ToString(CultureInfo.InvariantCulture)
+                            + ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)");
 
-                        LineCurve lineSeg = seg as LineCurve;
-                        if (lineSeg != null)
+                        for (int i = gStart; i <= gEnd; i++)
                         {
-                            Point3d ep = lineSeg.PointAtEnd;
+                            Curve seg = flat[i];
+                            ArcCurve arcSeg = seg as ArcCurve;
+                            if (arcSeg != null)
+                            {
+                                Arc arc    = arcSeg.Arc;
+                                Point3d ep = arc.EndPoint;
+                                Point3d cp = arc.Center;
+                                bool isCCW = arc.Plane.Normal.Z >= 0;
+                                string cmd = isCCW ? "G03M" : "G02M";
+                                allLines.Add(cmd + " ("
+                                    + ep.X.ToString(CultureInfo.InvariantCulture) + ","
+                                    + ep.Y.ToString(CultureInfo.InvariantCulture) + ",0,"
+                                    + cp.X.ToString(CultureInfo.InvariantCulture) + ","
+                                    + cp.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,2,0)");
+                                continue;
+                            }
+                            Point3d fep = seg.PointAtEnd;
                             allLines.Add("G01 ("
-                                + ep.X.ToString(CultureInfo.InvariantCulture) + ","
-                                + ep.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,0,2)");
-                            continue;
+                                + fep.X.ToString(CultureInfo.InvariantCulture) + ","
+                                + fep.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,0,2)");
                         }
 
-                        Point3d fallback = seg.PointAtEnd;
-                        allLines.Add("G01 ("
-                            + fallback.X.ToString(CultureInfo.InvariantCulture) + ","
-                            + fallback.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,0,2)");
+                        allLines.Add("EP (0,_ANF,0)");
+                        gStart = gEnd + 1;
                     }
-
-                    allLines.Add("EP (0,_ANF,0)");
                 }
                 curveCount++;
             }

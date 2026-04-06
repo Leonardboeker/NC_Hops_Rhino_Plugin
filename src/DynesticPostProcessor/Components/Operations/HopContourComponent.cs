@@ -248,12 +248,12 @@ namespace DynesticPostProcessor.Components.Operations
                     for (int p = 0; p < passCount; p++)
                     {
                         double passDepth = Math.Min((p + 1) * stepdown, depth);
-                        BuildContourBlock(lines, pc, surfaceZ - passDepth);
+                        BuildContourBlock(lines, pc, surfaceZ - passDepth, tol);
                     }
                 }
                 else
                 {
-                    BuildContourBlock(lines, pc, surfaceZ - Math.Abs(plungeZ));
+                    BuildContourBlock(lines, pc, surfaceZ - Math.Abs(plungeZ), tol);
                 }
             }
 
@@ -271,53 +271,58 @@ namespace DynesticPostProcessor.Components.Operations
         }
 
         // ---------------------------------------------------------------
-        // HELPER: Build one SP...moves...EP contour block
+        // HELPER: Build SP...moves...EP block(s) for one PolyCurve.
+        // Uses Explode() to flatten nested sub-curves, then groups segments
+        // by connectivity -- each connected run becomes one SP/EP block.
         // ---------------------------------------------------------------
-        private void BuildContourBlock(List<string> lines, PolyCurve pc, double zEintauch)
+        private void BuildContourBlock(List<string> lines, PolyCurve pc,
+            double zEintauch, double tol)
         {
-            Point3d startPt = pc.PointAtStart;
-            lines.Add("SP (" + startPt.X.ToString(CultureInfo.InvariantCulture) + ","
-                + startPt.Y.ToString(CultureInfo.InvariantCulture) + ","
-                + zEintauch.ToString(CultureInfo.InvariantCulture)
-                + ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)");
+            Curve[] flat = pc.Explode();
+            if (flat == null || flat.Length == 0) return;
 
-            for (int i = 0; i < pc.SegmentCount; i++)
+            int gStart = 0;
+            while (gStart < flat.Length)
             {
-                Curve seg = pc.SegmentCurve(i);
+                int gEnd = gStart;
+                while (gEnd + 1 < flat.Length &&
+                       flat[gEnd].PointAtEnd.DistanceTo(
+                           flat[gEnd + 1].PointAtStart) <= tol * 10)
+                    gEnd++;
 
-                ArcCurve arcSeg = seg as ArcCurve;
-                if (arcSeg != null)
-                {
-                    Arc arc    = arcSeg.Arc;
-                    Point3d ep = arc.EndPoint;
-                    Point3d cp = arc.Center;
-                    bool isCCW = arc.Plane.Normal.Z >= 0;
-                    string cmd = isCCW ? "G03M" : "G02M";
-                    lines.Add(cmd + " ("
-                        + ep.X.ToString(CultureInfo.InvariantCulture) + ","
-                        + ep.Y.ToString(CultureInfo.InvariantCulture) + ",0,"
-                        + cp.X.ToString(CultureInfo.InvariantCulture) + ","
-                        + cp.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,2,0)");
-                    continue;
-                }
+                Point3d startPt = flat[gStart].PointAtStart;
+                lines.Add("SP (" + startPt.X.ToString(CultureInfo.InvariantCulture) + ","
+                    + startPt.Y.ToString(CultureInfo.InvariantCulture) + ","
+                    + zEintauch.ToString(CultureInfo.InvariantCulture)
+                    + ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)");
 
-                LineCurve lineSeg = seg as LineCurve;
-                if (lineSeg != null)
+                for (int i = gStart; i <= gEnd; i++)
                 {
-                    Point3d ep = lineSeg.PointAtEnd;
+                    Curve seg = flat[i];
+                    ArcCurve arcSeg = seg as ArcCurve;
+                    if (arcSeg != null)
+                    {
+                        Arc arc    = arcSeg.Arc;
+                        Point3d ep = arc.EndPoint;
+                        Point3d cp = arc.Center;
+                        bool isCCW = arc.Plane.Normal.Z >= 0;
+                        string cmd = isCCW ? "G03M" : "G02M";
+                        lines.Add(cmd + " ("
+                            + ep.X.ToString(CultureInfo.InvariantCulture) + ","
+                            + ep.Y.ToString(CultureInfo.InvariantCulture) + ",0,"
+                            + cp.X.ToString(CultureInfo.InvariantCulture) + ","
+                            + cp.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,2,0)");
+                        continue;
+                    }
+                    Point3d fep = seg.PointAtEnd;
                     lines.Add("G01 ("
-                        + ep.X.ToString(CultureInfo.InvariantCulture) + ","
-                        + ep.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,0,2)");
-                    continue;
+                        + fep.X.ToString(CultureInfo.InvariantCulture) + ","
+                        + fep.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,0,2)");
                 }
 
-                Point3d fallback = seg.PointAtEnd;
-                lines.Add("G01 ("
-                    + fallback.X.ToString(CultureInfo.InvariantCulture) + ","
-                    + fallback.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,0,2)");
+                lines.Add("EP (0,_ANF,0)");
+                gStart = gEnd + 1;
             }
-
-            lines.Add("EP (0,_ANF,0)");
         }
 
         // ---------------------------------------------------------------
