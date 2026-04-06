@@ -179,58 +179,49 @@ namespace DynesticPostProcessor.Components.Operations
             if (Math.Abs(crvZ - surfaceZ) > 0.01)
                 previewCrv.Translate(new Vector3d(0, 0, surfaceZ - crvZ));
 
+            // Build preview: outer solid minus inner solid = kerf ring volume
+            bool previewBuilt = false;
+
             Curve[] outerOff = previewCrv.Offset(Plane.WorldXY,  radius, tol, CurveOffsetCornerStyle.Sharp);
             Curve[] innerOff = previewCrv.Offset(Plane.WorldXY, -radius, tol, CurveOffsetCornerStyle.Sharp);
 
-            bool previewBuilt = false;
             if (outerOff != null && outerOff.Length > 0 && innerOff != null && innerOff.Length > 0)
             {
-                Curve outer = outerOff[0];
-                Curve inner = innerOff[0];
+                Extrusion outerExt = Extrusion.Create(outerOff[0], -Math.Abs(depth), true);
+                Extrusion innerExt = Extrusion.Create(innerOff[0], -Math.Abs(depth), true);
 
-                // Bottom versions of the offset curves
-                Curve outerBot = outer.DuplicateCurve();
-                outerBot.Translate(new Vector3d(0, 0, -Math.Abs(depth)));
-                Curve innerBot = inner.DuplicateCurve();
-                innerBot.Translate(new Vector3d(0, 0, -Math.Abs(depth)));
-
-                // Build 4 surfaces: top cap, bottom cap, outer wall, inner wall
-                var faces = new List<Brep>();
-
-                Brep[] topRing = Brep.CreatePlanarBreps(new Curve[] { outer, inner }, tol);
-                if (topRing != null && topRing.Length > 0) faces.Add(topRing[0]);
-
-                Brep[] botRing = Brep.CreatePlanarBreps(new Curve[] { outerBot, innerBot }, tol);
-                if (botRing != null && botRing.Length > 0) faces.Add(botRing[0]);
-
-                Surface outerWall = Surface.CreateExtrusion(outer, new Vector3d(0, 0, -Math.Abs(depth)));
-                if (outerWall != null) faces.Add(outerWall.ToBrep());
-
-                Surface innerWall = Surface.CreateExtrusion(inner, new Vector3d(0, 0, -Math.Abs(depth)));
-                if (innerWall != null) faces.Add(innerWall.ToBrep());
-
-                if (faces.Count > 0)
+                if (outerExt != null && innerExt != null)
                 {
-                    Brep[] joined = Brep.JoinBreps(faces, tol);
-                    if (joined != null && joined.Length > 0)
+                    Brep outerBrep = outerExt.ToBrep();
+                    Brep innerBrep = innerExt.ToBrep();
+
+                    if (outerBrep != null && innerBrep != null)
                     {
-                        _previewVolumes.Add(joined[0]);
-                        previewBuilt = true;
-                    }
-                    else
-                    {
-                        foreach (Brep b in faces) _previewVolumes.Add(b);
-                        previewBuilt = true;
+                        Brep[] diff = Brep.CreateBooleanDifference(
+                            new Brep[] { outerBrep },
+                            new Brep[] { innerBrep },
+                            tol);
+
+                        if (diff != null && diff.Length > 0)
+                        {
+                            _previewVolumes.Add(diff[0]);
+                            previewBuilt = true;
+                        }
+                        else
+                        {
+                            // Boolean failed -- show outer solid as fallback
+                            _previewVolumes.Add(outerBrep);
+                            previewBuilt = true;
+                        }
                     }
                 }
             }
 
-            // Fallback: open curves or failed offset -- show extruded surface along path
+            // Fallback: offset failed -- extrude the path itself
             if (!previewBuilt)
             {
-                Surface fallback = Surface.CreateExtrusion(previewCrv,
-                    new Vector3d(0, 0, -Math.Abs(depth)));
-                if (fallback != null) _previewVolumes.Add(fallback.ToBrep());
+                Extrusion ext = Extrusion.Create(previewCrv, -Math.Abs(depth), false);
+                if (ext != null) _previewVolumes.Add(ext.ToBrep());
             }
 
             // Dashed approach line above start point
