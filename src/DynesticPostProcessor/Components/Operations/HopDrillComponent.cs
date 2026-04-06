@@ -61,10 +61,6 @@ namespace DynesticPostProcessor.Components.Operations
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            // Hardcoded tool params -- handled at machine level
-            string toolType   = "WZB";
-            double feedFactor = 1.0;
-
             // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
             _previewVolumes.Clear();
             _approachLines.Clear();
@@ -144,10 +140,7 @@ namespace DynesticPostProcessor.Components.Operations
             // 4. BUILD TOOL CALL -- first line of output
             // ---------------------------------------------------------------
             List<string> lines = new List<string>();
-            string toolCall = toolType + " (" + toolNr.ToString()
-                + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
-                + ",_VA,_SD,0,'')";
-            lines.Add(toolCall);
+            lines.Add(NcDrill.ToolCall(toolNr));
 
             // ---------------------------------------------------------------
             // 5. MULTI-PASS OR SINGLE-PASS DRILLING
@@ -162,13 +155,7 @@ namespace DynesticPostProcessor.Components.Operations
                     {
                         double passDepth = Math.Min((p + 1) * stepdown, depth);
                         double cutZ = surfaceZ - passDepth;
-                        lines.Add("Bohrung ("
-                            + pt.X.ToString(CultureInfo.InvariantCulture) + ","
-                            + pt.Y.ToString(CultureInfo.InvariantCulture) + ","
-                            + surfaceZ.ToString(CultureInfo.InvariantCulture) + ","
-                            + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                            + diameter.ToString(CultureInfo.InvariantCulture)
-                            + ",0,0,0,0,0,0,0)");
+                        lines.Add(NcDrill.BohrungLine(pt.X, pt.Y, surfaceZ, cutZ, diameter));
                     }
                 }
             }
@@ -178,13 +165,7 @@ namespace DynesticPostProcessor.Components.Operations
                 for (int i = 0; i < points.Count; i++)
                 {
                     Point3d pt = points[i];
-                    lines.Add("Bohrung ("
-                        + pt.X.ToString(CultureInfo.InvariantCulture) + ","
-                        + pt.Y.ToString(CultureInfo.InvariantCulture) + ","
-                        + surfaceZ.ToString(CultureInfo.InvariantCulture) + ","
-                        + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                        + diameter.ToString(CultureInfo.InvariantCulture)
-                        + ",0,0,0,0,0,0,0)");
+                    lines.Add(NcDrill.BohrungLine(pt.X, pt.Y, surfaceZ, cutZ, diameter));
                 }
             }
 
