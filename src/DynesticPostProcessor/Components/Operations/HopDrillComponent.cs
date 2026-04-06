@@ -204,34 +204,17 @@ namespace DynesticPostProcessor.Components.Operations
         // ---------------------------------------------------------------
         public override BoundingBox ClippingBox
         {
-            get
-            {
-                BoundingBox bb = BoundingBox.Empty;
-                foreach (Brep b in _previewVolumes) bb.Union(b.GetBoundingBox(true));
-                foreach (Line l in _approachLines) { bb.Union(l.From); bb.Union(l.To); }
-                return bb;
-            }
+            get { return PreviewHelper.GetClippingBox(_previewVolumes, _approachLines); }
         }
 
         public override void DrawViewportMeshes(IGH_PreviewArgs args)
         {
-            if (_previewVolumes.Count > 0)
-            {
-                Rhino.Display.DisplayMaterial mat = new Rhino.Display.DisplayMaterial(_drawColor);
-                mat.Transparency = 0.55;
-                foreach (Brep b in _previewVolumes)
-                    args.Display.DrawBrepShaded(b, mat);
-            }
+            PreviewHelper.DrawMeshes(args, _previewVolumes, _drawColor);
         }
 
         public override void DrawViewportWires(IGH_PreviewArgs args)
         {
-            foreach (Brep b in _previewVolumes)
-                args.Display.DrawBrepWires(b, _drawColor, 1);
-            foreach (Line l in _approachLines)
-                args.Display.DrawPatternedLine(
-                    l.From, l.To,
-                    Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
+            PreviewHelper.DrawWires(args, _previewVolumes, _approachLines, _drawColor);
         }
 
         public override void AddedToDocument(GH_Document doc)
