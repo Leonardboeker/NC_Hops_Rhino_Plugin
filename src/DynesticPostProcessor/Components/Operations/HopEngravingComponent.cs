@@ -155,12 +155,16 @@ namespace DynesticPostProcessor.Components.Operations
                 double cutZ     = surfaceZ - Math.Abs(depth);
 
                 // ---------------------------------------------------------------
-                // PREVIEW: V-groove footprint (45deg V-bit: width = 2*depth)
-                // halfWidth = depth, same slot approach as HopContour
+                // PREVIEW: pipe along engraving path
+                // radius = depth (45deg V-bit footprint at surface = 2*depth wide)
+                // Pipe is reliable on all curve types including complex letter shapes
                 // ---------------------------------------------------------------
-                Brep vGroove = PreviewHelper.BuildSlotPreview(curve, Math.Abs(depth), Math.Abs(depth), tol);
-                if (vGroove != null)
-                    _previewVolumes.Add(vGroove);
+                double angleTol = RhinoDoc.ActiveDoc != null
+                    ? RhinoDoc.ActiveDoc.ModelAngleToleranceRadians : 0.01;
+                Brep[] engPipe = Brep.CreatePipe(
+                    curve, Math.Abs(depth), false, PipeCapMode.Flat, true, tol, angleTol);
+                if (engPipe != null && engPipe.Length > 0)
+                    _previewVolumes.Add(engPipe[0]);
 
                 BoundingBox bb = curve.GetBoundingBox(true);
                 Point3d startP = curve.PointAtStart;
