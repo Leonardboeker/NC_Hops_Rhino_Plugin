@@ -179,28 +179,27 @@ namespace DynesticPostProcessor.Components.Operations
             if (Math.Abs(crvZ - surfaceZ) > 0.01)
                 previewCrv.Translate(new Vector3d(0, 0, surfaceZ - crvZ));
 
-            // Build preview: pipe along the cutting curve with radius = toolDiameter/2
-            // This shows exactly the volume swept by the tool.
-            // Curve.CreatePipe works reliably at any Z height.
-            double angleToleranceRad = RhinoDoc.ActiveDoc != null
-                ? RhinoDoc.ActiveDoc.ModelAngleToleranceRadians : 0.01;
+            // Build preview: sweep a rectangular cross-section (toolDiameter wide, depth tall)
+            // along the cutting curve -- shows exactly the volume the tool removes.
+            Vector3d railTan  = previewCrv.TangentAt(previewCrv.Domain.Min);
+            railTan.Unitize();
+            Vector3d railPerp = Vector3d.CrossProduct(railTan, Vector3d.ZAxis);
+            railPerp.Unitize();
 
-            Brep[] pipe = Brep.CreatePipe(
-                previewCrv,
-                radius,
-                false,
-                PipeCapMode.Flat,
-                true,
-                tol,
-                angleToleranceRad);
+            Point3d rs = previewCrv.PointAtStart;
+            Point3d r0 = rs + railPerp * radius;
+            Point3d r1 = rs - railPerp * radius;
+            Point3d r2 = r1 - Vector3d.ZAxis * Math.Abs(depth);
+            Point3d r3 = r0 - Vector3d.ZAxis * Math.Abs(depth);
+            Polyline rectPoly = new Polyline(new Point3d[] { r0, r1, r2, r3, r0 });
+            Curve rectProfile = rectPoly.ToNurbsCurve();
 
-            if (pipe != null && pipe.Length > 0)
-            {
-                _previewVolumes.Add(pipe[0]);
-            }
+            Brep[] swept = Brep.CreateFromSweep(previewCrv, rectProfile,
+                previewCrv.IsClosed, tol);
+            if (swept != null && swept.Length > 0)
+                _previewVolumes.Add(swept[0]);
             else
             {
-                // Fallback: extruded surface
                 Surface wall = Surface.CreateExtrusion(previewCrv,
                     new Vector3d(0, 0, -Math.Abs(depth)));
                 if (wall != null) _previewVolumes.Add(wall.ToBrep());

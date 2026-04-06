@@ -155,23 +155,25 @@ namespace DynesticPostProcessor.Components.Operations
                 double cutZ     = surfaceZ - Math.Abs(depth);
 
                 // ---------------------------------------------------------------
-                // PREVIEW: V-groove shape -- pipe with radius = depth (45deg V-bit)
-                // At 45 degrees: surface width = 2 * depth = 2 * radius
+                // PREVIEW: V-groove -- sweep a triangle profile along the curve
+                // 45deg V-bit: base width = 2*depth at surface, tip at -depth
                 // ---------------------------------------------------------------
-                double angleToleranceRad = RhinoDoc.ActiveDoc != null
-                    ? RhinoDoc.ActiveDoc.ModelAngleToleranceRadians : 0.01;
+                Vector3d vTan  = curve.TangentAt(curve.Domain.Min);
+                vTan.Unitize();
+                Vector3d vPerp = Vector3d.CrossProduct(vTan, Vector3d.ZAxis);
+                vPerp.Unitize();
 
-                Brep[] pipe = Brep.CreatePipe(
-                    curve,
-                    Math.Abs(depth),
-                    false,
-                    PipeCapMode.Flat,
-                    true,
-                    tol,
-                    angleToleranceRad);
+                Point3d vs   = curve.PointAtStart;
+                Point3d vL   = vs + vPerp * Math.Abs(depth);
+                Point3d vR   = vs - vPerp * Math.Abs(depth);
+                Point3d vTip = vs - Vector3d.ZAxis * Math.Abs(depth);
+                Polyline triPoly = new Polyline(new Point3d[] { vL, vR, vTip, vL });
+                Curve triProfile = triPoly.ToNurbsCurve();
 
-                if (pipe != null && pipe.Length > 0)
-                    _previewVolumes.Add(pipe[0]);
+                Brep[] swept = Brep.CreateFromSweep(curve, triProfile,
+                    curve.IsClosed, tol);
+                if (swept != null && swept.Length > 0)
+                    _previewVolumes.Add(swept[0]);
 
                 BoundingBox bb = curve.GetBoundingBox(true);
                 Point3d startP = curve.PointAtStart;
