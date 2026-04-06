@@ -168,49 +168,45 @@ namespace DynesticPostProcessor.Components.Operations
 
             // ---------------------------------------------------------------
             // 6. PREVIEW VOLUME
+            // Translate cuttingCurve to surface Z, offset by tool radius to get
+            // inner+outer walls, create planar ring, extrude downward by depth.
+            // Fallback for open curves: extruded surface along the path.
             // ---------------------------------------------------------------
-            double surfaceZ = curve.GetBoundingBox(true).Min.Z;
-            double cutZ     = surfaceZ - Math.Abs(plungeZ > 0 ? plungeZ : depth);
+            double surfaceZ = curve.GetBoundingBox(true).Max.Z;
 
-            Curve baseCrv = curve.DuplicateCurve();
-            baseCrv.Translate(new Vector3d(0, 0, cutZ - baseCrv.PointAtStart.Z));
+            Curve previewCrv = cuttingCurve.DuplicateCurve();
+            double crvZ = previewCrv.PointAtStart.Z;
+            if (Math.Abs(crvZ - surfaceZ) > 0.01)
+                previewCrv.Translate(new Vector3d(0, 0, surfaceZ - crvZ));
 
-            Curve cuttingBase = cuttingCurve.DuplicateCurve();
-            cuttingBase.Translate(new Vector3d(0, 0, cutZ - cuttingBase.PointAtStart.Z));
+            Curve[] outerOff = previewCrv.Offset(Plane.WorldXY,  radius, tol, CurveOffsetCornerStyle.Sharp);
+            Curve[] innerOff = previewCrv.Offset(Plane.WorldXY, -radius, tol, CurveOffsetCornerStyle.Sharp);
 
-            Curve innerBoundary;
-            Curve outerBoundary;
-
-            if (side == 0)
+            bool previewBuilt = false;
+            if (outerOff != null && outerOff.Length > 0 && innerOff != null && innerOff.Length > 0)
             {
-                Curve[] outerArr = baseCrv.Offset(Plane.WorldXY,  radius, tol, CurveOffsetCornerStyle.Sharp);
-                Curve[] innerArr = baseCrv.Offset(Plane.WorldXY, -radius, tol, CurveOffsetCornerStyle.Sharp);
-                outerBoundary = (outerArr != null && outerArr.Length > 0) ? outerArr[0] : null;
-                innerBoundary = (innerArr != null && innerArr.Length > 0) ? innerArr[0] : null;
-            }
-            else
-            {
-                outerBoundary = baseCrv;
-                innerBoundary = cuttingBase;
-            }
-
-            if (outerBoundary != null && innerBoundary != null)
-            {
-                Brep[] planar = Brep.CreatePlanarBreps(
-                    new Curve[] { outerBoundary, innerBoundary }, tol);
-                if (planar != null && planar.Length > 0)
+                Brep[] ring = Brep.CreatePlanarBreps(new Curve[] { outerOff[0], innerOff[0] }, tol);
+                if (ring != null && ring.Length > 0)
                 {
-                    Vector3d extDir  = new Vector3d(0, 0, -Math.Abs(depth));
-                    LineCurve extPath = new LineCurve(new Line(Point3d.Origin, Point3d.Origin + extDir));
-                    Brep vol = planar[0].Faces[0].CreateExtrusion(extPath, true);
-                    if (vol != null) _previewVolumes.Add(vol);
+                    LineCurve extPath = new LineCurve(
+                        new Line(Point3d.Origin, new Point3d(0, 0, -Math.Abs(depth))));
+                    Brep vol = ring[0].Faces[0].CreateExtrusion(extPath, true);
+                    if (vol != null) { _previewVolumes.Add(vol); previewBuilt = true; }
                 }
             }
 
-            // Dashed approach line
+            // Fallback: open curves or failed offset -- show extruded surface along path
+            if (!previewBuilt)
+            {
+                Surface fallback = Surface.CreateExtrusion(previewCrv,
+                    new Vector3d(0, 0, -Math.Abs(depth)));
+                if (fallback != null) _previewVolumes.Add(fallback.ToBrep());
+            }
+
+            // Dashed approach line above start point
             BoundingBox curveBB = curve.GetBoundingBox(true);
             double safeZ   = curveBB.Max.Z + 20.0;
-            Point3d startP = cuttingBase.PointAtStart;
+            Point3d startP = previewCrv.PointAtStart;
             _approachLines.Add(new Line(new Point3d(startP.X, startP.Y, safeZ), startP));
 
             // ---------------------------------------------------------------
@@ -339,7 +335,10 @@ namespace DynesticPostProcessor.Components.Operations
                 DynesticPostProcessor.AutoWire.Spec.Float("0.001<0.1<1"),
                 DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
                 DynesticPostProcessor.AutoWire.Spec.Float("1<8<50"),
-                DynesticPostProcessor.AutoWire.Spec.Int("-1<0<1"),
+                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                    ("Left",   "-1"),
+                    ("Center", "0"),
+                    ("Right",  "1")),
                 DynesticPostProcessor.AutoWire.Spec.Float("0<0<50"),
                 DynesticPostProcessor.AutoWire.Spec.Skip(),
             });
