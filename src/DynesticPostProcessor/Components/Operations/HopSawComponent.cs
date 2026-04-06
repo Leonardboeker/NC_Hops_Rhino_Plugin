@@ -16,9 +16,9 @@ namespace DynesticPostProcessor.Components.Operations
         // PREVIEW FIELDS
         // ---------------------------------------------------------------
         private static readonly Color _defaultColor = Color.DeepSkyBlue;
-        private Brep  _previewVolume = null;
-        private Line  _approachLine  = Line.Unset;
-        private Color _drawColor     = Color.DeepSkyBlue;
+        private List<Brep> _previewVolumes = new List<Brep>();
+        private List<Line> _approachLines  = new List<Line>();
+        private Color      _drawColor      = Color.DeepSkyBlue;
 
         public HopSawComponent() : base(
             "HopSaw", "HopSaw",
@@ -38,21 +38,22 @@ namespace DynesticPostProcessor.Components.Operations
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            // 0 -- travel path
+            // 0 -- travel path (LIST -- one entry per cut)
             pManager.AddCurveParameter("DirLine", "dirLine",
-                "A line on the plate defining the XY travel path of the saw. " +
-                "The midpoint is used as the cut origin. " +
-                "Draw this line in Rhino at the position and direction where the cut should run.",
-                GH_ParamAccess.item);
+                "One or more lines defining the XY travel paths of the saw cuts. " +
+                "Each line becomes one cut. The midpoint of each line is the cut origin. " +
+                "If multiple lines are connected, all cuts share the same BladeAngle/SawKerf/Depth/Side/Extend settings " +
+                "(or supply a matching list for BladeAngle).",
+                GH_ParamAccess.list);
 
-            // 1 -- blade tilt angle
+            // 1 -- blade tilt angle (LIST -- one per cut, or single value applied to all)
             pManager.AddNumberParameter("BladeAngle", "bladeAngle",
                 "Physical tilt angle of the saw blade in degrees.\n" +
-                "  0  = blade vertical (straight cut, no miter)\n" +
-                " 45  = blade tilted 45 deg (Gehrungsschnitt through the material thickness)\n" +
+                "  0   = blade vertical (straight cut, no miter)\n" +
+                " 45   = blade tilted 45 deg (Gehrungsschnitt through material thickness)\n" +
                 " 22.5 = 22.5 deg miter\n" +
-                "Range: -90 to +90. Default: 0.",
-                GH_ParamAccess.item, 0.0);
+                "Range: -90 to +90. Supply a single value (applied to all cuts) or a list matching DirLine count.",
+                GH_ParamAccess.list);
             pManager[1].Optional = true;
 
             // 2 -- cut length
@@ -114,8 +115,8 @@ namespace DynesticPostProcessor.Components.Operations
         public override void ClearData()
         {
             base.ClearData();
-            _previewVolume = null;
-            _approachLine  = Line.Unset;
+            _previewVolumes.Clear();
+            _approachLines.Clear();
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -123,24 +124,24 @@ namespace DynesticPostProcessor.Components.Operations
             string toolType   = "WZS";
             double feedFactor = 0.3;
 
-            _previewVolume = null;
-            _approachLine  = Line.Unset;
+            _previewVolumes.Clear();
+            _approachLines.Clear();
 
             // ---------------------------------------------------------------
             // GET INPUTS
             // ---------------------------------------------------------------
-            Curve  dirCurve   = null;
-            double bladeAngle = 0.0;
-            double length     = 600.0;
-            double sawKerf    = 3.2;
-            double depth      = 19.0;
-            int    side       = 0;
-            double extend     = 0.0;
-            int    toolNr     = 0;
-            Color  colour     = Color.Empty;
+            List<Curve>  dirCurves   = new List<Curve>();
+            List<double> bladeAngles = new List<double>();
+            double length  = 600.0;
+            double sawKerf = 3.2;
+            double depth   = 19.0;
+            int    side    = 0;
+            double extend  = 0.0;
+            int    toolNr  = 0;
+            Color  colour  = Color.Empty;
 
-            if (!DA.GetData(0, ref dirCurve)) return;
-            DA.GetData(1, ref bladeAngle);
+            if (!DA.GetDataList(0, dirCurves)) return;
+            DA.GetDataList(1, bladeAngles);
             DA.GetData(2, ref length);
             DA.GetData(3, ref sawKerf);
             DA.GetData(4, ref depth);
@@ -154,9 +155,9 @@ namespace DynesticPostProcessor.Components.Operations
             // ---------------------------------------------------------------
             // GUARDS
             // ---------------------------------------------------------------
-            if (dirCurve == null)
+            if (dirCurves.Count == 0)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "No direction line connected");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "No direction lines connected");
                 DA.SetDataList(0, new List<string>());
                 return;
             }
@@ -181,124 +182,120 @@ namespace DynesticPostProcessor.Components.Operations
             if (extend <  0) extend =  0.0;
             if (side   >  1) side   =  1;
             if (side   < -1) side   = -1;
-            bladeAngle = Math.Max(-90.0, Math.Min(90.0, bladeAngle));
+
+            // If no blade angles supplied, default all to 0
+            if (bladeAngles.Count == 0) bladeAngles.Add(0.0);
+
+            double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
 
             // ---------------------------------------------------------------
-            // EXTRACT TRAVEL DIRECTION from the direction line
+            // PER-CUT LOOP
             // ---------------------------------------------------------------
-            Point3d lineStart = dirCurve.PointAtStart;
-            Point3d lineEnd   = dirCurve.PointAtEnd;
-
-            Vector3d travelDir = lineEnd - lineStart;
-            if (travelDir.Length < 0.001)
-            {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Direction line has zero length");
-                DA.SetDataList(0, new List<string>());
-                return;
-            }
-            travelDir.Unitize();
-
-            // Origin = midpoint of the direction line
-            Point3d origin = new Point3d(
-                (lineStart.X + lineEnd.X) / 2.0,
-                (lineStart.Y + lineEnd.Y) / 2.0,
-                (lineStart.Z + lineEnd.Z) / 2.0);
-
-            // Perpendicular to travel direction in XY (for side offset)
-            Vector3d travelPerp = Vector3d.CrossProduct(travelDir, Vector3d.ZAxis);
-            travelPerp.Unitize();
-
-            // ---------------------------------------------------------------
-            // SIDE OFFSET
-            // ---------------------------------------------------------------
-            double sideShift = side * (sawKerf / 2.0);
-            Vector3d sideVec = travelPerp * sideShift;
-
-            // Cut endpoints centered on origin
-            double halfLen = length / 2.0;
-            Point3d p1 = origin - travelDir * halfLen + sideVec;
-            Point3d p2 = origin + travelDir * halfLen + sideVec;
-
-            // Extend both ends
-            Point3d cutP1 = extend > 0.001 ? p1 - travelDir * extend : p1;
-            Point3d cutP2 = extend > 0.001 ? p2 + travelDir * extend : p2;
-
-            // ---------------------------------------------------------------
-            // PREVIEW VOLUME
-            // When bladeAngle > 0 the blade is tilted, so the kerf footprint
-            // at the SURFACE is wider than sawKerf:
-            //   surfaceKerf = sawKerf + depth * tan(bladeAngle)
-            // We visualise this as a parallelogram extruded downward, showing
-            // how the tilted blade cuts through the material.
-            // ---------------------------------------------------------------
-            double tol    = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
-            double topZ   = origin.Z;
-            double botZ   = topZ - Math.Abs(depth);
-            double tiltRad = Math.Abs(bladeAngle) * Math.PI / 180.0;
-            double tiltOffset = Math.Abs(depth) * Math.Tan(tiltRad); // horizontal offset of bottom edge vs top
-
-            // Top face corners (at surface)
-            double halfTop = sawKerf / 2.0;
-            Point3d aTop = new Point3d(cutP1.X, cutP1.Y, topZ);
-            Point3d bTop = new Point3d(cutP2.X, cutP2.Y, topZ);
-            Point3d t0 = aTop + travelPerp * halfTop;
-            Point3d t1 = bTop + travelPerp * halfTop;
-            Point3d t2 = bTop - travelPerp * halfTop;
-            Point3d t3 = aTop - travelPerp * halfTop;
-
-            // Bottom face corners (offset by tilt, perpendicular to travel dir)
-            // Positive bladeAngle tilts toward +perp direction
-            double tiltSign = bladeAngle >= 0 ? 1.0 : -1.0;
-            Point3d b0 = new Point3d(t0.X + travelPerp.X * tiltOffset * tiltSign, t0.Y + travelPerp.Y * tiltOffset * tiltSign, botZ);
-            Point3d b1 = new Point3d(t1.X + travelPerp.X * tiltOffset * tiltSign, t1.Y + travelPerp.Y * tiltOffset * tiltSign, botZ);
-            Point3d b2 = new Point3d(t2.X + travelPerp.X * tiltOffset * tiltSign, t2.Y + travelPerp.Y * tiltOffset * tiltSign, botZ);
-            Point3d b3 = new Point3d(t3.X + travelPerp.X * tiltOffset * tiltSign, t3.Y + travelPerp.Y * tiltOffset * tiltSign, botZ);
-
-            // Build brep from 6 faces (top, bottom, 4 sides)
-            Brep box = BuildTiltedBox(t0, t1, t2, t3, b0, b1, b2, b3, tol);
-            if (box != null) _previewVolume = box;
-
-            _approachLine = new Line(new Point3d(aTop.X, aTop.Y, topZ + 20.0), aTop);
-
-            // ---------------------------------------------------------------
-            // NC OUTPUT
-            // bladeAngle is passed to LAGE parameter of _nuten_frei_v5.
-            // LAGE controls the blade orientation/tilt in the HOLZHER CAMPUS controller.
-            // ---------------------------------------------------------------
-            double cutZ = topZ - Math.Abs(depth);
-
-            List<string> lines = new List<string>();
-            lines.Add(toolType + " (" + toolNr.ToString()
-                + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
-                + ",_VA,_SD,0,'')");
-
-            lines.Add("CALL _nuten_frei_v5(VAL "
-                + "X1:=" + cutP1.X.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y1:=" + cutP1.Y.ToString(CultureInfo.InvariantCulture) + ","
-                + "X2:=" + cutP2.X.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y2:=" + cutP2.Y.ToString(CultureInfo.InvariantCulture) + ","
-                + "NB:=" + sawKerf.ToString(CultureInfo.InvariantCulture) + ","
-                + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                + "LAGE:=" + bladeAngle.ToString(CultureInfo.InvariantCulture)
-                + ",RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)");
-
-            // ---------------------------------------------------------------
-            // REMARK
-            // ---------------------------------------------------------------
+            List<string> allLines = new List<string>();
             string sideLabel = side == 0 ? "Center" : (side < 0 ? "Left" : "Right");
-            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                "Saw: bladeAngle=" + bladeAngle.ToString("F1", CultureInfo.InvariantCulture) + "deg"
-                + "  side=" + sideLabel
-                + "  length=" + length.ToString("F1", CultureInfo.InvariantCulture)
-                + "  kerf=" + sawKerf.ToString(CultureInfo.InvariantCulture)
-                + "  depth=" + depth.ToString(CultureInfo.InvariantCulture)
-                + (extend > 0 ? "  extend=" + extend.ToString(CultureInfo.InvariantCulture) : "")
-                + "  P1=(" + cutP1.X.ToString("F1", CultureInfo.InvariantCulture)
-                + "," + cutP1.Y.ToString("F1", CultureInfo.InvariantCulture) + ")"
-                + "  P2=(" + cutP2.X.ToString("F1", CultureInfo.InvariantCulture)
-                + "," + cutP2.Y.ToString("F1", CultureInfo.InvariantCulture) + ")");
 
-            DA.SetDataList(0, lines);
+            for (int i = 0; i < dirCurves.Count; i++)
+            {
+                Curve  dirCurve   = dirCurves[i];
+                double bladeAngle = bladeAngles[i % bladeAngles.Count];
+
+                if (dirCurve == null)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Null curve at index " + i + " — skipped");
+                    continue;
+                }
+
+                // ---------------------------------------------------------------
+                // EXTRACT TRAVEL DIRECTION
+                // ---------------------------------------------------------------
+                Point3d lineStart = dirCurve.PointAtStart;
+                Point3d lineEnd   = dirCurve.PointAtEnd;
+
+                Vector3d travelDir = lineEnd - lineStart;
+                if (travelDir.Length < 0.001)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Zero-length curve at index " + i + " — skipped");
+                    continue;
+                }
+                travelDir.Unitize();
+
+                Point3d origin = new Point3d(
+                    (lineStart.X + lineEnd.X) / 2.0,
+                    (lineStart.Y + lineEnd.Y) / 2.0,
+                    (lineStart.Z + lineEnd.Z) / 2.0);
+
+                Vector3d travelPerp = Vector3d.CrossProduct(travelDir, Vector3d.ZAxis);
+                travelPerp.Unitize();
+
+                // ---------------------------------------------------------------
+                // SIDE OFFSET
+                // ---------------------------------------------------------------
+                double   sideShift = side * (sawKerf / 2.0);
+                Vector3d sideVec   = travelPerp * sideShift;
+
+                double  halfLen = length / 2.0;
+                Point3d p1 = origin - travelDir * halfLen + sideVec;
+                Point3d p2 = origin + travelDir * halfLen + sideVec;
+
+                Point3d cutP1 = extend > 0.001 ? p1 - travelDir * extend : p1;
+                Point3d cutP2 = extend > 0.001 ? p2 + travelDir * extend : p2;
+
+                // ---------------------------------------------------------------
+                // PREVIEW VOLUME
+                // ---------------------------------------------------------------
+                double topZ       = origin.Z;
+                double botZ       = topZ - Math.Abs(depth);
+                double tiltRad    = Math.Abs(bladeAngle) * Math.PI / 180.0;
+                double tiltOffset = Math.Abs(depth) * Math.Tan(tiltRad);
+                double tiltSign   = bladeAngle >= 0 ? 1.0 : -1.0;
+                double halfTop    = sawKerf / 2.0;
+
+                Point3d aTop = new Point3d(cutP1.X, cutP1.Y, topZ);
+                Point3d bTop = new Point3d(cutP2.X, cutP2.Y, topZ);
+                Point3d t0 = aTop + travelPerp * halfTop;
+                Point3d t1 = bTop + travelPerp * halfTop;
+                Point3d t2 = bTop - travelPerp * halfTop;
+                Point3d t3 = aTop - travelPerp * halfTop;
+
+                Point3d b0 = new Point3d(t0.X + travelPerp.X * tiltOffset * tiltSign, t0.Y + travelPerp.Y * tiltOffset * tiltSign, botZ);
+                Point3d b1 = new Point3d(t1.X + travelPerp.X * tiltOffset * tiltSign, t1.Y + travelPerp.Y * tiltOffset * tiltSign, botZ);
+                Point3d b2 = new Point3d(t2.X + travelPerp.X * tiltOffset * tiltSign, t2.Y + travelPerp.Y * tiltOffset * tiltSign, botZ);
+                Point3d b3 = new Point3d(t3.X + travelPerp.X * tiltOffset * tiltSign, t3.Y + travelPerp.Y * tiltOffset * tiltSign, botZ);
+
+                Brep box = BuildTiltedBox(t0, t1, t2, t3, b0, b1, b2, b3, tol);
+                if (box != null) _previewVolumes.Add(box);
+
+                _approachLines.Add(new Line(new Point3d(aTop.X, aTop.Y, topZ + 20.0), aTop));
+
+                // ---------------------------------------------------------------
+                // NC OUTPUT
+                // ---------------------------------------------------------------
+                double cutZ = topZ - Math.Abs(depth);
+
+                allLines.Add(toolType + " (" + toolNr.ToString()
+                    + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
+                    + ",_VA,_SD,0,'')");
+
+                allLines.Add("CALL _nuten_frei_v5(VAL "
+                    + "X1:=" + cutP1.X.ToString(CultureInfo.InvariantCulture) + ","
+                    + "Y1:=" + cutP1.Y.ToString(CultureInfo.InvariantCulture) + ","
+                    + "X2:=" + cutP2.X.ToString(CultureInfo.InvariantCulture) + ","
+                    + "Y2:=" + cutP2.Y.ToString(CultureInfo.InvariantCulture) + ","
+                    + "NB:=" + sawKerf.ToString(CultureInfo.InvariantCulture) + ","
+                    + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
+                    + "LAGE:=" + bladeAngle.ToString(CultureInfo.InvariantCulture)
+                    + ",RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)");
+
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
+                    "[" + i + "] bladeAngle=" + bladeAngle.ToString("F1", CultureInfo.InvariantCulture) + "deg"
+                    + "  side=" + sideLabel
+                    + "  P1=(" + cutP1.X.ToString("F1", CultureInfo.InvariantCulture)
+                    + "," + cutP1.Y.ToString("F1", CultureInfo.InvariantCulture) + ")"
+                    + "  P2=(" + cutP2.X.ToString("F1", CultureInfo.InvariantCulture)
+                    + "," + cutP2.Y.ToString("F1", CultureInfo.InvariantCulture) + ")");
+            }
+
+            DA.SetDataList(0, allLines);
         }
 
         // ---------------------------------------------------------------
@@ -350,30 +347,31 @@ namespace DynesticPostProcessor.Components.Operations
             get
             {
                 BoundingBox bb = BoundingBox.Empty;
-                if (_previewVolume != null) bb.Union(_previewVolume.GetBoundingBox(true));
-                if (_approachLine.IsValid) { bb.Union(_approachLine.From); bb.Union(_approachLine.To); }
+                foreach (Brep b in _previewVolumes)
+                    if (b != null) bb.Union(b.GetBoundingBox(true));
+                foreach (Line l in _approachLines)
+                    if (l.IsValid) { bb.Union(l.From); bb.Union(l.To); }
                 return bb;
             }
         }
 
         public override void DrawViewportMeshes(IGH_PreviewArgs args)
         {
-            if (_previewVolume != null)
-            {
-                Rhino.Display.DisplayMaterial mat = new Rhino.Display.DisplayMaterial(_drawColor);
-                mat.Transparency = 0.45;
-                args.Display.DrawBrepShaded(_previewVolume, mat);
-            }
+            Rhino.Display.DisplayMaterial mat = new Rhino.Display.DisplayMaterial(_drawColor);
+            mat.Transparency = 0.45;
+            foreach (Brep b in _previewVolumes)
+                if (b != null) args.Display.DrawBrepShaded(b, mat);
         }
 
         public override void DrawViewportWires(IGH_PreviewArgs args)
         {
-            if (_previewVolume != null)
-                args.Display.DrawBrepWires(_previewVolume, _drawColor, 1);
-            if (_approachLine.IsValid)
-                args.Display.DrawPatternedLine(
-                    _approachLine.From, _approachLine.To,
-                    Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
+            foreach (Brep b in _previewVolumes)
+                if (b != null) args.Display.DrawBrepWires(b, _drawColor, 1);
+            foreach (Line l in _approachLines)
+                if (l.IsValid)
+                    args.Display.DrawPatternedLine(
+                        l.From, l.To,
+                        Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
         }
 
         public override void AddedToDocument(GH_Document doc)
