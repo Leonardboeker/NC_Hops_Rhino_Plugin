@@ -17,7 +17,7 @@ namespace DynesticPostProcessor.Components.Operations
         // ---------------------------------------------------------------
         private static readonly Color _defaultColor = Color.Red;
         private List<Brep> _previewVolumes = new List<Brep>();
-        private Line       _approachLine   = Line.Unset;
+        private List<Line> _approachLines  = new List<Line>();
         private Color      _drawColor      = Color.Red;
 
         public HopDrillComponent() : base(
@@ -56,7 +56,7 @@ namespace DynesticPostProcessor.Components.Operations
         {
             base.ClearData();
             _previewVolumes.Clear();
-            _approachLine = Line.Unset;
+            _approachLines.Clear();
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -67,7 +67,7 @@ namespace DynesticPostProcessor.Components.Operations
 
             // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
             _previewVolumes.Clear();
-            _approachLine = Line.Unset;
+            _approachLines.Clear();
 
             // ---------------------------------------------------------------
             // GET INPUTS
@@ -137,7 +137,7 @@ namespace DynesticPostProcessor.Components.Operations
             {
                 Point3d firstPt = new Point3d(points[0].X, points[0].Y, surfaceZ);
                 double safeZ = surfaceZ + 20.0;
-                _approachLine = new Line(new Point3d(firstPt.X, firstPt.Y, safeZ), firstPt);
+                _approachLines.Add(new Line(new Point3d(firstPt.X, firstPt.Y, safeZ), firstPt));
             }
 
             // ---------------------------------------------------------------
@@ -155,13 +155,13 @@ namespace DynesticPostProcessor.Components.Operations
             if (stepdown > 0)
             {
                 int passCount = (int)Math.Ceiling(depth / stepdown);
-                for (int p = 0; p < passCount; p++)
+                for (int i = 0; i < points.Count; i++)
                 {
-                    double passDepth = Math.Min((p + 1) * stepdown, depth);
-                    double cutZ = surfaceZ - passDepth;
-                    for (int i = 0; i < points.Count; i++)
+                    Point3d pt = points[i];
+                    for (int p = 0; p < passCount; p++)
                     {
-                        Point3d pt = points[i];
+                        double passDepth = Math.Min((p + 1) * stepdown, depth);
+                        double cutZ = surfaceZ - passDepth;
                         lines.Add("Bohrung ("
                             + pt.X.ToString(CultureInfo.InvariantCulture) + ","
                             + pt.Y.ToString(CultureInfo.InvariantCulture) + ","
@@ -208,7 +208,7 @@ namespace DynesticPostProcessor.Components.Operations
             {
                 BoundingBox bb = BoundingBox.Empty;
                 foreach (Brep b in _previewVolumes) bb.Union(b.GetBoundingBox(true));
-                if (_approachLine.IsValid) { bb.Union(_approachLine.From); bb.Union(_approachLine.To); }
+                foreach (Line l in _approachLines) { bb.Union(l.From); bb.Union(l.To); }
                 return bb;
             }
         }
@@ -228,9 +228,9 @@ namespace DynesticPostProcessor.Components.Operations
         {
             foreach (Brep b in _previewVolumes)
                 args.Display.DrawBrepWires(b, _drawColor, 1);
-            if (_approachLine.IsValid)
+            foreach (Line l in _approachLines)
                 args.Display.DrawPatternedLine(
-                    _approachLine.From, _approachLine.To,
+                    l.From, l.To,
                     Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
         }
 

@@ -15,6 +15,8 @@ namespace DynesticPostProcessor.Components.Export
 {
     public class HopExportComponent : GH_Component
     {
+        private bool _lastExport = false;
+
         public HopExportComponent()
             : base("HopExport", "HopExport",
                 "Assembles and writes a complete NC-Hops .hop file for the DYNESTIC CNC. Combines sheet dimensions, tool preset, and operation lines into the standard .hop format.",
@@ -102,9 +104,11 @@ namespace DynesticPostProcessor.Components.Export
             DA.GetDataList(7, operationLines);
 
             // ---------------------------------------------------------------
-            // 3. EXPORT GUARD -- silent return when not exporting
+            // 3. EXPORT GUARD -- fire only on rising edge (false -> true)
             // ---------------------------------------------------------------
-            if (!export) return;
+            bool risingEdge = export && !_lastExport;
+            _lastExport = export;
+            if (!risingEdge) return;
 
             // ---------------------------------------------------------------
             // 4. INPUT DEFAULTS -- fallback for disconnected inputs
@@ -174,9 +178,9 @@ namespace DynesticPostProcessor.Components.Export
             lines.Add(";MASCHINE=HOLZHER");
             lines.Add(";NCNAME=" + ncName);
             lines.Add(";KOMMENTAR=");
-            lines.Add(";DX=0.000");
-            lines.Add(";DY=0.000");
-            lines.Add(";DZ=0");
+            lines.Add(";DX=" + dx.ToString("F3", CultureInfo.InvariantCulture));
+            lines.Add(";DY=" + dy.ToString("F3", CultureInfo.InvariantCulture));
+            lines.Add(";DZ=" + dz.ToString("F3", CultureInfo.InvariantCulture));
             lines.Add(";DIALOGDLL=Dialoge.Dll");
             lines.Add(";DIALOGPROC=StandardFormAnzeigen");
             lines.Add(";AUTOSCRIPTSTART=1");
@@ -201,9 +205,12 @@ namespace DynesticPostProcessor.Components.Export
             // ---------------------------------------------------------------
             // 9. INSERT OPERATION LINES -- Phase 3+ integration point
             // ---------------------------------------------------------------
-            for (int i = 0; i < operationLines.Count; i++)
+            // Sort operationLines: WZB first, WZF second, WZS third, rest last
+            // Lines come in pairs: WZx call + CALL _macro
+            List<string> sorted = SortOperationLines(operationLines);
+            for (int i = 0; i < sorted.Count; i++)
             {
-                lines.Add(operationLines[i]);
+                lines.Add(sorted[i]);
             }
 
             // ---------------------------------------------------------------
@@ -219,6 +226,34 @@ namespace DynesticPostProcessor.Components.Export
                 GH_RuntimeMessageLevel.Remark, "Exported: " + fullPath);
             DA.SetData(0, content);
             DA.SetData(1, "Exported: " + fullPath);
+        }
+
+        private static List<string> SortOperationLines(List<string> lines)
+        {
+            // Build pairs: each WZx line + next CALL line
+            var pairs = new List<KeyValuePair<int, List<string>>>();
+            int i = 0;
+            while (i < lines.Count)
+            {
+                string line = lines[i];
+                int order = 99;
+                if (line.StartsWith("WZB")) order = 0;
+                else if (line.StartsWith("WZF")) order = 1;
+                else if (line.StartsWith("WZS")) order = 2;
+
+                var pair = new List<string>();
+                pair.Add(line);
+                if (i + 1 < lines.Count) pair.Add(lines[i + 1]);
+                pairs.Add(new KeyValuePair<int, List<string>>(order, pair));
+                i += pair.Count;
+            }
+
+            pairs.Sort((a, b) => a.Key.CompareTo(b.Key));
+
+            var result = new List<string>();
+            foreach (var p in pairs)
+                result.AddRange(p.Value);
+            return result;
         }
 
         protected override System.Drawing.Bitmap Icon => IconHelper.Load("HopExport");
