@@ -121,9 +121,6 @@ namespace DynesticPostProcessor.Components.Operations
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            string toolType   = "WZS";
-            double feedFactor = 0.3;
-
             _previewVolumes.Clear();
             _approachLines.Clear();
 
@@ -280,19 +277,8 @@ namespace DynesticPostProcessor.Components.Operations
                 // ---------------------------------------------------------------
                 double cutZ = topZ - Math.Abs(depth);
 
-                allLines.Add(toolType + " (" + toolNr.ToString()
-                    + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
-                    + ",_VA,_SD,0,'')");
-
-                allLines.Add("CALL _nuten_frei_v5(VAL "
-                    + "X1:=" + cutP1.X.ToString(CultureInfo.InvariantCulture) + ","
-                    + "Y1:=" + cutP1.Y.ToString(CultureInfo.InvariantCulture) + ","
-                    + "X2:=" + cutP2.X.ToString(CultureInfo.InvariantCulture) + ","
-                    + "Y2:=" + cutP2.Y.ToString(CultureInfo.InvariantCulture) + ","
-                    + "NB:=" + sawKerf.ToString(CultureInfo.InvariantCulture) + ","
-                    + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                    + "LAGE:=" + bladeAngle.ToString(CultureInfo.InvariantCulture)
-                    + ",RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)");
+                allLines.Add(NcSaw.ToolCall(toolNr));
+                allLines.Add(NcSaw.NutenFreiLine(cutP1.X, cutP1.Y, cutP2.X, cutP2.Y, sawKerf, cutZ, bladeAngle));
 
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                     "[" + i + "] bladeAngle=" + bladeAngle.ToString("F1", CultureInfo.InvariantCulture) + "deg"
