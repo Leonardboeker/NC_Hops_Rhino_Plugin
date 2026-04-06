@@ -39,7 +39,7 @@ namespace DynesticPostProcessor.Components.Operations
             pManager.AddNumberParameter("Tolerance", "tolerance", "NURBS to polyline/arc conversion tolerance in mm. Smaller = more segments, higher accuracy. Default 0.1.", GH_ParamAccess.item, 0.1);
             pManager.AddIntegerParameter("ToolNr", "toolNr", "Tool magazine position number. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddNumberParameter("ToolDiameter", "toolDiameter", "Tool diameter in mm, used for kerf compensation offset when side != 0. Default 8.0.", GH_ParamAccess.item, 8.0);
-            pManager.AddIntegerParameter("Side", "side", "Kerf compensation side: -1 = left of travel (inside cut), 0 = center (no offset), +1 = right of travel (outside cut). Default 0.", GH_ParamAccess.item, 0);
+            pManager.AddIntegerParameter("Side", "side", "Kerf compensation side relative to direction of travel.\n+1 = Left  (tool offset to the LEFT -- inward for CCW curves)\n 0 = Center (no offset)\n-1 = Right (tool offset to the RIGHT -- outward for CCW curves)\nConnect a ValueList for a dropdown.", GH_ParamAccess.item, 0);
             pManager.AddNumberParameter("Stepdown", "stepdown", "Depth per pass in mm for multi-pass cutting. 0 = single pass at full depth. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddColourParameter("Colour", "colour", "Preview colour for the toolpath volume in the Rhino viewport.", GH_ParamAccess.item, Color.Yellow);
 
@@ -179,49 +179,60 @@ namespace DynesticPostProcessor.Components.Operations
             if (Math.Abs(crvZ - surfaceZ) > 0.01)
                 previewCrv.Translate(new Vector3d(0, 0, surfaceZ - crvZ));
 
-            // Build preview: outer solid minus inner solid = kerf ring volume
+            // Build preview: kerf ring volume = 4 Breps joined
+            // Flatten to Z=0 first -- Extrusion.Create/CreatePlanarBreps are unreliable at Z != 0
             bool previewBuilt = false;
+            double topZ = previewCrv.PointAtStart.Z;
+            Curve flat = previewCrv.DuplicateCurve();
+            flat.Translate(new Vector3d(0, 0, -topZ));
 
-            Curve[] outerOff = previewCrv.Offset(Plane.WorldXY,  radius, tol, CurveOffsetCornerStyle.Sharp);
-            Curve[] innerOff = previewCrv.Offset(Plane.WorldXY, -radius, tol, CurveOffsetCornerStyle.Sharp);
+            Curve[] outerOff = flat.Offset(Plane.WorldXY,  radius, tol, CurveOffsetCornerStyle.Sharp);
+            Curve[] innerOff = flat.Offset(Plane.WorldXY, -radius, tol, CurveOffsetCornerStyle.Sharp);
 
             if (outerOff != null && outerOff.Length > 0 && innerOff != null && innerOff.Length > 0)
             {
-                Extrusion outerExt = Extrusion.Create(outerOff[0], -Math.Abs(depth), true);
-                Extrusion innerExt = Extrusion.Create(innerOff[0], -Math.Abs(depth), true);
+                Curve ot = outerOff[0];
+                Curve it = innerOff[0];
+                Vector3d down = new Vector3d(0, 0, -Math.Abs(depth));
+                Curve ob = ot.DuplicateCurve(); ob.Translate(down);
+                Curve ib = it.DuplicateCurve(); ib.Translate(down);
 
-                if (outerExt != null && innerExt != null)
+                var parts = new List<Brep>();
+
+                // Top and bottom ring caps
+                Brep[] topCap = Brep.CreatePlanarBreps(new Curve[] { ot, it }, tol);
+                if (topCap != null) foreach (Brep b in topCap) parts.Add(b);
+
+                Brep[] botCap = Brep.CreatePlanarBreps(new Curve[] { ob, ib }, tol);
+                if (botCap != null) foreach (Brep b in botCap) parts.Add(b);
+
+                // Outer and inner side walls
+                Surface outerWall = Surface.CreateExtrusion(ot, down);
+                if (outerWall != null) parts.Add(outerWall.ToBrep());
+
+                Surface innerWall = Surface.CreateExtrusion(it, down);
+                if (innerWall != null) parts.Add(innerWall.ToBrep());
+
+                if (parts.Count >= 2)
                 {
-                    Brep outerBrep = outerExt.ToBrep();
-                    Brep innerBrep = innerExt.ToBrep();
-
-                    if (outerBrep != null && innerBrep != null)
-                    {
-                        Brep[] diff = Brep.CreateBooleanDifference(
-                            new Brep[] { outerBrep },
-                            new Brep[] { innerBrep },
-                            tol);
-
-                        if (diff != null && diff.Length > 0)
-                        {
-                            _previewVolumes.Add(diff[0]);
-                            previewBuilt = true;
-                        }
-                        else
-                        {
-                            // Boolean failed -- show outer solid as fallback
-                            _previewVolumes.Add(outerBrep);
-                            previewBuilt = true;
-                        }
-                    }
+                    Brep[] joined = Brep.JoinBreps(parts, tol * 10);
+                    Brep result = (joined != null && joined.Length > 0) ? joined[0] : parts[0];
+                    result.Translate(new Vector3d(0, 0, topZ));
+                    _previewVolumes.Add(result);
+                    previewBuilt = true;
                 }
             }
 
-            // Fallback: offset failed -- extrude the path itself
+            // Fallback: offset failed -- show extruded surface along path
             if (!previewBuilt)
             {
-                Extrusion ext = Extrusion.Create(previewCrv, -Math.Abs(depth), false);
-                if (ext != null) _previewVolumes.Add(ext.ToBrep());
+                Surface wall = Surface.CreateExtrusion(flat, new Vector3d(0, 0, -Math.Abs(depth)));
+                if (wall != null)
+                {
+                    Brep b = wall.ToBrep();
+                    b.Translate(new Vector3d(0, 0, topZ));
+                    _previewVolumes.Add(b);
+                }
             }
 
             // Dashed approach line above start point
@@ -267,7 +278,7 @@ namespace DynesticPostProcessor.Components.Operations
             // ---------------------------------------------------------------
             // 9. REMARK + OUTPUT
             // ---------------------------------------------------------------
-            string sideLabel = side == 0 ? "center" : (side < 0 ? "left (inside)" : "right (outside)");
+            string sideLabel = side == 0 ? "center" : (side > 0 ? "left" : "right");
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                 "Contour: " + pc.SegmentCount.ToString() + " segments"
                 + "  depth=" + (-Math.Abs(depth)).ToString(CultureInfo.InvariantCulture)
@@ -357,9 +368,9 @@ namespace DynesticPostProcessor.Components.Operations
                 DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
                 DynesticPostProcessor.AutoWire.Spec.Float("1<8<50"),
                 DynesticPostProcessor.AutoWire.Spec.ValueList(
-                    ("Left",   "-1"),
+                    ("Left",   "1"),
                     ("Center", "0"),
-                    ("Right",  "1")),
+                    ("Right",  "-1")),
                 DynesticPostProcessor.AutoWire.Spec.Float("0<0<50"),
                 DynesticPostProcessor.AutoWire.Spec.Skip(),
             });
