@@ -528,6 +528,39 @@ def hop_saw():
     finalize(img, 'HopSaw')
 
 
+def hop_engraving():
+    img, draw = new_canvas()
+    lw = 3
+
+    # V-bit tip pointing down at center
+    cx, cy = p(12), p(14)
+    tip = (cx, p(18))
+
+    # Left side of V (from top-left down to tip)
+    draw.line([(p(4), p(6)), tip], fill=W, width=lw)
+    # Right side of V (from top-right down to tip)
+    draw.line([(p(20), p(6)), tip], fill=W, width=lw)
+
+    # Horizontal top line (surface)
+    draw.line([(p(2), p(6)), (p(22), p(6))], fill=DIM, width=lw)
+
+    # Depth tick on left side
+    draw.line([(p(3), p(6)), (p(3), p(18))], fill=DIM, width=lw - 1)
+    draw.line([(p(2), p(18)), (p(5), p(18))], fill=DIM, width=lw - 1)
+
+    # Wavy engraving path above (suggests text/artwork)
+    pts = []
+    for i in range(30):
+        t = i / 29
+        x = p(4 + t * 16)
+        y = p(3) + int(math.sin(t * math.pi * 3) * p(1))
+        pts.append((x, y))
+    for i in range(len(pts) - 1):
+        draw.line([pts[i], pts[i+1]], fill=W, width=lw)
+
+    finalize(img, 'HopEngraving')
+
+
 # ─── Run all ─────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     print('Generating DYNESTIC icons — Phase 2...')
@@ -542,4 +575,5 @@ if __name__ == '__main__':
     hop_export()
     hop_sheet_export()
     hop_saw()
+    hop_engraving()
     print('Done.')
