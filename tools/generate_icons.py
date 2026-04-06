@@ -472,6 +472,62 @@ def hop_sheet_export():
     finalize(img, 'HopSheetExport')
 
 
+# ─── HopSaw ──────────────────────────────────────────────────────────────────
+def hop_saw():
+    img, draw = new_canvas()
+    lw = 4
+
+    # Diagonal cut line (miter angle ~45 deg, top-left to bottom-right)
+    x0, y0 = p(3),  p(4)
+    x1, y1 = p(21), p(20)
+
+    # Kerf band (two parallel lines offset from center line)
+    import math
+    dx = x1 - x0
+    dy = y1 - y0
+    length = math.sqrt(dx * dx + dy * dy) or 1
+    nx = -dy / length   # perpendicular
+    ny =  dx / length
+    half = p(1.5)       # half-kerf width in canvas units
+
+    # Filled kerf polygon
+    kerf = [
+        (int(x0 + nx * half), int(y0 + ny * half)),
+        (int(x1 + nx * half), int(y1 + ny * half)),
+        (int(x1 - nx * half), int(y1 - ny * half)),
+        (int(x0 - nx * half), int(y0 - ny * half)),
+    ]
+    draw.polygon(kerf, fill=DARK)
+    draw.polygon(kerf, outline=W, width=lw)
+
+    # Saw teeth along top edge of kerf (small triangles)
+    n_teeth = 6
+    for i in range(n_teeth):
+        t0 = i / n_teeth
+        t1 = (i + 0.5) / n_teeth
+        tx0 = x0 + nx * half + dx * t0
+        ty0 = y0 + ny * half + dy * t0
+        tx1 = x0 + nx * half + dx * t1
+        ty1 = y0 + ny * half + dy * t1
+        # Tooth tip: offset perpendicular outward
+        tip_x = int((tx0 + tx1) / 2 + nx * p(2))
+        tip_y = int((ty0 + ty1) / 2 + ny * p(2))
+        draw.polygon([
+            (int(tx0), int(ty0)),
+            (int(tx1), int(ty1)),
+            (tip_x,    tip_y),
+        ], fill=W)
+
+    # Extend arrows at both ends (shows the extend feature)
+    # Arrow at p1 end (backward along cut)
+    aw = p(2)
+    draw.line([(x0, y0), (x0 - int(dx * 0.15), y0 - int(dy * 0.15))], fill=W, width=lw)
+    # Arrow at p2 end (forward along cut)
+    draw.line([(x1, y1), (x1 + int(dx * 0.12), y1 + int(dy * 0.12))], fill=W, width=lw)
+
+    finalize(img, 'HopSaw')
+
+
 # ─── Run all ─────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     print('Generating DYNESTIC icons — Phase 2...')
@@ -485,4 +541,5 @@ if __name__ == '__main__':
     hop_sheet()
     hop_export()
     hop_sheet_export()
+    hop_saw()
     print('Done.')
