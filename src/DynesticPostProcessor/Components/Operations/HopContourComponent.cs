@@ -196,15 +196,38 @@ namespace DynesticPostProcessor.Components.Operations
             _approachLines.Add(new Line(new Point3d(startP.X, startP.Y, safeZ), startP));
 
             // ---------------------------------------------------------------
-            // 7. CURVE DECOMPOSITION on cuttingCurve (offset or original)
+            // 7. CURVE DECOMPOSITION
+            // Convert to a list of PolyCurves (one per connected segment).
+            // JoinCurves first to ensure connected pieces stay together.
+            // Each joined piece = one SP...EP block.
             // ---------------------------------------------------------------
-            PolyCurve pc = cuttingCurve.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0) as PolyCurve;
-            if (pc == null)
+            Curve[] exploded = cuttingCurve.DuplicateSegments();
+            Curve[] joined = (exploded != null && exploded.Length > 1)
+                ? Curve.JoinCurves(exploded, tol)
+                : new Curve[] { cuttingCurve };
+            if (joined == null || joined.Length == 0)
+                joined = new Curve[] { cuttingCurve };
+
+            var polyCurves = new List<PolyCurve>();
+            foreach (Curve jc in joined)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-                    "Curve conversion to arcs and lines failed");
-                DA.SetDataList(0, new List<string>());
-                return;
+                if (jc == null) continue;
+                PolyCurve pc2 = jc.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0) as PolyCurve;
+                if (pc2 != null) polyCurves.Add(pc2);
+            }
+
+            if (polyCurves.Count == 0)
+            {
+                // Last resort: try converting original directly
+                PolyCurve pcDirect = cuttingCurve.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0) as PolyCurve;
+                if (pcDirect == null)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                        "Curve conversion to arcs and lines failed");
+                    DA.SetDataList(0, new List<string>());
+                    return;
+                }
+                polyCurves.Add(pcDirect);
             }
 
             // ---------------------------------------------------------------
@@ -215,18 +238,23 @@ namespace DynesticPostProcessor.Components.Operations
                 + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
                 + ",_VA,_SD,0,'')");
 
-            if (stepdown > 0)
+            int totalSegments = 0;
+            foreach (PolyCurve pc in polyCurves)
             {
-                int passCount = (int)Math.Ceiling(depth / stepdown);
-                for (int p = 0; p < passCount; p++)
+                totalSegments += pc.SegmentCount;
+                if (stepdown > 0)
                 {
-                    double passDepth = Math.Min((p + 1) * stepdown, depth);
-                    BuildContourBlock(lines, pc, surfaceZ - passDepth);
+                    int passCount = (int)Math.Ceiling(depth / stepdown);
+                    for (int p = 0; p < passCount; p++)
+                    {
+                        double passDepth = Math.Min((p + 1) * stepdown, depth);
+                        BuildContourBlock(lines, pc, surfaceZ - passDepth);
+                    }
                 }
-            }
-            else
-            {
-                BuildContourBlock(lines, pc, surfaceZ - Math.Abs(plungeZ));
+                else
+                {
+                    BuildContourBlock(lines, pc, surfaceZ - Math.Abs(plungeZ));
+                }
             }
 
             // ---------------------------------------------------------------
@@ -234,7 +262,7 @@ namespace DynesticPostProcessor.Components.Operations
             // ---------------------------------------------------------------
             string sideLabel = side == 0 ? "center" : (side > 0 ? "left" : "right");
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                "Contour: " + pc.SegmentCount.ToString() + " segments"
+                "Contour: " + polyCurves.Count + " pieces, " + totalSegments + " segments"
                 + "  depth=" + (-Math.Abs(depth)).ToString(CultureInfo.InvariantCulture)
                 + "  side=" + sideLabel
                 + "  toolD=" + toolDiameter.ToString(CultureInfo.InvariantCulture));
