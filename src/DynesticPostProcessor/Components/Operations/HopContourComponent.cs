@@ -185,13 +185,43 @@ namespace DynesticPostProcessor.Components.Operations
             bool previewBuilt = false;
             if (outerOff != null && outerOff.Length > 0 && innerOff != null && innerOff.Length > 0)
             {
-                Brep[] ring = Brep.CreatePlanarBreps(new Curve[] { outerOff[0], innerOff[0] }, tol);
-                if (ring != null && ring.Length > 0)
+                Curve outer = outerOff[0];
+                Curve inner = innerOff[0];
+
+                // Bottom versions of the offset curves
+                Curve outerBot = outer.DuplicateCurve();
+                outerBot.Translate(new Vector3d(0, 0, -Math.Abs(depth)));
+                Curve innerBot = inner.DuplicateCurve();
+                innerBot.Translate(new Vector3d(0, 0, -Math.Abs(depth)));
+
+                // Build 4 surfaces: top cap, bottom cap, outer wall, inner wall
+                var faces = new List<Brep>();
+
+                Brep[] topRing = Brep.CreatePlanarBreps(new Curve[] { outer, inner }, tol);
+                if (topRing != null && topRing.Length > 0) faces.Add(topRing[0]);
+
+                Brep[] botRing = Brep.CreatePlanarBreps(new Curve[] { outerBot, innerBot }, tol);
+                if (botRing != null && botRing.Length > 0) faces.Add(botRing[0]);
+
+                Surface outerWall = Surface.CreateExtrusion(outer, new Vector3d(0, 0, -Math.Abs(depth)));
+                if (outerWall != null) faces.Add(outerWall.ToBrep());
+
+                Surface innerWall = Surface.CreateExtrusion(inner, new Vector3d(0, 0, -Math.Abs(depth)));
+                if (innerWall != null) faces.Add(innerWall.ToBrep());
+
+                if (faces.Count > 0)
                 {
-                    LineCurve extPath = new LineCurve(
-                        new Line(Point3d.Origin, new Point3d(0, 0, -Math.Abs(depth))));
-                    Brep vol = ring[0].Faces[0].CreateExtrusion(extPath, true);
-                    if (vol != null) { _previewVolumes.Add(vol); previewBuilt = true; }
+                    Brep[] joined = Brep.JoinBreps(faces, tol);
+                    if (joined != null && joined.Length > 0)
+                    {
+                        _previewVolumes.Add(joined[0]);
+                        previewBuilt = true;
+                    }
+                    else
+                    {
+                        foreach (Brep b in faces) _previewVolumes.Add(b);
+                        previewBuilt = true;
+                    }
                 }
             }
 
