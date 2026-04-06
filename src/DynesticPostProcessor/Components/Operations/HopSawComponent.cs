@@ -227,13 +227,21 @@ namespace DynesticPostProcessor.Components.Operations
                 Vector3d travelPerp = Vector3d.CrossProduct(travelDir, Vector3d.ZAxis);
                 travelPerp.Unitize();
 
+                // If length is at default (600.0), use the actual line length
+                double cutLength = length;
+                if (Math.Abs(length - 600.0) < 0.001)
+                {
+                    double lineLen = dirCurve.GetLength();
+                    if (lineLen > 1.0) cutLength = lineLen;
+                }
+
                 // ---------------------------------------------------------------
                 // SIDE OFFSET
                 // ---------------------------------------------------------------
                 double   sideShift = side * (sawKerf / 2.0);
                 Vector3d sideVec   = travelPerp * sideShift;
 
-                double  halfLen = length / 2.0;
+                double  halfLen = cutLength / 2.0;
                 Point3d p1 = origin - travelDir * halfLen + sideVec;
                 Point3d p2 = origin + travelDir * halfLen + sideVec;
 
@@ -289,6 +297,7 @@ namespace DynesticPostProcessor.Components.Operations
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                     "[" + i + "] bladeAngle=" + bladeAngle.ToString("F1", CultureInfo.InvariantCulture) + "deg"
                     + "  side=" + sideLabel
+                    + "  len=" + cutLength.ToString("F1", CultureInfo.InvariantCulture)
                     + "  P1=(" + cutP1.X.ToString("F1", CultureInfo.InvariantCulture)
                     + "," + cutP1.Y.ToString("F1", CultureInfo.InvariantCulture) + ")"
                     + "  P2=(" + cutP2.X.ToString("F1", CultureInfo.InvariantCulture)
@@ -344,34 +353,17 @@ namespace DynesticPostProcessor.Components.Operations
         // ---------------------------------------------------------------
         public override BoundingBox ClippingBox
         {
-            get
-            {
-                BoundingBox bb = BoundingBox.Empty;
-                foreach (Brep b in _previewVolumes)
-                    if (b != null) bb.Union(b.GetBoundingBox(true));
-                foreach (Line l in _approachLines)
-                    if (l.IsValid) { bb.Union(l.From); bb.Union(l.To); }
-                return bb;
-            }
+            get { return PreviewHelper.GetClippingBox(_previewVolumes, _approachLines); }
         }
 
         public override void DrawViewportMeshes(IGH_PreviewArgs args)
         {
-            Rhino.Display.DisplayMaterial mat = new Rhino.Display.DisplayMaterial(_drawColor);
-            mat.Transparency = 0.45;
-            foreach (Brep b in _previewVolumes)
-                if (b != null) args.Display.DrawBrepShaded(b, mat);
+            PreviewHelper.DrawMeshes(args, _previewVolumes, _drawColor);
         }
 
         public override void DrawViewportWires(IGH_PreviewArgs args)
         {
-            foreach (Brep b in _previewVolumes)
-                if (b != null) args.Display.DrawBrepWires(b, _drawColor, 1);
-            foreach (Line l in _approachLines)
-                if (l.IsValid)
-                    args.Display.DrawPatternedLine(
-                        l.From, l.To,
-                        Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
+            PreviewHelper.DrawWires(args, _previewVolumes, _approachLines, _drawColor);
         }
 
         public override void AddedToDocument(GH_Document doc)

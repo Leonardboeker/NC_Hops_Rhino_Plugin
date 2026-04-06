@@ -16,9 +16,9 @@ namespace DynesticPostProcessor.Components.Operations
         // PREVIEW FIELDS
         // ---------------------------------------------------------------
         private static readonly Color _defaultColor = Color.Yellow;
-        private Brep  _previewVolume = null;
-        private Line  _approachLine  = Line.Unset;
-        private Color _drawColor     = Color.Yellow;
+        private List<Brep> _previewVolumes = new List<Brep>();
+        private List<Line> _approachLines  = new List<Line>();
+        private Color      _drawColor      = Color.Yellow;
 
         public HopContourComponent() : base(
             "HopContour", "HopContour",
@@ -61,8 +61,8 @@ namespace DynesticPostProcessor.Components.Operations
         public override void ClearData()
         {
             base.ClearData();
-            _previewVolume = null;
-            _approachLine = Line.Unset;
+            _previewVolumes.Clear();
+            _approachLines.Clear();
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -70,8 +70,8 @@ namespace DynesticPostProcessor.Components.Operations
             string toolType   = "WZF";
             double feedFactor = 1.0;
 
-            _previewVolume = null;
-            _approachLine  = Line.Unset;
+            _previewVolumes.Clear();
+            _approachLines.Clear();
 
             // ---------------------------------------------------------------
             // GET INPUTS
@@ -203,7 +203,7 @@ namespace DynesticPostProcessor.Components.Operations
                     Vector3d extDir  = new Vector3d(0, 0, -Math.Abs(depth));
                     LineCurve extPath = new LineCurve(new Line(Point3d.Origin, Point3d.Origin + extDir));
                     Brep vol = planar[0].Faces[0].CreateExtrusion(extPath, true);
-                    if (vol != null) _previewVolume = vol;
+                    if (vol != null) _previewVolumes.Add(vol);
                 }
             }
 
@@ -211,7 +211,7 @@ namespace DynesticPostProcessor.Components.Operations
             BoundingBox curveBB = curve.GetBoundingBox(true);
             double safeZ   = curveBB.Max.Z + 20.0;
             Point3d startP = cuttingBase.PointAtStart;
-            _approachLine  = new Line(new Point3d(startP.X, startP.Y, safeZ), startP);
+            _approachLines.Add(new Line(new Point3d(startP.X, startP.Y, safeZ), startP));
 
             // ---------------------------------------------------------------
             // 7. CURVE DECOMPOSITION on cuttingCurve (offset or original)
@@ -315,33 +315,17 @@ namespace DynesticPostProcessor.Components.Operations
         // ---------------------------------------------------------------
         public override BoundingBox ClippingBox
         {
-            get
-            {
-                BoundingBox bb = BoundingBox.Empty;
-                if (_previewVolume != null) bb.Union(_previewVolume.GetBoundingBox(true));
-                if (_approachLine.IsValid) { bb.Union(_approachLine.From); bb.Union(_approachLine.To); }
-                return bb;
-            }
+            get { return PreviewHelper.GetClippingBox(_previewVolumes, _approachLines); }
         }
 
         public override void DrawViewportMeshes(IGH_PreviewArgs args)
         {
-            if (_previewVolume != null)
-            {
-                Rhino.Display.DisplayMaterial mat = new Rhino.Display.DisplayMaterial(_drawColor);
-                mat.Transparency = 0.5;
-                args.Display.DrawBrepShaded(_previewVolume, mat);
-            }
+            PreviewHelper.DrawMeshes(args, _previewVolumes, _drawColor);
         }
 
         public override void DrawViewportWires(IGH_PreviewArgs args)
         {
-            if (_previewVolume != null)
-                args.Display.DrawBrepWires(_previewVolume, _drawColor, 1);
-            if (_approachLine.IsValid)
-                args.Display.DrawPatternedLine(
-                    _approachLine.From, _approachLine.To,
-                    Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
+            PreviewHelper.DrawWires(args, _previewVolumes, _approachLines, _drawColor);
         }
 
         public override void AddedToDocument(GH_Document doc)

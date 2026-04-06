@@ -16,9 +16,9 @@ namespace DynesticPostProcessor.Components.Operations
         // PREVIEW FIELDS
         // ---------------------------------------------------------------
         private static readonly Color _defaultColor = Color.Cyan;
-        private Brep  _previewVolume = null;
-        private Line  _approachLine  = Line.Unset;
-        private Color _drawColor     = Color.Cyan;
+        private List<Brep> _previewVolumes = new List<Brep>();
+        private List<Line> _approachLines  = new List<Line>();
+        private Color      _drawColor      = Color.Cyan;
 
         public HopCircPocketComponent() : base(
             "HopCircPocket", "HopCircPocket",
@@ -54,8 +54,8 @@ namespace DynesticPostProcessor.Components.Operations
         public override void ClearData()
         {
             base.ClearData();
-            _previewVolume = null;
-            _approachLine = Line.Unset;
+            _previewVolumes.Clear();
+            _approachLines.Clear();
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -65,8 +65,8 @@ namespace DynesticPostProcessor.Components.Operations
             double feedFactor = 1.0;
 
             // PREVIEW: clear fields first (before guards) so disconnecting inputs wipes stale geometry
-            _previewVolume = null;
-            _approachLine  = Line.Unset;
+            _previewVolumes.Clear();
+            _approachLines.Clear();
 
             // ---------------------------------------------------------------
             // GET INPUTS
@@ -120,11 +120,11 @@ namespace DynesticPostProcessor.Components.Operations
             Cylinder cyl = new Cylinder(cylCircle, -Math.Abs(depth));
             Brep cylBrep = cyl.ToBrep(true, true);
             if (cylBrep != null)
-                _previewVolume = cylBrep;
+                _previewVolumes.Add(cylBrep);
 
             // PREVIEW: approach line from safeZ to circle center
             double safeZ = center.Z + 20.0;
-            _approachLine = new Line(new Point3d(center.X, center.Y, safeZ), center);
+            _approachLines.Add(new Line(new Point3d(center.X, center.Y, safeZ), center));
 
             // ---------------------------------------------------------------
             // 4. BUILD TOOL CALL + MACRO
@@ -163,33 +163,17 @@ namespace DynesticPostProcessor.Components.Operations
         // ---------------------------------------------------------------
         public override BoundingBox ClippingBox
         {
-            get
-            {
-                BoundingBox bb = BoundingBox.Empty;
-                if (_previewVolume != null) bb.Union(_previewVolume.GetBoundingBox(true));
-                if (_approachLine.IsValid) { bb.Union(_approachLine.From); bb.Union(_approachLine.To); }
-                return bb;
-            }
+            get { return PreviewHelper.GetClippingBox(_previewVolumes, _approachLines); }
         }
 
         public override void DrawViewportMeshes(IGH_PreviewArgs args)
         {
-            if (_previewVolume != null)
-            {
-                Rhino.Display.DisplayMaterial mat = new Rhino.Display.DisplayMaterial(_drawColor);
-                mat.Transparency = 0.55;
-                args.Display.DrawBrepShaded(_previewVolume, mat);
-            }
+            PreviewHelper.DrawMeshes(args, _previewVolumes, _drawColor);
         }
 
         public override void DrawViewportWires(IGH_PreviewArgs args)
         {
-            if (_previewVolume != null)
-                args.Display.DrawBrepWires(_previewVolume, _drawColor, 1);
-            if (_approachLine.IsValid)
-                args.Display.DrawPatternedLine(
-                    _approachLine.From, _approachLine.To,
-                    Color.FromArgb(140, 140, 140), unchecked((int)0xF0F0F0F0), 1);
+            PreviewHelper.DrawWires(args, _previewVolumes, _approachLines, _drawColor);
         }
 
         public override void AddedToDocument(GH_Document doc)
