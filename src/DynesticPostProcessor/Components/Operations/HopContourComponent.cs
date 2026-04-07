@@ -208,26 +208,40 @@ namespace DynesticPostProcessor.Components.Operations
             if (joined == null || joined.Length == 0)
                 joined = new Curve[] { cuttingCurve };
 
-            var polyCurves = new List<PolyCurve>();
+            var allPieces = new List<List<Curve>>();
             foreach (Curve jc in joined)
             {
                 if (jc == null) continue;
-                PolyCurve pc2 = jc.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0) as PolyCurve;
-                if (pc2 != null) polyCurves.Add(pc2);
+                Curve converted = jc.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0);
+                if (converted == null) continue;
+
+                var pieceSegs = new List<Curve>();
+                PolyCurve pc2 = converted as PolyCurve;
+                if (pc2 != null)
+                {
+                    Curve[] flat = pc2.Explode();
+                    if (flat != null && flat.Length > 0)
+                        pieceSegs.AddRange(flat);
+                    else
+                        for (int si = 0; si < pc2.SegmentCount; si++)
+                        {
+                            Curve s = pc2.SegmentCurve(si);
+                            if (s != null) pieceSegs.Add(s);
+                        }
+                }
+                else
+                {
+                    pieceSegs.Add(converted); // single ArcCurve or LineCurve
+                }
+                if (pieceSegs.Count > 0) allPieces.Add(pieceSegs);
             }
 
-            if (polyCurves.Count == 0)
+            if (allPieces.Count == 0)
             {
-                // Last resort: try converting original directly
-                PolyCurve pcDirect = cuttingCurve.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0) as PolyCurve;
-                if (pcDirect == null)
-                {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-                        "Curve conversion to arcs and lines failed");
-                    DA.SetDataList(0, new List<string>());
-                    return;
-                }
-                polyCurves.Add(pcDirect);
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "Curve conversion to arcs and lines failed");
+                DA.SetDataList(0, new List<string>());
+                return;
             }
 
             // ---------------------------------------------------------------
@@ -239,21 +253,21 @@ namespace DynesticPostProcessor.Components.Operations
                 + ",_VA,_SD,0,'')");
 
             int totalSegments = 0;
-            foreach (PolyCurve pc in polyCurves)
+            foreach (List<Curve> pieceSegs in allPieces)
             {
-                totalSegments += pc.SegmentCount;
+                totalSegments += pieceSegs.Count;
                 if (stepdown > 0)
                 {
                     int passCount = (int)Math.Ceiling(depth / stepdown);
                     for (int p = 0; p < passCount; p++)
                     {
                         double passDepth = Math.Min((p + 1) * stepdown, depth);
-                        BuildContourBlock(lines, pc, surfaceZ - passDepth, tol);
+                        BuildContourBlock(lines, pieceSegs, surfaceZ - passDepth, tol);
                     }
                 }
                 else
                 {
-                    BuildContourBlock(lines, pc, surfaceZ - Math.Abs(plungeZ), tol);
+                    BuildContourBlock(lines, pieceSegs, surfaceZ - Math.Abs(plungeZ), tol);
                 }
             }
 
@@ -262,7 +276,7 @@ namespace DynesticPostProcessor.Components.Operations
             // ---------------------------------------------------------------
             string sideLabel = side == 0 ? "center" : (side > 0 ? "left" : "right");
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                "Contour: " + polyCurves.Count + " pieces, " + totalSegments + " segments"
+                "Contour: " + allPieces.Count + " pieces, " + totalSegments + " segments"
                 + "  depth=" + (-Math.Abs(depth)).ToString(CultureInfo.InvariantCulture)
                 + "  side=" + sideLabel
                 + "  toolD=" + toolDiameter.ToString(CultureInfo.InvariantCulture));
@@ -275,17 +289,16 @@ namespace DynesticPostProcessor.Components.Operations
         // Uses Explode() to flatten nested sub-curves, then groups segments
         // by connectivity -- each connected run becomes one SP/EP block.
         // ---------------------------------------------------------------
-        private void BuildContourBlock(List<string> lines, PolyCurve pc,
+        private void BuildContourBlock(List<string> lines, List<Curve> flat,
             double zEintauch, double tol)
         {
-            Curve[] flat = pc.Explode();
-            if (flat == null || flat.Length == 0) return;
+            if (flat == null || flat.Count == 0) return;
 
             int gStart = 0;
-            while (gStart < flat.Length)
+            while (gStart < flat.Count)
             {
                 int gEnd = gStart;
-                while (gEnd + 1 < flat.Length &&
+                while (gEnd + 1 < flat.Count &&
                        flat[gEnd].PointAtEnd.DistanceTo(
                            flat[gEnd + 1].PointAtStart) <= tol * 10)
                     gEnd++;

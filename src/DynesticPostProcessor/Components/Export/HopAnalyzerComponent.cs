@@ -16,10 +16,10 @@ namespace DynesticPostProcessor.Components.Export
     {
         public HopAnalyzerComponent() : base(
             "HopAnalyzer", "HopAnalyzer",
-            "Validates NC-Hops operationLines for SP/EP structural correctness.\n\n" +
+            "Validates the final .hop file content for SP/EP structural correctness.\n\n" +
             "Checks that every SP has a matching EP, and that no G01/G02M/G03M moves " +
-            "appear outside an SP/EP block. Wire in the operationLines from HopExport " +
-            "or any Hop operation component.",
+            "appear outside an SP/EP block. Wire in HopContent from HopExport so the " +
+            "check runs on the fully sorted and assembled output.",
             "DYNESTIC", "Export") { }
 
         public override Guid ComponentGuid => new Guid("9e4f1a2b-c3d5-4e6f-8a7b-0c1d2e3f4a5b");
@@ -30,9 +30,9 @@ namespace DynesticPostProcessor.Components.Export
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddTextParameter("OperationLines", "operationLines",
-                "NC lines to validate. Wire from HopExport or any operation component.",
-                GH_ParamAccess.list);
+            pManager.AddTextParameter("HopContent", "hopContent",
+                "Full .hop file content string. Wire from HopExport's HopContent output.",
+                GH_ParamAccess.item);
 
             pManager.AddBooleanParameter("Run", "run",
                 "Set True to run the analysis. Prevents unnecessary computation.",
@@ -57,11 +57,14 @@ namespace DynesticPostProcessor.Components.Export
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            List<string> opLines = new List<string>();
+            string hopContent = null;
             bool run = false;
 
-            if (!DA.GetDataList(0, opLines)) return;
+            if (!DA.GetData(0, ref hopContent)) return;
             DA.GetData(1, ref run);
+
+            string[] splitLines = hopContent.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            List<string> opLines = new List<string>(splitLines);
 
             if (!run)
             {
@@ -75,33 +78,66 @@ namespace DynesticPostProcessor.Components.Export
             // ---------------------------------------------------------------
             // ANALYZE
             // ---------------------------------------------------------------
-            var spStack   = new Stack<int>();
-            var errors    = new List<string>();
-            int spCount   = 0;
-            int epCount   = 0;
-            int moveCount = 0;
+            var spStack        = new Stack<int>();
+            var errors         = new List<string>();
+            int spCount        = 0;
+            int epCount        = 0;
+            int moveCount      = 0;
+            int emptyBlocks    = 0;
+            int movesInBlock   = 0;
+            int openSpLine     = -1;
+
+            // Duplicate tool tracking: "WZB|1", "WZF|3", etc.
+            var seenTools = new System.Collections.Generic.HashSet<string>();
 
             for (int i = 0; i < opLines.Count; i++)
             {
                 string s = (opLines[i] ?? "").Trim();
                 int lineNum = i + 1;
 
-                if (s.StartsWith("SP "))
+                if (s.StartsWith("WZB ") || s.StartsWith("WZF ") || s.StartsWith("WZS "))
+                {
+                    // Extract tool number from e.g. "WZF (7,..."
+                    string type = s.Substring(0, 3);
+                    int paren = s.IndexOf('(');
+                    int comma = s.IndexOf(',', paren > 0 ? paren : 0);
+                    if (paren >= 0 && comma > paren)
+                    {
+                        string toolNum = s.Substring(paren + 1, comma - paren - 1).Trim();
+                        string key = type + "|" + toolNum;
+                        if (!seenTools.Add(key))
+                            errors.Add("L" + lineNum + ": Duplicate tool call " + type + " " + toolNum);
+                    }
+                }
+                else if (s.StartsWith("SP "))
                 {
                     spStack.Push(lineNum);
                     spCount++;
+                    movesInBlock = 0;
+                    openSpLine = lineNum;
                 }
                 else if (s.StartsWith("EP "))
                 {
                     epCount++;
                     if (spStack.Count > 0)
-                        spStack.Pop();
+                    {
+                        int matchedSp = spStack.Pop();
+                        if (movesInBlock == 0)
+                        {
+                            emptyBlocks++;
+                            errors.Add("L" + matchedSp + ": Empty SP/EP block (no moves between SP and EP)");
+                        }
+                        movesInBlock = 0;
+                    }
                     else
+                    {
                         errors.Add("L" + lineNum + ": EP without preceding SP");
+                    }
                 }
                 else if (s.StartsWith("G01 ") || s.StartsWith("G02M ") || s.StartsWith("G03M "))
                 {
                     moveCount++;
+                    movesInBlock++;
                     if (spStack.Count == 0)
                         errors.Add("L" + lineNum + ": Move outside SP/EP block: "
                             + s.Substring(0, Math.Min(s.Length, 50)));
@@ -115,6 +151,8 @@ namespace DynesticPostProcessor.Components.Export
 
             string summary = "SP=" + spCount + " EP=" + epCount
                 + " Moves=" + moveCount + " Lines=" + opLines.Count;
+            if (emptyBlocks > 0)
+                summary += " EmptyBlocks=" + emptyBlocks;
             if (isValid)
                 summary = "OK  " + summary;
             else

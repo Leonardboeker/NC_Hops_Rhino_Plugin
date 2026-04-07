@@ -183,45 +183,54 @@ namespace DynesticPostProcessor.Components.Operations
                 if (joined == null || joined.Length == 0)
                     joined = new Curve[] { curve };
 
-                var polyCurves = new List<PolyCurve>();
+                // ---------------------------------------------------------------
+                // SP...moves...EP per joined piece
+                // Each joined piece is converted independently. Non-PolyCurve
+                // results (single ArcCurve / LineCurve) are handled directly
+                // instead of silently dropped by "as PolyCurve".
+                // Within each piece, connected segment runs get their own block.
+                // ---------------------------------------------------------------
+                bool anyEmitted = false;
                 foreach (Curve jc in joined)
                 {
                     if (jc == null) continue;
-                    PolyCurve pc2 = jc.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0) as PolyCurve;
-                    if (pc2 != null) polyCurves.Add(pc2);
-                }
-                if (polyCurves.Count == 0)
-                {
-                    PolyCurve pcD = curve.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0) as PolyCurve;
-                    if (pcD == null)
+
+                    Curve converted = jc.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0);
+                    if (converted == null) continue;
+
+                    // Collect leaf segments for this piece
+                    var pieceSegs = new List<Curve>();
+                    PolyCurve pc2 = converted as PolyCurve;
+                    if (pc2 != null)
                     {
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
-                            "Curve " + ci + " decomposition failed -- skipped");
-                        continue;
+                        Curve[] flat = pc2.Explode();
+                        if (flat != null && flat.Length > 0)
+                            pieceSegs.AddRange(flat);
+                        else
+                            for (int si = 0; si < pc2.SegmentCount; si++)
+                            {
+                                Curve s = pc2.SegmentCurve(si);
+                                if (s != null) pieceSegs.Add(s);
+                            }
                     }
-                    polyCurves.Add(pcD);
-                }
+                    else
+                    {
+                        pieceSegs.Add(converted); // single ArcCurve or LineCurve
+                    }
 
-                // ---------------------------------------------------------------
-                // SP...moves...EP per piece  (gap-safe: Explode + connectivity)
-                // If a PolyCurve has internal disconnections, each connected run
-                // becomes its own SP/EP block instead of emitting orphaned moves.
-                // ---------------------------------------------------------------
-                foreach (PolyCurve pc in polyCurves)
-                {
-                    Curve[] flat = pc.Explode();
-                    if (flat == null || flat.Length == 0) continue;
+                    if (pieceSegs.Count == 0) continue;
 
+                    // Group consecutive connected segments → one SP/EP block each
                     int gStart = 0;
-                    while (gStart < flat.Length)
+                    while (gStart < pieceSegs.Count)
                     {
                         int gEnd = gStart;
-                        while (gEnd + 1 < flat.Length &&
-                               flat[gEnd].PointAtEnd.DistanceTo(
-                                   flat[gEnd + 1].PointAtStart) <= tol * 10)
+                        while (gEnd + 1 < pieceSegs.Count &&
+                               pieceSegs[gEnd].PointAtEnd.DistanceTo(
+                                   pieceSegs[gEnd + 1].PointAtStart) <= tol * 10)
                             gEnd++;
 
-                        Point3d sp = flat[gStart].PointAtStart;
+                        Point3d sp = pieceSegs[gStart].PointAtStart;
                         allLines.Add("SP ("
                             + sp.X.ToString(CultureInfo.InvariantCulture) + ","
                             + sp.Y.ToString(CultureInfo.InvariantCulture) + ","
@@ -230,7 +239,7 @@ namespace DynesticPostProcessor.Components.Operations
 
                         for (int i = gStart; i <= gEnd; i++)
                         {
-                            Curve seg = flat[i];
+                            Curve seg = pieceSegs[i];
                             ArcCurve arcSeg = seg as ArcCurve;
                             if (arcSeg != null)
                             {
@@ -254,7 +263,15 @@ namespace DynesticPostProcessor.Components.Operations
 
                         allLines.Add("EP (0,_ANF,0)");
                         gStart = gEnd + 1;
+                        anyEmitted = true;
                     }
+                }
+
+                if (!anyEmitted)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                        "Curve " + ci + " produced no NC output -- skipped");
+                    continue;
                 }
                 curveCount++;
             }
