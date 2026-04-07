@@ -528,6 +528,55 @@ def hop_saw():
     finalize(img, 'HopSaw')
 
 
+def hop_analyzer():
+    img, draw = new_canvas()
+    lw = 3
+
+    # Document (left side) — represents NC code content
+    dx0, dy0 = p(2), p(3)
+    dx1, dy1 = p(14), p(21)
+    fold = p(3.5)
+    doc = [
+        (dx0,        dy0),
+        (dx1 - fold, dy0),
+        (dx1,        dy0 + fold),
+        (dx1,        dy1),
+        (dx0,        dy1),
+    ]
+    draw.polygon(doc, fill=DARK)
+    draw.polygon(doc, outline=W, width=lw)
+    draw.polygon([(dx1 - fold, dy0), (dx1, dy0 + fold), (dx1 - fold, dy0 + fold)],
+                 fill=MID, outline=W, width=2)
+    # 3 NC-code lines on document
+    for row in [p(9), p(13), p(17)]:
+        draw.line([(dx0 + p(1.5), row), (dx1 - p(3), row)], fill=W, width=2)
+
+    # Magnifying glass (right side)
+    mg_cx, mg_cy = p(17), p(14)
+    mg_r = p(5.5)
+    # Dark lens interior
+    draw.ellipse([mg_cx - mg_r + lw + 1, mg_cy - mg_r + lw + 1,
+                  mg_cx + mg_r - lw - 1, mg_cy + mg_r - lw - 1], fill=DARK)
+    # Lens ring
+    draw.ellipse([mg_cx - mg_r, mg_cy - mg_r,
+                  mg_cx + mg_r, mg_cy + mg_r], outline=W, width=lw)
+    # Handle — bottom-right diagonal
+    h_angle = math.radians(135)
+    hx0 = int(mg_cx + (mg_r - p(1)) * math.cos(h_angle))
+    hy0 = int(mg_cy + (mg_r - p(1)) * math.sin(h_angle))
+    hx1 = int(mg_cx + (mg_r + p(4)) * math.cos(h_angle))
+    hy1 = int(mg_cy + (mg_r + p(4)) * math.sin(h_angle))
+    draw.line([(hx0, hy0), (hx1, hy1)], fill=W, width=lw + 2)
+    # Checkmark inside lens (SP/EP valid = green light)
+    ck_x, ck_y = mg_cx - p(1), mg_cy + p(0.5)
+    draw.line([(ck_x - p(2), ck_y + p(0.5)),
+               (ck_x,        ck_y + p(2.5))], fill=W, width=lw)
+    draw.line([(ck_x,        ck_y + p(2.5)),
+               (ck_x + p(3), ck_y - p(1.5))], fill=W, width=lw)
+
+    finalize(img, 'HopAnalyzer')
+
+
 def hop_engraving():
     img, draw = new_canvas()
     lw = 3
@@ -576,4 +625,5 @@ if __name__ == '__main__':
     hop_sheet_export()
     hop_saw()
     hop_engraving()
+    hop_analyzer()
     print('Done.')
