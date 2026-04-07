@@ -74,27 +74,43 @@ namespace DynesticPostProcessor
 
         internal static List<string> SortOperationLines(List<string> lines)
         {
-            var pairs = new List<KeyValuePair<int, List<string>>>();
-            int i = 0;
-            while (i < lines.Count)
+            // Group lines into operation blocks: each block starts at a WZx line
+            // and contains every following line until the next WZx line.
+            // Buckets: WZB=0, WZF=1, WZS=2, others=3.
+            // Relative order within each bucket is preserved (stable).
+            var buckets = new List<List<string>>[4];
+            for (int b = 0; b < 4; b++) buckets[b] = new List<List<string>>();
+
+            List<string> current = null;
+            int currentBucket = 3;
+
+            foreach (string line in lines)
             {
-                string line = lines[i];
-                int order = 99;
-                if (line.StartsWith("WZB")) order = 0;
-                else if (line.StartsWith("WZF")) order = 1;
-                else if (line.StartsWith("WZS")) order = 2;
+                int bucket = -1;
+                if      (line.StartsWith("WZB")) bucket = 0;
+                else if (line.StartsWith("WZF")) bucket = 1;
+                else if (line.StartsWith("WZS")) bucket = 2;
 
-                var pair = new List<string>();
-                pair.Add(line);
-                if (i + 1 < lines.Count) pair.Add(lines[i + 1]);
-                pairs.Add(new KeyValuePair<int, List<string>>(order, pair));
-                i += pair.Count;
+                if (bucket >= 0)
+                {
+                    if (current != null) buckets[currentBucket].Add(current);
+                    current = new List<string>();
+                    currentBucket = bucket;
+                }
+                else if (current == null)
+                {
+                    current = new List<string>();
+                    currentBucket = 3;
+                }
+                current.Add(line);
             }
-
-            pairs.Sort((a, b) => a.Key.CompareTo(b.Key));
+            if (current != null && current.Count > 0)
+                buckets[currentBucket].Add(current);
 
             var result = new List<string>();
-            foreach (var p in pairs) result.AddRange(p.Value);
+            foreach (var bucket in buckets)
+                foreach (var block in bucket)
+                    result.AddRange(block);
             return result;
         }
     }
