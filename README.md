@@ -32,10 +32,12 @@ The plugin follows a simple pipeline:
         ↓
 [Operation Components]   →   operationLines (List<string>)
         ↓
-[HopExport]              →   .hop file on disk
+[HopExport]              →   hopContent (string) + .hop file on disk
+        ↓
+[HopAnalyzer]            →   isValid / errors (optional validation step)
 ```
 
-Each operation component (HopDrill, HopContour, etc.) takes Grasshopper geometry as input and outputs a `List<string>` — a list of NC-Hops macro call strings. **HopExport** collects these lists, assembles the file header, VARS block, and START section, then writes a syntactically valid `.hop` file.
+Each operation component (HopDrill, HopContour, etc.) takes Grasshopper geometry as input and outputs a `List<string>` — a list of NC-Hops macro call strings. **HopExport** collects these lists, sorts them by tool type (WZB → WZF → WZS), assembles the file header, VARS block, and START section, then writes a syntactically valid `.hop` file. **HopAnalyzer** can validate the final output before machining.
 
 The `.hop` format is not G-code. It is a macro language interpreted by the HOLZHER CAMPUS controller. Each line like `Bohrung(...)` or `CALL _RechteckTasche_V5(...)` is a machine-side subroutine call — the controller handles feed rates, Z-homing, and tool approach internally.
 
@@ -158,10 +160,36 @@ Converts a planar curve into a 2D contour cutting path using `SP/G01/G03M/EP` ma
 | `operationLines` | string list | NC macro strings → wire into HopExport |
 
 **Notes:**
-- Internally converts the curve to a `PolyCurve` of lines and arcs using Rhino's `ToArcsAndLines`. Lines become `G01`, arcs become `G02M`/`G03M` (CW/CCW determined from arc normal).
+- Internally converts each curve piece to lines and arcs using Rhino's `ToArcsAndLines`. Lines become `G01`, arcs become `G02M`/`G03M` (CW/CCW determined from arc normal). Both `PolyCurve` and single `ArcCurve`/`LineCurve` results are handled correctly.
 - Kerf compensation is a **geometric pre-offset** applied to the curve before decomposition, using Rhino's `Curve.Offset`. No machine-side radius compensation (G41/G42) is used.
 - With `stepdown`, multiple full contour passes are generated at increasing depths.
 - Renders a shaded toolpath volume and dashed approach line in the viewport.
+
+---
+
+#### HopEngraving
+
+Generates engraving paths for one or more curves using `SP/G01/G03M/EP` macros. Follows the input curve exactly — no kerf offset. Designed for shallow cuts with V-bits or engraving spindles.
+
+**Category:** DYNESTIC → Operations  
+**NC macros:** `SP`, `G01`, `G02M`, `G03M`, `EP`
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `curves` | Curve list | One or more planar curves to engrave. Each curve becomes one or more SP/EP blocks. |
+| `depth` | float | Engraving depth in mm below the curve's Z position. Default: 0.5 |
+| `tolerance` | float | NURBS → polyline/arc conversion tolerance in mm. Default: 0.05 |
+| `toolNr` | int | Tool magazine position (must be > 0) |
+| `colour` | Color | Viewport preview color |
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `operationLines` | string list | NC macro strings → wire into HopExport |
+
+**Notes:**
+- Multiple input curves each produce their own SP/EP block sequence within one `WZF` tool call.
+- Internally handles both `PolyCurve` and single `ArcCurve`/`LineCurve` results from `ToArcsAndLines` — single-segment curves are not silently dropped.
+- Preview renders a pipe volume along the engraving path (radius = depth, approximating the V-bit footprint at surface level).
 
 ---
 
@@ -273,6 +301,7 @@ Assembles all operation lines into a complete `.hop` file and writes it to disk.
 - `.hop` extension is added automatically — no need to include it in `fileName`.
 - File is written with **ASCII encoding** and **CRLF line endings** (required by the CAMPUS controller).
 - The export guard (`export = false`) means the component is completely silent until you toggle it — no accidental file writes.
+- Operations are automatically sorted before writing: **WZB → WZF → WZS → rest**. Sorting is block-based — each tool call and all of its following SP/EP/G01/G03M lines stay together as a unit. This ensures drill operations run before milling, and milling before sawing, without breaking any SP/EP structure.
 
 **Generated file structure:**
 ```
@@ -290,6 +319,32 @@ Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)
 CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)
 [operationLines here]
 ```
+
+---
+
+#### HopAnalyzer
+
+Validates the final `.hop` file content for SP/EP structural correctness. Wire `HopContent` from HopExport directly — the check runs on the fully sorted and assembled output, not on raw operation lines.
+
+**Category:** DYNESTIC → Export
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `hopContent` | string | Full `.hop` file content. Wire from HopExport's `hopContent` output. |
+| `run` | bool | Set True to run the analysis. Default: false. |
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `isValid` | bool | True if no structural errors were found. |
+| `errorCount` | int | Total number of errors. |
+| `errors` | string list | Error messages with line numbers. |
+| `summary` | string | One-line summary: SP/EP counts, move count, error count. |
+
+**Checks performed:**
+- Every `SP` has a matching `EP`
+- No `G01`/`G02M`/`G03M` moves appear outside an `SP/EP` block
+- No empty `SP/EP` blocks (SP immediately followed by EP with no moves)
+- No duplicate tool numbers (same `WZB`/`WZF`/`WZS` tool number called twice)
 
 ---
 
