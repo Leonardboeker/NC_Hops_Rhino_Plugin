@@ -154,15 +154,41 @@ namespace DynesticPostProcessor.Components.Operations
                 double offsetDist = side * radius;
                 Curve[] offsets = curve.Offset(Plane.WorldXY, offsetDist, tol,
                     CurveOffsetCornerStyle.Sharp);
-                if (offsets != null && offsets.Length > 0)
+
+                if (offsets == null || offsets.Length == 0)
                 {
-                    cuttingCurve = offsets.Length == 1 ? offsets[0]
-                        : Curve.JoinCurves(offsets, tol)[0];
+                    // OFFSET FAILURE — null/empty result (tight geometry or diameter too large)
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                        "Kerf offset failed for curve — tool diameter (" +
+                        toolDiameter.ToString(CultureInfo.InvariantCulture) +
+                        " mm) may be too large for this geometry. Using center path.");
                 }
                 else
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
-                        "Side offset failed -- using center path");
+                    cuttingCurve = offsets.Length == 1 ? offsets[0]
+                        : Curve.JoinCurves(offsets, tol)[0];
+
+                    // POST-OFFSET SANITY CHECK — detect self-intersecting / collapsed offset
+                    // via area ratio: if offset area < 10% or > 10x original, geometry is suspect.
+                    if (curve.IsClosed && cuttingCurve != null && cuttingCurve.IsClosed)
+                    {
+                        var areaOrig   = AreaMassProperties.Compute(curve);
+                        var areaOffset = AreaMassProperties.Compute(cuttingCurve);
+                        if (areaOrig != null && areaOffset != null && areaOrig.Area > 0.0)
+                        {
+                            double ratio = areaOffset.Area / areaOrig.Area;
+                            if (ratio < 0.10 || ratio > 10.0)
+                            {
+                                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                                    "Kerf offset area is unexpected (ratio " +
+                                    ratio.ToString("F2", CultureInfo.InvariantCulture) +
+                                    ") — offset curve may be self-intersecting. " +
+                                    "Check tool diameter (" +
+                                    toolDiameter.ToString(CultureInfo.InvariantCulture) +
+                                    " mm) against curve geometry.");
+                            }
+                        }
+                    }
                 }
             }
 
