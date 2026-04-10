@@ -1,28 +1,28 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Korpus-Generator
-status: in_progress
-stopped_at: Completed 09-02-PLAN.md (3D viewport preview, human-verify approved)
-last_updated: "2026-03-31T21:30:00Z"
+milestone: v1.0
+milestone_name: — GH Post-Processor
+status: executing
+stopped_at: Completed 87.2-01-PLAN.md (HopLayerScanComponent)
+last_updated: "2026-04-10T00:52:44.050Z"
 progress:
-  total_phases: 11
+  total_phases: 10
   completed_phases: 8
-  total_plans: 25
-  completed_plans: 23
+  total_plans: 20
+  completed_plans: 21
 ---
 
 # Project State
 
 **Last updated:** 2026-03-31
-**Status:** v2.0 Phase 9.1 complete — Plans 09-01 + 09-02 done, human UAT approved
+**Status:** Executing Phase 87.2
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** One GH definition takes geometry to a ready-to-run .hop file for the DYNESTIC -- no CAM middleman.
-**Current focus:** v2.0 Milestone — Korpus-Generator Phase 9.1 complete (next: Phase 9.2 Rueckwand + Verbinder)
+**Current focus:** Phase 87.2 — layer-scan
 
 ## Milestone v1.0 — COMPLETE ✓
 
@@ -92,7 +92,10 @@ Roadmap updated 2026-03-30:
 - [Phase 09-01]: 5 panels (not 6): open front = absence, not a zero-size panel
 - [Phase 09-02]: Face-normal extrusion for 3D preview (orientation-agnostic, works for all 5 panel orientations)
 - [Phase 09-02]: Transparency 0.3 (vs 0.5 in HopContour) for more opaque furniture preview
+- [Phase 87.2-02]: Area ratio thresholds 0.10/10.0 (loose) to avoid false positives on normal inside-offset shrinkage; open curves skip area check
 - [Phase 09-02]: Default warm brown colour (180,140,100) to distinguish from op-component yellows/reds
+- [Phase 87.2]: FindByLayer(Layer) overload used (not int) for Rhino 7/8 compatibility
+- [Phase 87.2]: Rhino.Geometry.Point fully-qualified to resolve System.Drawing.Point ambiguity in HopLayerScanComponent
 
 ## Performance Metrics
 
@@ -112,8 +115,9 @@ Roadmap updated 2026-03-30:
 | 08 | 03 | 6min | 2 | 7 |
 | 09 | 01 | 2min | 2 | 2 |
 | 09 | 02 | 2min | 2 | 1 |
+| Phase 87.2 P01 | 8 | 2 tasks | 1 files |
 
 ## Session
 
-**Last session:** 2026-03-31T21:30:00Z
-**Stopped at:** Completed 09-02-PLAN.md (3D viewport preview, human-verify approved -- Phase 9.1 complete)
+**Last session:** 2026-04-10T00:52:44.047Z
+**Stopped at:** Completed 87.2-01-PLAN.md (HopLayerScanComponent)
