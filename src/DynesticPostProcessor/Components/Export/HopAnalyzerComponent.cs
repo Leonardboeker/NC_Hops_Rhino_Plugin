@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Text;
 
 using Grasshopper.Kernel;
@@ -16,10 +17,10 @@ namespace DynesticPostProcessor.Components.Export
     {
         public HopAnalyzerComponent() : base(
             "HopAnalyzer", "HopAnalyzer",
-            "Validates the final .hop file content for SP/EP structural correctness.\n\n" +
-            "Checks that every SP has a matching EP, and that no G01/G02M/G03M moves " +
-            "appear outside an SP/EP block. Wire in HopContent from HopExport so the " +
-            "check runs on the fully sorted and assembled output.",
+            "Validates the final .hop file content for structural correctness.\n\n" +
+            "Checks: SP/EP pairing, moves outside SP/EP blocks, duplicate tool calls, " +
+            "and negative Z values (Bohrung cutZ, SP zEintauch below machine table). " +
+            "Wire in HopContent from HopExport so the check runs on the fully assembled output.",
             "DYNESTIC", "Export") { }
 
         public override Guid ComponentGuid => new Guid("9e4f1a2b-c3d5-4e6f-8a7b-0c1d2e3f4a5b");
@@ -43,7 +44,7 @@ namespace DynesticPostProcessor.Components.Export
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddBooleanParameter("IsValid", "isValid",
-                "True if no structural SP/EP errors were found.", GH_ParamAccess.item);
+                "True if no structural or Z-depth errors were found.", GH_ParamAccess.item);
 
             pManager.AddIntegerParameter("ErrorCount", "errorCount",
                 "Total number of structural errors found.", GH_ParamAccess.item);
@@ -87,6 +88,10 @@ namespace DynesticPostProcessor.Components.Export
             int movesInBlock   = 0;
             int openSpLine     = -1;
 
+            // Z safety tracking
+            double deepestZ = double.MaxValue;
+            int zWarnings = 0;
+
             // Duplicate tool tracking: "WZB|1", "WZF|3", etc.
             var seenTools = new System.Collections.Generic.HashSet<string>();
 
@@ -115,6 +120,23 @@ namespace DynesticPostProcessor.Components.Export
                     spCount++;
                     movesInBlock = 0;
                     openSpLine = lineNum;
+                    // Z safety: SP (x, y, zEintauch, ...) — zEintauch is param index 2
+                    int spOpen = s.IndexOf('(');
+                    int spClose = s.LastIndexOf(')');
+                    if (spOpen >= 0 && spClose > spOpen)
+                    {
+                        string[] spParts = s.Substring(spOpen + 1, spClose - spOpen - 1).Split(',');
+                        if (spParts.Length >= 3 && double.TryParse(spParts[2].Trim(),
+                            NumberStyles.Any, CultureInfo.InvariantCulture, out double zEintauch))
+                        {
+                            deepestZ = Math.Min(deepestZ, zEintauch);
+                            if (zEintauch < 0)
+                            {
+                                zWarnings++;
+                                errors.Add("L" + lineNum + ": SP zEintauch=" + zEintauch.ToString("F3", CultureInfo.InvariantCulture) + " is negative (below machine table)");
+                            }
+                        }
+                    }
                 }
                 else if (s.StartsWith("EP "))
                 {
@@ -142,6 +164,26 @@ namespace DynesticPostProcessor.Components.Export
                         errors.Add("L" + lineNum + ": Move outside SP/EP block: "
                             + s.Substring(0, Math.Min(s.Length, 50)));
                 }
+                else if (s.StartsWith("Bohrung ("))
+                {
+                    // Z safety: Bohrung (x, y, surfaceZ, cutZ, ...) — cutZ is param index 3
+                    int bOpen = s.IndexOf('(');
+                    int bClose = s.LastIndexOf(')');
+                    if (bOpen >= 0 && bClose > bOpen)
+                    {
+                        string[] bParts = s.Substring(bOpen + 1, bClose - bOpen - 1).Split(',');
+                        if (bParts.Length >= 4 && double.TryParse(bParts[3].Trim(),
+                            NumberStyles.Any, CultureInfo.InvariantCulture, out double cutZ))
+                        {
+                            deepestZ = Math.Min(deepestZ, cutZ);
+                            if (cutZ < 0)
+                            {
+                                zWarnings++;
+                                errors.Add("L" + lineNum + ": Bohrung cutZ=" + cutZ.ToString("F3", CultureInfo.InvariantCulture) + " is negative (below machine table)");
+                            }
+                        }
+                    }
+                }
             }
 
             foreach (int openLine in spStack)
@@ -153,6 +195,10 @@ namespace DynesticPostProcessor.Components.Export
                 + " Moves=" + moveCount + " Lines=" + opLines.Count;
             if (emptyBlocks > 0)
                 summary += " EmptyBlocks=" + emptyBlocks;
+            if (deepestZ < double.MaxValue)
+                summary += " DeepestZ=" + deepestZ.ToString("F3", CultureInfo.InvariantCulture);
+            if (zWarnings > 0)
+                summary += " ZWarnings=" + zWarnings;
             if (isValid)
                 summary = "OK  " + summary;
             else
