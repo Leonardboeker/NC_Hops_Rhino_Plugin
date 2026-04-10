@@ -88,8 +88,20 @@ namespace DynesticPostProcessor.Components.Export
             int movesInBlock   = 0;
             int openSpLine     = -1;
 
-            // Z safety tracking — warn if more than 5 mm below machine table (into spoilboard)
-            const double ZSpoilboardTolerance = -5.0;
+            // Parse DZ (plate thickness) from header: ";DZ=19.000"
+            double headerDZ = 0;
+            foreach (string hLine in opLines)
+            {
+                string hl = (hLine ?? "").Trim();
+                if (hl.StartsWith(";DZ="))
+                {
+                    double.TryParse(hl.Substring(4), NumberStyles.Any, CultureInfo.InvariantCulture, out headerDZ);
+                    break;
+                }
+            }
+
+            // Z safety tracking — warn if drill depth > DZ + 5 mm (into spoilboard beyond tolerance)
+            const double SpoilboardAllowance = 5.0;
             double deepestZ = double.MaxValue;
             var zWarningMessages = new List<string>();
 
@@ -121,20 +133,6 @@ namespace DynesticPostProcessor.Components.Export
                     spCount++;
                     movesInBlock = 0;
                     openSpLine = lineNum;
-                    // Z safety: SP (x, y, zEintauch, ...) — zEintauch is param index 2
-                    int spOpen = s.IndexOf('(');
-                    int spClose = s.LastIndexOf(')');
-                    if (spOpen >= 0 && spClose > spOpen)
-                    {
-                        string[] spParts = s.Substring(spOpen + 1, spClose - spOpen - 1).Split(',');
-                        if (spParts.Length >= 3 && double.TryParse(spParts[2].Trim(),
-                            NumberStyles.Any, CultureInfo.InvariantCulture, out double zEintauch))
-                        {
-                            deepestZ = Math.Min(deepestZ, zEintauch);
-                            if (zEintauch < ZSpoilboardTolerance)
-                                zWarningMessages.Add("L" + lineNum + ": SP zEintauch=" + zEintauch.ToString("F3", CultureInfo.InvariantCulture) + " is more than 5 mm below table");
-                        }
-                    }
                 }
                 else if (s.StartsWith("EP "))
                 {
@@ -164,18 +162,23 @@ namespace DynesticPostProcessor.Components.Export
                 }
                 else if (s.StartsWith("Bohrung ("))
                 {
-                    // Z safety: Bohrung (x, y, surfaceZ, cutZ, ...) — cutZ is param index 3
+                    // Z safety: Bohrung (x, y, surfaceZ, cutZ, ...) — params index 2 and 3
+                    // drillDepth = surfaceZ - cutZ; warn if drillDepth > DZ + 5 mm
                     int bOpen = s.IndexOf('(');
                     int bClose = s.LastIndexOf(')');
-                    if (bOpen >= 0 && bClose > bOpen)
+                    if (bOpen >= 0 && bClose > bOpen && headerDZ > 0)
                     {
                         string[] bParts = s.Substring(bOpen + 1, bClose - bOpen - 1).Split(',');
-                        if (bParts.Length >= 4 && double.TryParse(bParts[3].Trim(),
-                            NumberStyles.Any, CultureInfo.InvariantCulture, out double cutZ))
+                        if (bParts.Length >= 4
+                            && double.TryParse(bParts[2].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double surfZ)
+                            && double.TryParse(bParts[3].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double cutZ))
                         {
+                            double drillDepth = surfZ - cutZ;
                             deepestZ = Math.Min(deepestZ, cutZ);
-                            if (cutZ < ZSpoilboardTolerance)
-                                zWarningMessages.Add("L" + lineNum + ": Bohrung cutZ=" + cutZ.ToString("F3", CultureInfo.InvariantCulture) + " is more than 5 mm below table");
+                            if (drillDepth > headerDZ + SpoilboardAllowance)
+                                zWarningMessages.Add("L" + lineNum + ": Bohrung depth=" + drillDepth.ToString("F1", CultureInfo.InvariantCulture)
+                                    + " mm exceeds plate DZ=" + headerDZ.ToString("F1", CultureInfo.InvariantCulture)
+                                    + " mm + 5 mm spoilboard allowance");
                         }
                     }
                 }
