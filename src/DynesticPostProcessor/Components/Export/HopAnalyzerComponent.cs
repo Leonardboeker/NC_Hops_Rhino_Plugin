@@ -88,9 +88,10 @@ namespace DynesticPostProcessor.Components.Export
             int movesInBlock   = 0;
             int openSpLine     = -1;
 
-            // Z safety tracking
+            // Z safety tracking — warn if more than 5 mm below machine table (into spoilboard)
+            const double ZSpoilboardTolerance = -5.0;
             double deepestZ = double.MaxValue;
-            int zWarnings = 0;
+            var zWarningMessages = new List<string>();
 
             // Duplicate tool tracking: "WZB|1", "WZF|3", etc.
             var seenTools = new System.Collections.Generic.HashSet<string>();
@@ -130,11 +131,8 @@ namespace DynesticPostProcessor.Components.Export
                             NumberStyles.Any, CultureInfo.InvariantCulture, out double zEintauch))
                         {
                             deepestZ = Math.Min(deepestZ, zEintauch);
-                            if (zEintauch < 0)
-                            {
-                                zWarnings++;
-                                errors.Add("L" + lineNum + ": SP zEintauch=" + zEintauch.ToString("F3", CultureInfo.InvariantCulture) + " is negative (below machine table)");
-                            }
+                            if (zEintauch < ZSpoilboardTolerance)
+                                zWarningMessages.Add("L" + lineNum + ": SP zEintauch=" + zEintauch.ToString("F3", CultureInfo.InvariantCulture) + " is more than 5 mm below table");
                         }
                     }
                 }
@@ -176,11 +174,8 @@ namespace DynesticPostProcessor.Components.Export
                             NumberStyles.Any, CultureInfo.InvariantCulture, out double cutZ))
                         {
                             deepestZ = Math.Min(deepestZ, cutZ);
-                            if (cutZ < 0)
-                            {
-                                zWarnings++;
-                                errors.Add("L" + lineNum + ": Bohrung cutZ=" + cutZ.ToString("F3", CultureInfo.InvariantCulture) + " is negative (below machine table)");
-                            }
+                            if (cutZ < ZSpoilboardTolerance)
+                                zWarningMessages.Add("L" + lineNum + ": Bohrung cutZ=" + cutZ.ToString("F3", CultureInfo.InvariantCulture) + " is more than 5 mm below table");
                         }
                     }
                 }
@@ -197,8 +192,8 @@ namespace DynesticPostProcessor.Components.Export
                 summary += " EmptyBlocks=" + emptyBlocks;
             if (deepestZ < double.MaxValue)
                 summary += " DeepestZ=" + deepestZ.ToString("F3", CultureInfo.InvariantCulture);
-            if (zWarnings > 0)
-                summary += " ZWarnings=" + zWarnings;
+            if (zWarningMessages.Count > 0)
+                summary += " ZWarnings=" + zWarningMessages.Count;
             if (isValid)
                 summary = "OK  " + summary;
             else
@@ -207,10 +202,17 @@ namespace DynesticPostProcessor.Components.Export
             AddRuntimeMessage(
                 isValid ? GH_RuntimeMessageLevel.Remark : GH_RuntimeMessageLevel.Warning,
                 summary);
+            foreach (string zw in zWarningMessages)
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, zw);
+
+            var allMessages = new List<string>();
+            if (errors.Count > 0) allMessages.AddRange(errors);
+            if (zWarningMessages.Count > 0) allMessages.AddRange(zWarningMessages);
+            if (allMessages.Count == 0) allMessages.Add("No errors.");
 
             DA.SetData(0, isValid);
             DA.SetData(1, errors.Count);
-            DA.SetDataList(2, isValid ? new List<string> { "No errors." } : errors);
+            DA.SetDataList(2, allMessages);
             DA.SetData(3, summary);
         }
 
