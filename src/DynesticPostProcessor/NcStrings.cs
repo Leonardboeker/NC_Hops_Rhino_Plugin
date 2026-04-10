@@ -107,6 +107,31 @@ namespace DynesticPostProcessor
             if (current != null && current.Count > 0)
                 buckets[currentBucket].Add(current);
 
+            // Merge blocks that share the same WZx tool-call line (e.g. four HopSaw
+            // components with tool 10 → one WZS block with all their operations).
+            for (int b = 0; b < 4; b++)
+            {
+                var merged = new List<List<string>>();
+                var toolToIndex = new Dictionary<string, int>();
+                foreach (var block in buckets[b])
+                {
+                    if (block.Count == 0) continue;
+                    string toolLine = block[0];
+                    int idx;
+                    if (toolToIndex.TryGetValue(toolLine, out idx))
+                    {
+                        for (int j = 1; j < block.Count; j++)
+                            merged[idx].Add(block[j]);
+                    }
+                    else
+                    {
+                        toolToIndex[toolLine] = merged.Count;
+                        merged.Add(new List<string>(block));
+                    }
+                }
+                buckets[b] = merged;
+            }
+
             var result = new List<string>();
             foreach (var bucket in buckets)
                 foreach (var block in bucket)
