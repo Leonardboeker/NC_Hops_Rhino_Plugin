@@ -105,29 +105,12 @@ namespace DynesticPostProcessor.Components.Export
             double deepestZ = double.MaxValue;
             var zWarningMessages = new List<string>();
 
-            // Duplicate tool tracking: "WZB|1", "WZF|3", etc.
-            var seenTools = new System.Collections.Generic.HashSet<string>();
-
             for (int i = 0; i < opLines.Count; i++)
             {
                 string s = (opLines[i] ?? "").Trim();
                 int lineNum = i + 1;
 
-                if (s.StartsWith("WZB ") || s.StartsWith("WZF ") || s.StartsWith("WZS "))
-                {
-                    // Extract tool number from e.g. "WZF (7,..."
-                    string type = s.Substring(0, 3);
-                    int paren = s.IndexOf('(');
-                    int comma = s.IndexOf(',', paren > 0 ? paren : 0);
-                    if (paren >= 0 && comma > paren)
-                    {
-                        string toolNum = s.Substring(paren + 1, comma - paren - 1).Trim();
-                        string key = type + "|" + toolNum;
-                        if (!seenTools.Add(key))
-                            errors.Add("L" + lineNum + ": Duplicate tool call " + type + " " + toolNum);
-                    }
-                }
-                else if (s.StartsWith("SP "))
+                if (s.StartsWith("SP "))
                 {
                     spStack.Push(lineNum);
                     spCount++;
