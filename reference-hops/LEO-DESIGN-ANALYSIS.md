@@ -1,139 +1,125 @@
 # LEO-Design .hop File Analysis
 
-Source folder: `F:\Für Leo\LEO-Design\`
-Analysiert: 2026-04-12 | ~170 Dateien in 20+ Projekten
+Source: `F:\Für Leo\LEO-Design\` → `reference-hops/leo-design/`
+Analysiert: 2026-04-12 | **204 Dateien** in 20 Projekten
 
 ---
 
-## Bekannte Makros (Plugin already supports)
-- `WZF` + `SP/G01/G02M/G03M/EP` → HopContour, HopEngraving
-- `WZB` + `Bohrung(...)` → HopDrill
-- `WZS` + `CALL _nuten_frei_v5(...)` → HopSaw
-- `CALL HH_Tasche(...)` → HopRectPocket
-- `_Kreisbahn_V5` (partial) → HopCircPath
+## Makro-Häufigkeit (alle 204 Dateien)
+
+| Makro | Häufig. | Beschreibung | Beispiel |
+|-------|--------:|-------------|---------|
+| Park_V7 | 142 | Standard-Parkposition | Blende_HKV.hop |
+| HH_MarkLabel | 118 | Etiketten-Markierung (Drucker) | Blende_HKV.hop |
+| BN_TrennerInnenAussen | 118 | Nesting-Separator innen/außen | Blende_HKV.hop |
+| BN_NestKontur | 118 | Nesting-Kontur-Definition | Blende_HKV.hop |
+| _saege_y_V7 | 110 | Sägeschnitt Y-Richtung (±Gehrung) | Linz/Format1.hop |
+| _Format_V5 | 84 | Format-Bearbeitung | Format SG0085_HG.hop |
+| B2Punkte_V7 | 68 | 2D-Bemaßungspunkte/Pfeile | HZK_Schrankseite.hop |
+| _saege_x_V7 | 66 | Sägeschnitt X-Richtung (±Gehrung) | Linz_Steri_Raum/ |
+| _Kreistasche_V5 | 47 | Kreisförmige Tasche | Linz/Schiebetür.hop |
+| _Bohgy_V5 | 43 | Bohrreihe Y-Richtung | Linz_Steri_Raum/ |
+| _Rechteck_V7 | 40 | Rechteck-Pocket (erweitert) | Proben/ |
+| _RechteckTasche_V5 | 34 | Rechtecktasche | Proben/ |
+| _Bohgx_V5 | 24 | Bohrreihe X-Richtung | Linz_Steri_Raum/ |
+| Keep_Part_V7 | 22 | Kontur-Haltefunktion | Kumpel/Format_1.hop |
+| P_S_RE_LI_FLAT_V7 | 22 | Kanten-Processing (flach) | Tisch_Botschaft/ |
+| _Kreisbahn_V5 | 22 | Offene Kreiskontur | Ploom/Drehscheibe.hop |
+| _Rbohx_einpass_V5 | 17 | Einpass-Bohrreihe X | Linz/ |
+| _hg_para_V5 | 15 | HopGlass Parameter-Funktion | Linz/Theke/ |
+| P_S_RE_LI_HORI_V7 | 15 | Kanten-Processing (horizontal) | Tisch_Botschaft/ |
+| _saege_frei_V7 | 14 | Freisäge | Linz/ |
+| BWinkel_V7 | 13 | B-Winkel Verarbeitung | Linz/ |
+| _Topf_V5 | 12 | Blum Topfband (Scharnier-Ausfräsung) | Linz_Steri_Raum/Tür_Hochschrank.hop |
+| Fixchip_K | 12 | Klemmschräubchen-Position | HZK_Boden_Deckel.hop |
+| _Nuten_X_V5 | 8 | Nut fräsen X-Richtung | HZK_Boden_Deckel.hop |
+| ToolOptiPreferTools_V7 | 7 | Werkzeug-Präferenz-Optimierung | Proben/ |
+| MachineStop_V7 | 6 | Maschinenstop / Pause | Linz/ |
+| P_S_HI_VO_HORI_V7 | 5 | Edge-Processing High-Volume | Tisch_Botschaft/ |
+| _ExecutePocket_V5 | 4 | Custom Pocket-Ausführung | Kumpel/ |
+| ABC_VAR | 3 | Custom Variable-Handler | Linz/Theke/Musterdatei_2.hop |
+| P_S_HI_VO_FLAT_V7 | 2 | Edge-Processing HV flach | Linz_Steri_Raum/ |
+| _Sformat_V5 | 2 | S-Format Variante | Linz/ |
+| _hg_lot_V5 | 2 | HopGlass Lot-Funktion | Linz/ |
 
 ---
 
-## Neue Makros / Patterns gefunden
+## WZ-Typen
 
-### 1. Nuten — `_Nuten_X_V5` / `_Nuten_Y_V5`
-**Priorität: HOCH** — kommt in fast jedem Schrankteil vor
-
-Parameter: `NB` (Nutbreite), `NT` (Nuttiefe), `ARAND` (Abstand Rand)
-
-Beispieldateien:
-- `F:\Für Leo\LEO-Design\HZK_Boden_Deckel_602x278.hop` — Nuten mit Säge WZS(210)
-- `F:\Für Leo\LEO-Design\Linz_Steri_Raum\Seite Schrank_Schub_3Stück.hop`
-
-```
-WZS (210,_VE,_V*0.3,_VA,_SD,0,'')
-CALL _Nuten_X_V5 (VAL X1:=0,Y1:=50,X2:=DX,NB:=8.25,NT:=10,ARAND:=0,...)
-```
+| Typ | Häufig. | Bedeutung |
+|-----|--------:|----------|
+| WZF | 313 | Fräswerkzeug |
+| WZB | 61 | Bohrwerkzeug |
+| WZS | 57 | Sägewerkzeug |
 
 ---
 
-### 2. Kreisbahn (offene Kreiskontur) — `_Kreisbahn_V5`
-**Priorität: MITTEL**
+## VP-Variablen
 
-Parameter: `RADIUS`, `WINKEL`, `BEARB_UMKEHREN`, `RAMPE`, Tiefe
-
-Beispieldatei:
-- `F:\Für Leo\LEO-Design\Ploom\Gluecksrad\Drehscheibe.hop`
-
-```
-CALL _Kreisbahn_V5 (VAL MX:=DX/2,MY:=DY/2,RADIUS:=400,TIEFE:=10,
-    WINKEL:=180,BEARB_UMKEHREN:=1,RAMPE:=1,...)
-```
+**Keine VP18–VP109 Variablen in den 204 Dateien gefunden.**
+Metadaten laufen über `_hhdata_*` Variablen (Kanten, Nesting, Etiketten).
 
 ---
 
-### 3. Gehrungsschnitt — `_saege_x_V7` / `_saege_y_V7` mit `KW`
-**Priorität: MITTEL**
+## Gruppen / Systeme
 
-`KW` = Schnittwinkel (z.B. `-45.05` für 45° Gehrung)
+### Nesting-System (118 Dateien = 58%)
+Immer zusammen: `BN_NestKontur` + `BN_TrennerInnenAussen` + `HH_MarkLabel` + `Park_V7`
 
-Beispieldateien:
-- `F:\Für Leo\LEO-Design\PORSEGUR\Gehrungs vario.hop`
-- `F:\Für Leo\LEO-Design\Linz_Steri_Raum\Axios_Rückwand_Format_Bohrungen_variabel.hop`
+### Säge-Suite (176 Dateien = 86%)
+`_saege_x_V7`, `_saege_y_V7`, `_saege_frei_V7` — mit optionalem `KW` für Gehrungswinkel
 
-```
-WZS (250,_VE,_V*0.3,_VA,_SD,0,'')
-CALL _saege_x_V7 (VAL X:=50,Y:=0,TIEFE:=19,KW:=-45.05,...)
-```
+### Bohr-Suite
+`_Bohgx_V5`, `_Bohgy_V5`, `_Rbohx_einpass_V5` — parametrische Bohrreihen mit USE2/3/4
 
----
+### Tasche-Suite
+`_Kreistasche_V5`, `_RechteckTasche_V5`, `_Rechteck_V7` — 3 verschiedene Taschenvarianten
 
-### 4. Fixchip-Befestigung — `Fixchip_K`
-**Priorität: NIEDRIG**
+### Kanten-Processing
+`P_S_RE_LI_HORI_V7`, `P_S_RE_LI_FLAT_V7`, `P_S_HI_VO_*` — Kantenbearbeitung für Möbel
 
-Parameter: `SPX`, `SPY`, `SPZ`, `WKLXY` (Winkel)
-
-Beispieldatei:
-- `F:\Für Leo\LEO-Design\HZK_Boden_Deckel_602x278.hop`
+### Blum-Integration
+`_Topf_V5` (Topfband-Ausfräsung) + `_hhdata_*` (Kanten/Material/Nesting-Metadaten)
 
 ---
 
-### 5. Parametrische Bohrreihen — `_Bohgx_V5` / `_Bohgy_V5`
-**Priorität: NIEDRIG**
+## Projektschwerpunkte
 
-`USE2/3/4` — bedingte Bohrlöcher, `PDV_Y` — Versatz
-
-Beispieldateien:
-- `F:\Für Leo\LEO-Design\kÖNIGSALLEE\Treppe\Tritt 217.hop`
-- `F:\Für Leo\LEO-Design\Linz_Steri_Raum\Seite Schrank_Schub_3Stück.hop`
-
----
-
-### 6. Positionierreihen — `P_S_RE_LI_HORI_V7` / `P_S_RE_LI_FLAT_V7`
-**Priorität: NIEDRIG** — sehr spezialisiert
-
-Parametrische X/Y-Positionierung für 6+ Bohrlöcher in einer Zeile
+| Ordner | Dateien | Hauptmakros | Fokus |
+|--------|--------:|------------|-------|
+| Linz/ | 56 | _saege_*, Park_V7, _Bohgy_V5 | Theke + Möbel |
+| Ploom/ | 46 | _Kreistasche_V5, Park_V7 | Display + Kreisformen |
+| kÖNIGSALLEE/ | 19 | _Format_V5, Park_V7 | Küchenmöbel |
+| Linz_Steri_Raum/ | 18 | B2Punkte_V7, _Bohgy_V5 | Schränke + Bohrbilder |
+| Proben/ | 15 | _Rechteck_V7, _saege_y_V7 | Rechteck-Taschen |
+| Gitterboxen/ | 16 | _saege_x_V7, _saege_y_V7 | Reine Sägearbeit |
+| Sophia_Schwester/ | 9 | _saege_*, Park_V7 | Küchenmöbel |
+| PORSEGUR/ | 8 | Park_V7, BN_*, HH_MarkLabel | Nesting |
+| Buchstaben/, David/, Freundin/, MAMA/ | 9 | — | Reine Konturen (keine CALLs) |
 
 ---
 
-### 7. Kanten-Metadaten — `_hhdata_*` Variablen
-Für Blum/HH-Integration: Kantentyp, Material, Stärke, Inlay
+## Empfohlene nächste Plugin-Komponenten
 
-```
-_hhdata_EdgeLeft := 0
-_hhdata_EdgeRight := 1
-_hhdata_Material := 'MDF'
-_hhdata_Thickness := 19
-```
-
-Beispieldatei:
-- `F:\Für Leo\LEO-Design\Linz_Steri_Raum\Boden LegraBox Zarge_C.hop`
+| Prio | Komponente | Makro(s) | Abdeckung | Aufwand |
+|------|-----------|----------|----------:|--------|
+| 1 | **HopAngleCut** | `_saege_x/y_V7` + `KW` | 86% | Klein — HopSaw erweitern |
+| 2 | **HopGrooveSlot** | `_Nuten_X/Y_V5` | häufig in Schränken | Klein |
+| 3 | **HopBlumHinge** | `_Topf_V5` | 11% | Mittel |
+| 4 | **HopCircularPath** (erweitern) | `_Kreisbahn_V5` | 11% | Klein |
+| 5 | **HopNestingSystem** | `BN_* + Park_V7 + HH_MarkLabel` | 58% | Groß |
 
 ---
 
-### 8. `_Rechteck_V7` (erweiterte Rechteck-Tasche)
-Wie HopRectPocket aber mit `RADIUSKORREKTUR` und `INTERPOL=1`
+## Referenzdateien `files/` (10 Key-Dateien aus Vorab-Analyse)
 
-Beispieldatei:
-- `F:\Für Leo\LEO-Design\Ploom\Produkt_Panel\Brett_Endbearbeitung_Sichtseite.hop`
-
----
-
-## Referenzdateien in diesem Ordner
-
-Kopierte Referenzen für Plugin-Entwicklung (Unterordner `files/`):
-- `Axios_Rückwand_Format_Bohrungen_variabel.hop` — parametrische Bohrgruppen
-- `Boden_LegraBox_Zarge_C.hop` — Blum/HH Metadaten
-- `Gehrungs_vario.hop` — Gehrungsschnitte
+- `Axios_Rueckwand_variabel.hop` — parametrische Bohrgruppen
+- `Boden_LegraBox_Zarge_C.hop` — _hhdata_* Metadaten
+- `Gehrungs_vario.hop` — Gehrungsschnitte KW=-45.05
 - `HZK_Boden_Deckel_602x278.hop` — Nuten + Fixchip
-- `Drehscheibe.hop` — Kreisbahn
+- `Drehscheibe.hop` — Kreisbahn konzentrisch
 - `Brett_Endbearbeitung_Sichtseite.hop` — Rechteck V7
 - `Tritt_217.hop` — direkte G-Codes gemischt mit Makros
 - `Seite_Schrank_Schub_3Stueck.hop` — Multi-Unit Nesting
 - `Schiebetuer.hop` — Kreistaschen-Raster
 - `Musterdatei.hop` — Template-Struktur
-
----
-
-## Empfohlene nächste Komponenten
-
-| Komponente | Makro | Aufwand |
-|-----------|-------|---------|
-| **HopGrooveSlot** | `_Nuten_X/Y_V5` | Klein — analog zu HopSaw |
-| **HopCircularPath** (erweitern) | `_Kreisbahn_V5` | Mittel |
-| **HopAngleCut** | `_saege_x/y_V7` + `KW` | Klein — HopSaw erweitern |
