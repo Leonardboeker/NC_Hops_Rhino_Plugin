@@ -12,10 +12,10 @@ namespace DynesticPostProcessor.Components.Utility
     /// Wire output into HopExport's LabelVars input.
     ///
     /// Default VP mapping (matches standard HOLZ-HER EasyTronic label template):
-    ///   VP18 = Auftragsnummer  → "Auftrag:" field
-    ///   VP19 = Bestellnummer   → "EINr.:"  field
-    ///   VP20 = Bauteilnummer   → "Pos.:"   field
-    ///   VP21 = Bauteilname     → part name / material line
+    ///   VP18 = Auftragsnummer  → "Auftrag:"  field
+    ///   VP19 = Bestellnummer   → "EINr.:"   field
+    ///   VP20 = Bauteilnummer   → "Pos.:"    field
+    ///   VP21 = Bauteilname     → "Material:" field
     /// </summary>
     public class HopLabelComponent : GH_Component
     {
@@ -53,8 +53,8 @@ namespace DynesticPostProcessor.Components.Utility
                 GH_ParamAccess.item, "");
             pManager[2].Optional = true;
 
-            pManager.AddTextParameter("Bauteilname", "bauteilname",
-                "Part name or material description (VP21 = Bauteilname).",
+            pManager.AddTextParameter("Material", "material",
+                "Material description shown in Material field (VP21 = Bauteilname / Material).",
                 GH_ParamAccess.item, "");
             pManager[3].Optional = true;
 
@@ -80,16 +80,16 @@ namespace DynesticPostProcessor.Components.Utility
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            string auftrag    = "";
-            string einr       = "";
-            string pos        = "";
-            string bauteilname = "";
+            string auftrag  = "";
+            string einr     = "";
+            string pos      = "";
+            string material = "";
             var extraVars = new List<string>();
 
             DA.GetData(0, ref auftrag);
             DA.GetData(1, ref einr);
             DA.GetData(2, ref pos);
-            DA.GetData(3, ref bauteilname);
+            DA.GetData(3, ref material);
             DA.GetDataList(4, extraVars);
 
             var lines = new List<string>();
@@ -103,8 +103,8 @@ namespace DynesticPostProcessor.Components.Utility
             if (!string.IsNullOrWhiteSpace(pos))
                 lines.Add("   VP20 := '" + Sanitize(pos) + "';*VAR*Bauteilnummer");
 
-            if (!string.IsNullOrWhiteSpace(bauteilname))
-                lines.Add("   VP21 := '" + Sanitize(bauteilname) + "';*VAR*Bauteilname");
+            if (!string.IsNullOrWhiteSpace(material))
+                lines.Add("   VP21 := '" + Sanitize(material) + "';*VAR*Bauteilname");
 
             foreach (string extra in extraVars)
             {
