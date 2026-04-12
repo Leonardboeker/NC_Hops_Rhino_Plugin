@@ -23,7 +23,7 @@ namespace DynesticPostProcessor.Components.Operations
         public HopFreeSlotComponent() : base(
             "HopFreeSlot", "HopFreeSlot",
             "Generates free slot operations (nuten_frei_v5 macro) for the DYNESTIC CNC. Cuts an elongated slot between two points at the specified width and depth.",
-            "DYNESTIC", "Operations") { }
+            "DYNESTIC", "Fräsen") { }
 
         public override Guid ComponentGuid => new Guid("6f5e6bd3-18f9-44e5-b90b-33be8ce95bcf");
 

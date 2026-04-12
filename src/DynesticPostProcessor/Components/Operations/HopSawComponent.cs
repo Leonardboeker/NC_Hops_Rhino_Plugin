@@ -28,7 +28,7 @@ namespace DynesticPostProcessor.Components.Operations
             "These are two independent parameters: direction is where the saw goes, blade angle is how the blade is tilted.\n\n" +
             "Side: kerf placement Left / Center / Right of the direction line.\n" +
             "Extend: runs the blade past both endpoints so the kerf fully exits the panel edge.",
-            "DYNESTIC", "Operations") { }
+            "DYNESTIC", "Sägen") { }
 
         public override Guid ComponentGuid => new Guid("c8d2f1a3-4b7e-4c9d-a1f5-2e3b6d8c0f14");
 

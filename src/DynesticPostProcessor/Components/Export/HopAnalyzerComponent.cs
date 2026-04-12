@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 using Grasshopper.Kernel;
 
@@ -163,6 +164,39 @@ namespace DynesticPostProcessor.Components.Export
                                     + " mm exceeds plate DZ=" + headerDZ.ToString("F1", CultureInfo.InvariantCulture)
                                     + " mm + 5 mm spoilboard allowance");
                         }
+                    }
+                }
+
+                // ---- Find deepest Z across all macro types ----
+                // CALL macros: TIEFE:=, SZ:=, T:= (absolute Z cut depth)
+                // SP/EP lines: Z<value>, G01/G02M/G03M lines: Z<value>
+                {
+                    double parsedZ = double.MaxValue;
+                    if (s.StartsWith("CALL "))
+                    {
+                        // Named Z params in CALL macros
+                        foreach (string paramName in new[] { "TIEFE", "SZ", "TOPF_T", "DUEBEL_T" })
+                        {
+                            var m = Regex.Match(s, paramName + @":=([-\d.]+)");
+                            if (m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double pz))
+                            {
+                                parsedZ = Math.Min(parsedZ, pz);
+                            }
+                        }
+                    }
+                    else if (s.StartsWith("SP ") || s.StartsWith("G01 ") || s.StartsWith("G02M ") || s.StartsWith("G03M "))
+                    {
+                        var m = Regex.Match(s, @"\bZ([-\d.]+)");
+                        if (m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double gz))
+                            parsedZ = gz;
+                    }
+
+                    if (parsedZ < double.MaxValue)
+                    {
+                        deepestZ = Math.Min(deepestZ, parsedZ);
+                        if (parsedZ < 0)
+                            zWarningMessages.Add("L" + lineNum + ": cutZ=" + parsedZ.ToString("F3", CultureInfo.InvariantCulture)
+                                + " is below machine table (Z<0) — check depth settings");
                     }
                 }
             }
