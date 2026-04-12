@@ -44,7 +44,7 @@ namespace DynesticPostProcessor.Components.Utility
         {
             pManager.AddTextParameter("ToolFile", "toolFile",
                 "Full path to the NC-HOPS .too tool database file.",
-                GH_ParamAccess.item, @"F:\werkzeug klemp.too");
+                GH_ParamAccess.item, @"D:\Projekte\SynologyDrive\53_post-processor\reference-hops\werkzeug klemp.too");
             pManager[0].Optional = true;
 
             pManager.AddIntegerParameter("ToolID", "toolId",
@@ -75,7 +75,7 @@ namespace DynesticPostProcessor.Components.Utility
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            string filePath = @"F:\werkzeug klemp.too";
+            string filePath = @"D:\Projekte\SynologyDrive\53_post-processor\reference-hops\werkzeug klemp.too";
             DA.GetData(0, ref filePath);
             if (string.IsNullOrWhiteSpace(filePath))
                 filePath = @"F:\werkzeug klemp.too";
@@ -142,7 +142,7 @@ namespace DynesticPostProcessor.Components.Utility
             });
 
             // Parse with default path
-            string defaultPath = @"F:\werkzeug klemp.too";
+            string defaultPath = @"D:\Projekte\SynologyDrive\53_post-processor\reference-hops\werkzeug klemp.too";
             _tools    = ParseTooFile(defaultPath);
             _lastPath = defaultPath;
 
