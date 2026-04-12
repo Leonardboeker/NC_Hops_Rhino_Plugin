@@ -23,7 +23,7 @@ namespace DynesticPostProcessor.Components.Operations
         public HopCircPathComponent() : base(
             "HopCircPath", "HopCircPath",
             "Generates circular profile path operations (Kreisbahn_V5 macro) for the DYNESTIC CNC. Cuts along a circular path with optional radius correction and arc angle.",
-            "DYNESTIC", "Operations") { }
+            "DYNESTIC", "Fräsen") { }
 
         public override Guid ComponentGuid => new Guid("7beb0809-a67e-485b-913f-ebae9bd50294");
 

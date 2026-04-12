@@ -22,8 +22,8 @@ namespace DynesticPostProcessor.Components.Operations
 
         public HopRectPocketComponent() : base(
             "HopRectPocket", "HopRectPocket",
-            "Generates rectangular pocket operations (RechteckTasche_V5 macro) for the DYNESTIC CNC. Extracts center and dimensions from a rectangle curve's bounding box.",
-            "DYNESTIC", "Operations") { }
+            "Generates rectangular pocket operations (_Rechteck_V7 macro) for the DYNESTIC CNC. Extracts center and dimensions from a rectangle curve's bounding box.",
+            "DYNESTIC", "Fräsen") { }
 
         public override Guid ComponentGuid => new Guid("6e2f23b6-557f-46a1-80a7-41feebc7982d");
 
@@ -51,7 +51,7 @@ namespace DynesticPostProcessor.Components.Operations
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
-            pManager.AddTextParameter("OperationLines", "operationLines", "List of NC-Hops macro strings (CALL _RechteckTasche_V5). Wire into HopExport or HopPart.", GH_ParamAccess.list);
+            pManager.AddTextParameter("OperationLines", "operationLines", "List of NC-Hops macro strings (CALL _Rechteck_V7). Wire into HopExport or HopPart.", GH_ParamAccess.list);
         }
 
         public override void ClearData()
@@ -187,16 +187,19 @@ namespace DynesticPostProcessor.Components.Operations
             double cutZ       = surfaceZ - Math.Abs(depth);
             double zustellung = (stepdown > 0) ? stepdown : 0;
 
-            lines.Add("CALL _RechteckTasche_V5(VAL "
-                + "x_Mitte:=" + cx.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y_Mitte:=" + cy.ToString(CultureInfo.InvariantCulture) + ","
-                + "Taschenlaenge:=" + width.ToString(CultureInfo.InvariantCulture) + ","
-                + "Taschenbreite:=" + height.ToString(CultureInfo.InvariantCulture) + ","
-                + "Radius:=" + cornerRadius.ToString(CultureInfo.InvariantCulture) + ","
-                + "Winkel:=" + angle.ToString(CultureInfo.InvariantCulture) + ","
-                + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                + "Zustellung:=" + zustellung.ToString(CultureInfo.InvariantCulture) + ","
-                + "AB:=2,ABF:=_ANF,Interpol:=1,umkehren:=0,esxy:=0,esmd:=0,laser:=0)");
+            lines.Add("CALL _Rechteck_V7(VAL "
+                + "X_MITTE:=" + Fmt(cx) + ","
+                + "Y_MITTE:=" + Fmt(cy) + ","
+                + "LAENGE:=" + Fmt(width) + ","
+                + "BREITE:=" + Fmt(height) + ","
+                + "RADIUS:=" + Fmt(cornerRadius) + ","
+                + "WINKEL:=" + Fmt(angle) + ","
+                + "TIEFE:=" + Fmt(cutZ) + ","
+                + "ZUTIEFE:=" + Fmt(zustellung) + ","
+                + "RADIUSKORREKTUR:=2,"
+                + "AB:=2,AUFMASS:=0,ANF:=_ANF,ABF:=_ANF,"
+                + "UMKEHREN:=0,RAMPE:=0,RAMPENLAENGE:=50,QUADRANT:=1,"
+                + "INTERPOL:=1,ESXY:=0,ESMD:=0,LASER:=0)");
 
             // ---------------------------------------------------------------
             // 7. OUTPUT
@@ -209,6 +212,9 @@ namespace DynesticPostProcessor.Components.Operations
 
             DA.SetDataList(0, lines);
         }
+
+        private static string Fmt(double v) =>
+            Math.Round(v, 4).ToString(CultureInfo.InvariantCulture);
 
         // ---------------------------------------------------------------
         // PREVIEW OVERRIDES

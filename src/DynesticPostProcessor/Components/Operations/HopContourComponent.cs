@@ -23,7 +23,7 @@ namespace DynesticPostProcessor.Components.Operations
         public HopContourComponent() : base(
             "HopContour", "HopContour",
             "Generates 2D contour cutting paths for the DYNESTIC CNC. Converts planar curves into SP/G01/G03M macro sequences with optional kerf compensation and multi-pass stepdown.",
-            "DYNESTIC", "Operations") { }
+            "DYNESTIC", "Fräsen") { }
 
         public override Guid ComponentGuid => new Guid("e2902790-ccf6-4880-b284-80e0110f1e71");
 

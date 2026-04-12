@@ -23,7 +23,7 @@ namespace DynesticPostProcessor.Components.Operations
         public HopDrillComponent() : base(
             "HopDrill", "HopDrill",
             "Generates vertical drilling operations (Bohrung macros) for the DYNESTIC CNC. Each input point becomes one drill call at the specified depth and diameter.",
-            "DYNESTIC", "Operations") { }
+            "DYNESTIC", "Bohren") { }
 
         public override Guid ComponentGuid => new Guid("2a763260-a3c1-4231-8ed0-cd0085267c94");
 

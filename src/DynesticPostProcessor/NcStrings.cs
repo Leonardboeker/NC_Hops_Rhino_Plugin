@@ -45,6 +45,12 @@ namespace DynesticPostProcessor
         }
     }
 
+    internal static class NcFmt
+    {
+        internal static string F(double v) =>
+            Math.Round(v, 4).ToString(CultureInfo.InvariantCulture);
+    }
+
     internal static class NcExport
     {
         internal static List<string> BuildHeader(string ncName, double dx, double dy, double dz, string wzgv)
