@@ -330,9 +330,9 @@ namespace DynesticPostProcessor.Components.Operations
                     gEnd++;
 
                 Point3d startPt = flat[gStart].PointAtStart;
-                lines.Add("SP (" + startPt.X.ToString(CultureInfo.InvariantCulture) + ","
-                    + startPt.Y.ToString(CultureInfo.InvariantCulture) + ","
-                    + zEintauch.ToString(CultureInfo.InvariantCulture)
+                lines.Add("SP (" + Fmt(startPt.X) + ","
+                    + Fmt(startPt.Y) + ","
+                    + Fmt(zEintauch)
                     + ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)");
 
                 for (int i = gStart; i <= gEnd; i++)
@@ -347,22 +347,27 @@ namespace DynesticPostProcessor.Components.Operations
                         bool isCCW = arc.Plane.Normal.Z >= 0;
                         string cmd = isCCW ? "G03M" : "G02M";
                         lines.Add(cmd + " ("
-                            + ep.X.ToString(CultureInfo.InvariantCulture) + ","
-                            + ep.Y.ToString(CultureInfo.InvariantCulture) + ",0,"
-                            + cp.X.ToString(CultureInfo.InvariantCulture) + ","
-                            + cp.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,2,0)");
+                            + Fmt(ep.X) + ","
+                            + Fmt(ep.Y) + ",0,"
+                            + Fmt(cp.X) + ","
+                            + Fmt(cp.Y) + ",0,0,2,0)");
                         continue;
                     }
                     Point3d fep = seg.PointAtEnd;
                     lines.Add("G01 ("
-                        + fep.X.ToString(CultureInfo.InvariantCulture) + ","
-                        + fep.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,0,2)");
+                        + Fmt(fep.X) + ","
+                        + Fmt(fep.Y) + ",0,0,0,2)");
                 }
 
                 lines.Add("EP (0,_ANF,0)");
                 gStart = gEnd + 1;
             }
         }
+
+        // Rounds to 4 decimal places (0.0001 mm) — prevents floating-point
+        // noise like 3.55e-15 from appearing as scientific notation in .hop files.
+        private static string Fmt(double v) =>
+            Math.Round(v, 4).ToString(CultureInfo.InvariantCulture);
 
         // ---------------------------------------------------------------
         // PREVIEW OVERRIDES
