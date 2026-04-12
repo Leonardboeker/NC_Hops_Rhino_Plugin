@@ -194,9 +194,9 @@ namespace DynesticPostProcessor.Components.Export
                     if (parsedZ < double.MaxValue)
                     {
                         deepestZ = Math.Min(deepestZ, parsedZ);
-                        if (parsedZ < 0)
+                        if (parsedZ < -0.2)
                             zWarningMessages.Add("L" + lineNum + ": cutZ=" + parsedZ.ToString("F3", CultureInfo.InvariantCulture)
-                                + " is below machine table (Z<0) — check depth settings");
+                                + " mm is more than 0.2 mm below machine table — risk of table damage");
                     }
                 }
             }
