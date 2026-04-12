@@ -56,6 +56,12 @@ namespace DynesticPostProcessor.Components.Export
                 "NC-Hops macro strings from operation components. Inserted between START section and file end.",
                 GH_ParamAccess.list);
             pManager[7].Optional = true;
+
+            pManager.AddTextParameter("LabelVars", "labelVars",
+                "VP variable lines from HopLabel component. Injected into the VARS block after DX/DY/DZ " +
+                "so the EasyTronic Label printer reads job metadata (Auftrag, Pos, Material, etc.).",
+                GH_ParamAccess.list);
+            pManager[8].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
@@ -102,6 +108,9 @@ namespace DynesticPostProcessor.Components.Export
 
             List<string> operationLines = new List<string>();
             DA.GetDataList(7, operationLines);
+
+            List<string> labelVars = new List<string>();
+            DA.GetDataList(8, labelVars);
 
             // ---------------------------------------------------------------
             // 3. EXPORT GUARD -- fire only on rising edge (false -> true)
@@ -171,6 +180,12 @@ namespace DynesticPostProcessor.Components.Export
             lines.Add("   DY := " + dy.ToString(CultureInfo.InvariantCulture) + ";*VAR*Dimension Y");
             lines.Add("   DZ := " + dz.ToString(CultureInfo.InvariantCulture) + ";*VAR*Dimension Z");
 
+            // Inject label metadata (VP18–VP21 etc.) from HopLabel component
+            if (labelVars != null)
+                foreach (string lv in labelVars)
+                    if (!string.IsNullOrWhiteSpace(lv))
+                        lines.Add(lv);
+
             // ---------------------------------------------------------------
             // 8. BUILD START SECTION -- Fertigteil + HH_Park
             // ---------------------------------------------------------------
@@ -220,7 +235,8 @@ namespace DynesticPostProcessor.Components.Export
                 DynesticPostProcessor.AutoWire.Spec.Float("0<1220<5000"),
                 DynesticPostProcessor.AutoWire.Spec.Float("0<18<200"),
                 DynesticPostProcessor.AutoWire.Spec.Panel(""),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                DynesticPostProcessor.AutoWire.Spec.Skip(),  // operationLines
+                DynesticPostProcessor.AutoWire.Spec.Skip(),  // labelVars — wire HopLabel manually
             });
         }
     }
