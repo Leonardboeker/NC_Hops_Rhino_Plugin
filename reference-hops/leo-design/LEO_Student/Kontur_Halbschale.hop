@@ -1,0 +1,168 @@
+;MAKROTYP=0
+;INSTVERSION=
+;EXEVERSION=7.7.12.80[Hops.exe]
+;BILD=KONTUR_HALBSCHALE.WMF
+;INFO=
+;WZGV=7535D_250
+;WZGVCONFIG=
+;MASCHINE=NESTPP
+;NCNAME=Kontur_Halbschale
+;KOMMENTAR=
+;DX=0
+;DY=0
+;DZ=0
+;DIALOGDLL=Dialoge.Dll
+;DIALOGPROC=StandardFormAnzeigen
+;DIALOGKIND=0
+;AUTOSCRIPTSTART=1
+;BUTTONBILD=
+;DIMENSION_UNIT=0
+VARS
+   DX := 200;*VAR*Breite X
+   DY := 360;*VAR*Breite Y
+   DZ := 28.5;*VAR*Dicke Z
+   _hhdata_ArtNo := '';*VAR*Part articel number / Werkstückartikelnummer
+   _hhdata_Info := '';*VAR*Part information / Werkstückinformation
+   _hhdata_Type := '';*VAR*Part Type / Werkstücktypbezeichnung
+   _hhdata_Material := '';*VAR*Part material / Werkstückmaterialbezeichnung
+   _hhdata_LabelPosX := -1;*VAR*Label position X / Etikettenposition X
+   _hhdata_LabelPosY := -1;*VAR*Label position Y / Etikettenposition Y
+   _hhdata_OrderID := '';*VAR*Order ID / Auftrags-ID
+   _hhdata_OrderText1 := '';*VAR*Free order text 1 / Freier Auftragstext 1
+   _hhdata_OrderText2 := '';*VAR*Free order text 2 / Freier Auftragstext 2
+   _hhdata_FreeText1 := '';*VAR*Free text 1 / Freier Text 1
+   _hhdata_FreeText2 := '';*VAR*Free text 2 / Freier Text 2
+   _hhdata_FreeText3 := '';*VAR*Free text 3 / Freier Text 3
+   _hhdata_FreeText4 := '';*VAR*Free text 4 / Freier Text 4
+   _hhdata_FreeText5 := '';*VAR*Free text 5 / Freier Text 5
+   _hhdata_FreeText6 := '';*VAR*Free text 6 / Freier Text 6
+   _hhdata_FreeText7 := '';*VAR*Free text 7 / Freier Text 7
+   _hhdata_FreeText8 := '';*VAR*Free text 8 / Freier Text 8
+   _hhdata_FreeText9 := '';*VAR*Free text 9 / Freier Text 9
+   _hhdata_FreeText10 := '';*VAR*Free text 10 / Freier Text 10
+   _hhdata_EdgePicFrontLeft := '';*VAR*edge picture front left / Kantenbild vorne links
+   _hhdata_EdgePicFrontRight := '';*VAR*edge picture front right / Kantenbild vorne rechts
+   _hhdata_EdgePicBackLeft := '';*VAR*edge picture back left / Kantenbild hinten links
+   _hhdata_EdgePicBackRight := '';*VAR*edge picture back right / Kantenbild hinten rechts
+   _hhdata_InlayInside := '';*VAR*inlay inside / Belag innen
+   _hhdata_InlayOutside := '';*VAR*inlay outside / Belag aussen
+   _hhdata_EdgeDimRight := '';*VAR*edge thickness right / Kantenstärke rechts
+   _hhdata_EdgeTypRight := '';*VAR*edge type right / Kantentyp rechts
+   _hhdata_EdgePrgRight := '';*VAR*edge program right / Kantenprogramm rechts
+   _hhdata_EdgeMatRight := '';*VAR*edge material right / Kantenmaterial rechts
+   _hhdata_EdgeSaumRight := '';*VAR*edge pre mill dim right / Kantenbesäumung rechts
+   _hhdata_EdgeAddRight := '';*VAR*edge addidional right / Kantenzusatz rechts
+   _hhdata_EdgeDimLeft := '';*VAR*edge thickness left / Kantenstärke links
+   _hhdata_EdgeTypLeft := '';*VAR*edge type left / Kantentyp links
+   _hhdata_EdgePrgLeft := '';*VAR*edge program left / Kantenprogramm links
+   _hhdata_EdgeMatLeft := '';*VAR*edge material left / Kantenmaterial links
+   _hhdata_EdgeSaumLeft := '';*VAR*edge pre mill dim left / Kantenbesäumung links
+   _hhdata_EdgeAddLeft := '';*VAR*edge addidional left / Kantenzusatz links
+   _hhdata_EdgeDimBack := '';*VAR*edge thickness back / Kantenstärke hinten
+   _hhdata_EdgeTypBack := '';*VAR*edge type back / Kantentyp hinten
+   _hhdata_EdgePrgBack := '';*VAR*edge program back / Kantenprogramm hinten
+   _hhdata_EdgeMatBack := '';*VAR*edge material back / Kantenmaterial hinten
+   _hhdata_EdgeSaumBack := '';*VAR*edge pre mill dim back / Kantenbesäumung hinten
+   _hhdata_EdgeAddBack := '';*VAR*edge addidional back / Kantenzusatz hinten
+   _hhdata_EdgeDimFront := '';*VAR*edge thickness front / Kantenstärke vorne
+   _hhdata_EdgeTypFront := '';*VAR*edge type front / Kantentyp vorne
+   _hhdata_EdgePrgFront := '';*VAR*edge program front / Kantenprogramm vorne
+   _hhdata_EdgeMatFront := '';*VAR*edge material front / Kantenmaterial vorne
+   _hhdata_EdgeSaumFront := '';*VAR*edge pre mill dim front / Kantenbesäumung vorne
+   _hhdata_EdgeAddFront := '';*VAR*edge addidional front / Kantenzusatz vorne
+   _hhdata_WorkMode := '';*VAR*module work mode / Modulmodus
+   _hhdata_Version := '1';*VAR*Version / Version
+   _hhdata_NestQuantityMin := 1;min. Quantity / Anzahl min.
+   _hhdata_NestQuantityMax := 5;max. Quantity / Anzahl max.
+   _hhdata_NestPriority := 0;Priority / Priorität
+   _hhdata_NestStepAngle := 90;StepAngle / Schrittwinkel
+   _hhdata_NestGrainDirection := 0;Grain direction / Faserrichtung
+   _hhdata_NestMirror := 0;Mirror / Spiegeln
+   _hhdata_NestTopBottomSide := 0;Top/Bottom Side / OberUnterSeite
+   _hhdata_LabelID := '';label design / Etikettendesign
+   _hhdata_Commission := '';Commission / Kommission
+   _hhdata_Corpus := '';Corpus / Corpus
+   _hhdata_BitPattern := '';bit-pattern 32 bit / Bitmuster 32 Bit
+   _hhdata_AssignedMachine := '';assigned machine / zugewiesene Maschine
+   _hhdata_Object := '';object / Objekt
+   _hhdata_ObjectLength := '';object length / Objektlänge
+   _hhdata_ObjectWidth := '';object width / Objektbreite
+   _hhdata_ObjectDepth := '';object depth / Objekttiefe
+   _hhdata_HopImage1 := '';image for label 1 /Bild für Etikett 1
+   _hhdata_HopImage2 := '';image for label 2 /Bild für Etikett 2
+   _hhdata_HopImage3 := '';image for label 3 /Bild für Etikett 3
+   _hhdata_Id := '';id (only numbers) / ID (nur Zahlen)
+   _hhdata_Inlay := '';with inlay 0/1 / mit Belag 0/1
+   _hhdata_OptimizationStatus := '';optimization status (only numbers) / Status der Optimierung (nur Zahlen)
+   _hhdata_Count := '';count / Anzahl
+START
+Fertigteil (DX,DY,DZ,0,0,-10,-20,0,'',0,0,0,0)
+CALL Park_V7 ( VAL MODE:=2,POSX:=0,POSY:=0)
+CALL HH_MarkLabel ( VAL POSX:=_hhdata_LabelPosX,POSY:=_hhdata_LabelPosY,ANGLE:=0,LASER:=0)
+CALL BN_TrennerInnenAussen ()
+CALL BN_NestKontur ()
+WZB (501,_VE,_V,_VA,_SD,_ANF,'51')
+/Bohrung (10.93805,305.02243,3,-0.2,10,0,0,0,1,0,0,0)
+/Bohrung (48.02677,295.94688,3,-0.2,10,0,0,0,1,0,0,0)
+/Bohrung (88.7419,268.7419,3,-0.2,10,0,0,0,1,0,0,0)
+/Bohrung (115.94688,228.02677,3,-0.2,10,0,0,0,1,0,0,0)
+/Bohrung (125.5,180,3,-0.2,10,0,0,0,1,0,0,0)
+/Bohrung (115.94688,131.97323,3,-0.2,10,0,0,0,1,0,0,0)
+/Bohrung (88.7419,91.2581,3,-0.2,10,0,0,0,1,0,0,0)
+/Bohrung (48.02677,64.05312,3,-0.2,10,0,0,0,1,0,0,0)
+/Bohrung (10.93805,54.97757,3,-0.2,10,0,0,0,1,0,0,0)
+WZF (21,_VE,1500,_VA,14000,_ANF,'1')
+/SP (25,123,-0.5,2,-1,_ANF,0,0,0,8,0,1,0,0,0,0,0,0,0,0,0,0,0)
+/G01 (10,0,0,0,10,2)
+/G02R (0,-246,0,123,0,10,2)
+/G01 (-10,0,0,0,10,2)
+/EP (1,_ANF,0)
+/SP (25,123+5,-0.5,1,-1,_ANF,0,0,0,8,0,1,0,0,0,0,0,0,0,0,0,0,0)
+/G01 (10,0,0,0,10,2)
+/G02R (0,-256,0,128,0,10,2)
+/G01 (-10,0,0,0,10,2)
+/EP (-1,_ANF,0)
+/CALL MachineStop_V7 ( VAL MODE:=0,PARKMODE:=2,PARKPOSX:=0,PARKPOSY:=0,TYP:=0,R6:=0,STR:='',R7:=0)
+/SP (25,123,-1,2,0,_ANF,0,0,0,8,1,2,0,5,0,0,0,0,0,0,0,0,0)
+/G01 (10,0,0,0,10,2)
+/G02R (0,-246,0,123,0,10,2)
+/G01 (-10,0,0,0,10,2)
+/EP (1,_ANF,0)
+/SP (25,-128,-1,2,-1,_ANF,0,0,0,8,1,2,0,5,0,0,0,0,0,0,0,0,0)
+/G01 (10,0,0,0,10,2)
+/G03R (162.51292,168.84406,0,128,0,0,2)
+/EP (-2,_ANF,0)
+/SP (162.51292,191.15594,-1,2,-2,_ANF,0,0,0,0,1,2,0,5,0,0,0,0,0,0,0,0,0)
+/G03R (35,308,0,128,0,0,2)
+/G01 (-10,0,0,0,10,2)
+/EP (-1,_ANF,0)
+/HLineW (35,0,5,8)
+/HLineY (0,4)
+/HLineW (35,0,-5,8)
+/HKreismpr (25+10,0,128,8)
+WZS (250,_VE,_V,_VA,_SD,_ANF,'1')
+/CALL _saege_y_V7 ( VAL SX:=10+25,SY:=0,SZ:=-3,EY:=0,EZ:=-10,BL:=2,EINPASSEN:=0,EL:=150,AL:=150,PARALLEL:=0,K:=0,KW:=0,BH:=0,RITZVERSATZ:=0.05,ESZ:=2,ESXY1:=7,ESY:=3)
+CALL _saege_y_V7 ( VAL SX:=10+25+128,SY:=0,SZ:=-3,EY:=0,EZ:=-10,BL:=2,EINPASSEN:=0,EL:=0,AL:=0,PARALLEL:=0,K:=0,KW:=0,BH:=0,RITZVERSATZ:=0.05,ESZ:=2,ESXY1:=1,ESY:=5)
+/CALL _saege_y_V7 ( VAL SX:=0,SY:=0,SZ:=-3,EY:=0,EZ:=-33/2,BL:=2,EINPASSEN:=0,EL:=150,AL:=150,PARALLEL:=0,K:=1,KW:=-90,BH:=10,RITZVERSATZ:=0.05,ESZ:=2,ESXY1:=1,ESY:=5)
+/CALL _saege_y_V7 ( VAL SX:=0,SY:=0,SZ:=-3,EY:=0,EZ:=-33,BL:=2,EINPASSEN:=0,EL:=150,AL:=150,PARALLEL:=0,K:=1,KW:=-90,BH:=10,RITZVERSATZ:=0.05,ESZ:=2,ESXY1:=1,ESY:=5)
+/CALL _saege_y_V7 ( VAL SX:=0,SY:=0,SZ:=-3,EY:=0,EZ:=-10,BL:=2,EINPASSEN:=0,EL:=0,AL:=0,PARALLEL:=0,K:=1,KW:=-90,BH:=10,RITZVERSATZ:=0.05,ESZ:=2,ESXY1:=5,ESY:=3)
+/CALL _saege_y_V7 ( VAL SX:=0,SY:=0,SZ:=-3,EY:=0,EZ:=-20,BL:=2,EINPASSEN:=0,EL:=0,AL:=0,PARALLEL:=0,K:=1,KW:=-90,BH:=10,RITZVERSATZ:=0.05,ESZ:=2,ESXY1:=5,ESY:=3)
+/CALL _saege_y_V7 ( VAL SX:=0,SY:=0,SZ:=-3,EY:=0,EZ:=-30,BL:=2,EINPASSEN:=0,EL:=0,AL:=0,PARALLEL:=0,K:=1,KW:=-90,BH:=10,RITZVERSATZ:=0.05,ESZ:=2,ESXY1:=5,ESY:=3)
+/CALL _saege_y_V7 ( VAL SX:=0,SY:=0,SZ:=-3,EY:=0,EZ:=-35,BL:=2,EINPASSEN:=0,EL:=0,AL:=0,PARALLEL:=0,K:=1,KW:=-90,BH:=10,RITZVERSATZ:=0.05,ESZ:=2,ESXY1:=5,ESY:=3)
+WZF (18,_VE,_V,_VA,_SD,_ANF,'1')
+/HKreismpr (0,0,123+2.5,8)
+/HLineY (0,4)
+/HLineW (0,0,22.5,8)
+/HLineW (0,0,45,8)
+/HLineW (0,0,45+22.5,8)
+/HLineW (0,0,90-5,8)
+/HLineW (0,0,-22.5,8)
+/HLineW (0,0,-45,8)
+/HLineW (0,0,-45-22.5,8)
+/HLineW (0,0,-90+5,8)
+HLineY (0,4)
+HLineY (256/2+20,4)
+HLineY (320/2,4)
+HLineY (-256/2-20,4)
+HLineX (10,1)
+HLineX (10+160,1)
