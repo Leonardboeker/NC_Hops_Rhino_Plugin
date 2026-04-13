@@ -42,6 +42,7 @@ namespace WallabyHop.Components.Operations
             pManager.AddIntegerParameter("Side", "side", "Kerf compensation side relative to direction of travel.\n+1 = Left  (tool offset to the LEFT -- inward for CCW curves)\n 0 = Center (no offset)\n-1 = Right (tool offset to the RIGHT -- outward for CCW curves)\nConnect a ValueList for a dropdown.", GH_ParamAccess.item, 0);
             pManager.AddIntegerParameter("Passes", "passes", "Number of passes (Zustellungen) for multi-pass cutting. 1 = single pass at full depth. Default 1.", GH_ParamAccess.item, 1);
             pManager.AddNumberParameter("Overcut", "overcut", "Extra depth in mm added as a final pass after all Zustellungen (e.g. 0.2 to ensure full cut-through). Default 0.", GH_ParamAccess.item, 0.0);
+            pManager.AddNumberParameter("LeadOut", "leadOut", "Lead-out length in mm. Extends the path past the end point for a clean exit. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddColourParameter("Colour", "colour", "Preview colour for the toolpath volume in the Rhino viewport.", GH_ParamAccess.item, Color.Yellow);
 
             // Mark optional parameters
@@ -53,6 +54,7 @@ namespace WallabyHop.Components.Operations
             pManager[7].Optional = true;
             pManager[8].Optional = true;
             pManager[9].Optional = true;
+            pManager[10].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
@@ -82,6 +84,7 @@ namespace WallabyHop.Components.Operations
             double depth = 1.0;
             double leadIn = 0.0;
             double overcut = 0.0;
+            double leadOut = 0.0;
             double tolerance = 0.1;
             int toolNr = 0;
             double toolDiameter = 8.0;
@@ -93,13 +96,13 @@ namespace WallabyHop.Components.Operations
             DA.GetData(1, ref depth);
             DA.GetData(2, ref leadIn);
             DA.GetData(8, ref overcut);
-            // colour is index 9
+            DA.GetData(9, ref leadOut);
             DA.GetData(3, ref tolerance);
             if (!DA.GetData(4, ref toolNr)) return;
             DA.GetData(5, ref toolDiameter);
             DA.GetData(6, ref side);
             DA.GetData(7, ref passes);
-            DA.GetData(9, ref colour);
+            DA.GetData(10, ref colour);
 
             _drawColor = colour.IsEmpty ? _defaultColor : colour;
 
@@ -133,6 +136,7 @@ namespace WallabyHop.Components.Operations
             if (passes       <  1) passes       = 1;
             if (leadIn        < 0) leadIn        = 0.0;
             if (overcut       < 0) overcut       = 0.0;
+            if (leadOut       < 0) leadOut       = 0.0;
             // side: clamp to -1 / 0 / +1
             if (side > 0)  side =  1;
             if (side < 0)  side = -1;
@@ -292,14 +296,14 @@ namespace WallabyHop.Components.Operations
                 if (passes > 1)
                 {
                     double firstZ = surfaceZ - (depth / passes);
-                    BuildContourBlock(lines, pieceSegs, firstZ, tol, passes, leadIn);
+                    BuildContourBlock(lines, pieceSegs, firstZ, tol, passes, leadIn, leadOut);
                 }
                 else
                 {
-                    BuildContourBlock(lines, pieceSegs, surfaceZ - depth, tol, 1, leadIn);
+                    BuildContourBlock(lines, pieceSegs, surfaceZ - depth, tol, 1, leadIn, leadOut);
                 }
                 if (overcut > 0)
-                    BuildContourBlock(lines, pieceSegs, surfaceZ - depth - overcut, tol, 1, 0.0);
+                    BuildContourBlock(lines, pieceSegs, surfaceZ - depth - overcut, tol, 1, 0.0, leadOut);
             }
 
             // ---------------------------------------------------------------
@@ -321,7 +325,7 @@ namespace WallabyHop.Components.Operations
         // by connectivity -- each connected run becomes one SP/EP block.
         // ---------------------------------------------------------------
         private void BuildContourBlock(List<string> lines, List<Curve> flat,
-            double zEintauch, double tol, int nPasses = 1, double leadIn = 0.0)
+            double zEintauch, double tol, int nPasses = 1, double leadIn = 0.0, double leadOut = 0.0)
         {
             if (flat == null || flat.Count == 0) return;
 
@@ -382,6 +386,15 @@ namespace WallabyHop.Components.Operations
                     lines.Add("G01 ("
                         + Fmt(fep.X) + ","
                         + Fmt(fep.Y) + ",0,0,0,2)");
+                }
+
+                // Lead-out: extend past end point along exit tangent
+                if (leadOut > 0.0)
+                {
+                    Vector3d exitTangent = flat[gEnd].TangentAtEnd;
+                    exitTangent.Unitize();
+                    Point3d departurePt = flat[gEnd].PointAtEnd + exitTangent * leadOut;
+                    lines.Add("G01 (" + Fmt(departurePt.X) + "," + Fmt(departurePt.Y) + ",0,0,0,2)");
                 }
 
                 lines.Add("EP (0,_ANF,0)");

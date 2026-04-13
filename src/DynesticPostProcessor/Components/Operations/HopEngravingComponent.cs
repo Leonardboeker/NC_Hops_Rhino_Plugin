@@ -246,7 +246,10 @@ namespace WallabyHop.Components.Operations
                                 Arc arc    = arcSeg.Arc;
                                 Point3d ep = arc.EndPoint;
                                 Point3d cp = arc.Center;
-                                bool isCCW = arc.Plane.Normal.Z >= 0;
+                                Point3d   eMid    = arc.PointAt(arc.Angle * 0.5);
+                                Vector3d  eToSt   = arc.StartPoint - arc.Center;
+                                Vector3d  eToMid  = eMid - arc.Center;
+                                bool isCCW = (eToSt.X * eToMid.Y - eToSt.Y * eToMid.X) > 0;
                                 string cmd = isCCW ? "G03M" : "G02M";
                                 allLines.Add(cmd + " ("
                                     + ep.X.ToString(CultureInfo.InvariantCulture) + ","
