@@ -35,12 +35,13 @@ namespace WallabyHop.Components.Operations
         {
             pManager.AddCurveParameter("Curve", "curve", "Planar closed or open curve defining the contour cutting path. Must lie in or near the World XY plane.", GH_ParamAccess.item);
             pManager.AddNumberParameter("Depth", "depth", "Cutting depth in mm, measured downward from the curve's Z position. Default 1.0.", GH_ParamAccess.item, 1.0);
-            pManager.AddNumberParameter("PlungeZ", "plungeZ", "Plunge depth override in mm. When 0, equals depth. Use to plunge shallower than full depth on first pass.", GH_ParamAccess.item, 0.0);
+            pManager.AddNumberParameter("LeadIn", "leadIn", "Lead-in length in mm. Tool approaches from outside the contour by this distance before cutting. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddNumberParameter("Tolerance", "tolerance", "NURBS to polyline/arc conversion tolerance in mm. Smaller = more segments, higher accuracy. Default 0.1.", GH_ParamAccess.item, 0.1);
             pManager.AddIntegerParameter("ToolNr", "toolNr", "Tool magazine position number. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddNumberParameter("ToolDiameter", "toolDiameter", "Tool diameter in mm, used for kerf compensation offset when side != 0. Default 8.0.", GH_ParamAccess.item, 8.0);
             pManager.AddIntegerParameter("Side", "side", "Kerf compensation side relative to direction of travel.\n+1 = Left  (tool offset to the LEFT -- inward for CCW curves)\n 0 = Center (no offset)\n-1 = Right (tool offset to the RIGHT -- outward for CCW curves)\nConnect a ValueList for a dropdown.", GH_ParamAccess.item, 0);
             pManager.AddIntegerParameter("Passes", "passes", "Number of passes (Zustellungen) for multi-pass cutting. 1 = single pass at full depth. Default 1.", GH_ParamAccess.item, 1);
+            pManager.AddNumberParameter("Overcut", "overcut", "Extra depth in mm added as a final pass after all Zustellungen (e.g. 0.2 to ensure full cut-through). Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddColourParameter("Colour", "colour", "Preview colour for the toolpath volume in the Rhino viewport.", GH_ParamAccess.item, Color.Yellow);
 
             // Mark optional parameters
@@ -51,6 +52,7 @@ namespace WallabyHop.Components.Operations
             pManager[6].Optional = true;
             pManager[7].Optional = true;
             pManager[8].Optional = true;
+            pManager[9].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
@@ -78,7 +80,8 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             Curve curve = null;
             double depth = 1.0;
-            double plungeZ = 0.0;
+            double leadIn = 0.0;
+            double overcut = 0.0;
             double tolerance = 0.1;
             int toolNr = 0;
             double toolDiameter = 8.0;
@@ -88,13 +91,15 @@ namespace WallabyHop.Components.Operations
 
             if (!DA.GetData(0, ref curve)) return;
             DA.GetData(1, ref depth);
-            DA.GetData(2, ref plungeZ);
+            DA.GetData(2, ref leadIn);
+            DA.GetData(8, ref overcut);
+            // colour is index 9
             DA.GetData(3, ref tolerance);
             if (!DA.GetData(4, ref toolNr)) return;
             DA.GetData(5, ref toolDiameter);
             DA.GetData(6, ref side);
             DA.GetData(7, ref passes);
-            DA.GetData(8, ref colour);
+            DA.GetData(9, ref colour);
 
             _drawColor = colour.IsEmpty ? _defaultColor : colour;
 
@@ -124,9 +129,10 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             if (tolerance    <= 0) tolerance    = 0.1;
             if (depth        <= 0) depth        = 1.0;
-            if (plungeZ      <= 0) plungeZ      = depth;
             if (toolDiameter <= 0) toolDiameter = 8.0;
             if (passes       <  1) passes       = 1;
+            if (leadIn        < 0) leadIn        = 0.0;
+            if (overcut       < 0) overcut       = 0.0;
             // side: clamp to -1 / 0 / +1
             if (side > 0)  side =  1;
             if (side < 0)  side = -1;
@@ -286,12 +292,14 @@ namespace WallabyHop.Components.Operations
                 if (passes > 1)
                 {
                     double firstZ = surfaceZ - (depth / passes);
-                    BuildContourBlock(lines, pieceSegs, firstZ, tol, passes);
+                    BuildContourBlock(lines, pieceSegs, firstZ, tol, passes, leadIn);
                 }
                 else
                 {
-                    BuildContourBlock(lines, pieceSegs, surfaceZ - Math.Abs(plungeZ), tol);
+                    BuildContourBlock(lines, pieceSegs, surfaceZ - depth, tol, 1, leadIn);
                 }
+                if (overcut > 0)
+                    BuildContourBlock(lines, pieceSegs, surfaceZ - depth - overcut, tol, 1, 0.0);
             }
 
             // ---------------------------------------------------------------
@@ -313,7 +321,7 @@ namespace WallabyHop.Components.Operations
         // by connectivity -- each connected run becomes one SP/EP block.
         // ---------------------------------------------------------------
         private void BuildContourBlock(List<string> lines, List<Curve> flat,
-            double zEintauch, double tol, int nPasses = 1)
+            double zEintauch, double tol, int nPasses = 1, double leadIn = 0.0)
         {
             if (flat == null || flat.Count == 0) return;
 
@@ -330,10 +338,23 @@ namespace WallabyHop.Components.Operations
                 string spTail = nPasses > 1
                     ? ",2,0,_ANF,0,0,0,0,1,0," + nPasses + ",0,0,0,0,0,0,0,0,0,0)"
                     : ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)";
-                lines.Add("SP (" + Fmt(startPt.X) + ","
-                    + Fmt(startPt.Y) + ","
+
+                // Lead-in: approach from outside along reversed entry tangent
+                Point3d spPt = startPt;
+                if (leadIn > 0.0)
+                {
+                    Vector3d tangent = flat[gStart].TangentAtStart;
+                    tangent.Unitize();
+                    spPt = startPt - tangent * leadIn;
+                }
+
+                lines.Add("SP (" + Fmt(spPt.X) + ","
+                    + Fmt(spPt.Y) + ","
                     + Fmt(zEintauch)
                     + spTail);
+
+                if (leadIn > 0.0)
+                    lines.Add("G01 (" + Fmt(startPt.X) + "," + Fmt(startPt.Y) + ",0,0,0,2)");
 
                 for (int i = gStart; i <= gEnd; i++)
                 {
@@ -344,7 +365,11 @@ namespace WallabyHop.Components.Operations
                         Arc arc    = arcSeg.Arc;
                         Point3d ep = arc.EndPoint;
                         Point3d cp = arc.Center;
-                        bool isCCW = arc.Plane.Normal.Z >= 0;
+                        // Determine CCW by cross product of (center→start) × (center→mid)
+                        Point3d   mid      = arc.PointAt(arc.Angle * 0.5);
+                        Vector3d  toStart  = arc.StartPoint - cp;
+                        Vector3d  toMid    = mid - cp;
+                        bool isCCW = (toStart.X * toMid.Y - toStart.Y * toMid.X) > 0;
                         string cmd = isCCW ? "G03M" : "G02M";
                         lines.Add(cmd + " ("
                             + Fmt(ep.X) + ","
