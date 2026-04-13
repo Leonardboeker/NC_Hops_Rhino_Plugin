@@ -40,7 +40,7 @@ namespace WallabyHop.Components.Operations
             pManager.AddIntegerParameter("ToolNr", "toolNr", "Tool magazine position number. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddNumberParameter("ToolDiameter", "toolDiameter", "Tool diameter in mm, used for kerf compensation offset when side != 0. Default 8.0.", GH_ParamAccess.item, 8.0);
             pManager.AddIntegerParameter("Side", "side", "Kerf compensation side relative to direction of travel.\n+1 = Left  (tool offset to the LEFT -- inward for CCW curves)\n 0 = Center (no offset)\n-1 = Right (tool offset to the RIGHT -- outward for CCW curves)\nConnect a ValueList for a dropdown.", GH_ParamAccess.item, 0);
-            pManager.AddNumberParameter("Stepdown", "stepdown", "Depth per pass in mm for multi-pass cutting. 0 = single pass at full depth. Default 0.", GH_ParamAccess.item, 0.0);
+            pManager.AddIntegerParameter("Passes", "passes", "Number of passes (Zustellungen) for multi-pass cutting. 1 = single pass at full depth. Default 1.", GH_ParamAccess.item, 1);
             pManager.AddColourParameter("Colour", "colour", "Preview colour for the toolpath volume in the Rhino viewport.", GH_ParamAccess.item, Color.Yellow);
 
             // Mark optional parameters
@@ -83,7 +83,7 @@ namespace WallabyHop.Components.Operations
             int toolNr = 0;
             double toolDiameter = 8.0;
             int side = 0;
-            double stepdown = 0.0;
+            int passes = 1;
             Color colour = Color.Empty;
 
             if (!DA.GetData(0, ref curve)) return;
@@ -93,7 +93,7 @@ namespace WallabyHop.Components.Operations
             if (!DA.GetData(4, ref toolNr)) return;
             DA.GetData(5, ref toolDiameter);
             DA.GetData(6, ref side);
-            DA.GetData(7, ref stepdown);
+            DA.GetData(7, ref passes);
             DA.GetData(8, ref colour);
 
             _drawColor = colour.IsEmpty ? _defaultColor : colour;
@@ -126,6 +126,7 @@ namespace WallabyHop.Components.Operations
             if (depth        <= 0) depth        = 1.0;
             if (plungeZ      <= 0) plungeZ      = depth;
             if (toolDiameter <= 0) toolDiameter = 8.0;
+            if (passes       <  1) passes       = 1;
             // side: clamp to -1 / 0 / +1
             if (side > 0)  side =  1;
             if (side < 0)  side = -1;
@@ -282,11 +283,10 @@ namespace WallabyHop.Components.Operations
             foreach (List<Curve> pieceSegs in allPieces)
             {
                 totalSegments += pieceSegs.Count;
-                if (stepdown > 0)
+                if (passes > 1)
                 {
-                    int passCount = (int)Math.Ceiling(depth / stepdown);
-                    double firstZ  = surfaceZ - Math.Min(stepdown, depth);
-                    BuildContourBlock(lines, pieceSegs, firstZ, tol, passCount);
+                    double firstZ = surfaceZ - (depth / passes);
+                    BuildContourBlock(lines, pieceSegs, firstZ, tol, passes);
                 }
                 else
                 {
