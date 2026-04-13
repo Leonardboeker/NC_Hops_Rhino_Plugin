@@ -285,11 +285,8 @@ namespace WallabyHop.Components.Operations
                 if (stepdown > 0)
                 {
                     int passCount = (int)Math.Ceiling(depth / stepdown);
-                    for (int p = 0; p < passCount; p++)
-                    {
-                        double passDepth = Math.Min((p + 1) * stepdown, depth);
-                        BuildContourBlock(lines, pieceSegs, surfaceZ - passDepth, tol);
-                    }
+                    double firstZ  = surfaceZ - Math.Min(stepdown, depth);
+                    BuildContourBlock(lines, pieceSegs, firstZ, tol, passCount);
                 }
                 else
                 {
@@ -316,7 +313,7 @@ namespace WallabyHop.Components.Operations
         // by connectivity -- each connected run becomes one SP/EP block.
         // ---------------------------------------------------------------
         private void BuildContourBlock(List<string> lines, List<Curve> flat,
-            double zEintauch, double tol)
+            double zEintauch, double tol, int nPasses = 1)
         {
             if (flat == null || flat.Count == 0) return;
 
@@ -330,10 +327,13 @@ namespace WallabyHop.Components.Operations
                     gEnd++;
 
                 Point3d startPt = flat[gStart].PointAtStart;
+                string spTail = nPasses > 1
+                    ? ",2,0,_ANF,0,0,0,0,1,0," + nPasses + ",0,0,0,0,0,0,0,0,0,0)"
+                    : ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)";
                 lines.Add("SP (" + Fmt(startPt.X) + ","
                     + Fmt(startPt.Y) + ","
                     + Fmt(zEintauch)
-                    + ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)");
+                    + spTail);
 
                 for (int i = gStart; i <= gEnd; i++)
                 {
