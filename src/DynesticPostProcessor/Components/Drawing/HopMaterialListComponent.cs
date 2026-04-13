@@ -8,7 +8,7 @@ using Rhino.Geometry;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
-namespace DynesticPostProcessor.Components.Drawing
+namespace WallabyHop.Components.Drawing
 {
     public class HopMaterialListComponent : GH_Component
     {
@@ -16,7 +16,7 @@ namespace DynesticPostProcessor.Components.Drawing
             : base("HopMaterialList", "HopMaterialList",
                 "Calculates total material area (m²) per board thickness from HopKorpus panel dictionaries. " +
                 "Outputs a formatted cut list suitable for ordering material.",
-                "DYNESTIC", "Drawing")
+                "Wallaby Hop", "Drawing")
         {
         }
 
@@ -125,9 +125,9 @@ namespace DynesticPostProcessor.Components.Drawing
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Skip(), // Parts
+                WallabyHop.AutoWire.Spec.Skip(), // Parts
             });
         }
     }

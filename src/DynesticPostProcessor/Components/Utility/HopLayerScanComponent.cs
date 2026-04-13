@@ -8,7 +8,7 @@ using Rhino.Geometry;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Parameters;
 
-namespace DynesticPostProcessor.Components.Utility
+namespace WallabyHop.Components.Utility
 {
     public class HopLayerScanComponent : GH_Component, IGH_VariableParameterComponent
     {
@@ -30,7 +30,7 @@ namespace DynesticPostProcessor.Components.Utility
         public HopLayerScanComponent() : base(
             "HopLayerScan", "HopLayerScan",
             "Scans the DYNESTIC layer tree for geometry and outputs one list per occupied sub-layer. Drop on canvas to auto-create the DYNESTIC layer structure in Rhino.",
-            "DYNESTIC", "Utility") { }
+            "Wallaby Hop", "Utility") { }
 
         public override Guid ComponentGuid => new Guid("b3f1a042-9c7e-4d85-a631-2f80e5c6d917");
 
@@ -67,9 +67,9 @@ namespace DynesticPostProcessor.Components.Utility
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Toggle(),
+                WallabyHop.AutoWire.Spec.Toggle(),
             });
             EnsureLayerTree();
         }
@@ -82,11 +82,11 @@ namespace DynesticPostProcessor.Components.Utility
             RhinoDoc rhinoDoc = RhinoDoc.ActiveDoc;
             if (rhinoDoc == null) return;
 
-            // 1. Ensure root "DYNESTIC"
-            int rootIdx = rhinoDoc.Layers.FindByFullPath("DYNESTIC", RhinoMath.UnsetIntIndex);
+            // 1. Ensure root "Wallaby Hop"
+            int rootIdx = rhinoDoc.Layers.FindByFullPath("Wallaby Hop", RhinoMath.UnsetIntIndex);
             if (rootIdx == RhinoMath.UnsetIntIndex)
             {
-                var root = new Rhino.DocObjects.Layer { Name = "DYNESTIC" };
+                var root = new Rhino.DocObjects.Layer { Name = "Wallaby Hop" };
                 rootIdx = rhinoDoc.Layers.Add(root);
             }
             Guid rootId = rhinoDoc.Layers[rootIdx].Id;

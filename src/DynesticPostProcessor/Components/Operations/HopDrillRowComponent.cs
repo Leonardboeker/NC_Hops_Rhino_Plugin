@@ -8,7 +8,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     /// <summary>
     /// Generates parametric drill row operations (_Bohgx_V5 / _Bohgy_V5) for the DYNESTIC CNC.
@@ -28,7 +28,7 @@ namespace DynesticPostProcessor.Components.Operations
             "X-row: holes spaced along X, fixed Y position.\n" +
             "Y-row: holes spaced along Y, fixed X position.\n" +
             "Up to 4 increment spacing values (BIX..BIIIIX / BIY..BIIIIY).",
-            "DYNESTIC", "Bohren") { }
+            "Wallaby Hop", "Bohren") { }
 
         public override Guid ComponentGuid => new Guid("5c0d3e4f-6071-8901-cdef-012345678901");
 
@@ -241,18 +241,18 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                WallabyHop.AutoWire.Spec.ValueList(
                     ("X-row", "0"),
                     ("Y-row", "1")),
-                DynesticPostProcessor.AutoWire.Spec.Point(),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<32<500"),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<13<50"),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<5<50"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Point(),
+                WallabyHop.AutoWire.Spec.Float("0<32<500"),
+                WallabyHop.AutoWire.Spec.Float("1<13<50"),
+                WallabyHop.AutoWire.Spec.Float("1<5<50"),
+                WallabyHop.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Int("1<1<20"),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

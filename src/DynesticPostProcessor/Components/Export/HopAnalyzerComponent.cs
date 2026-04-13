@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Export
+namespace WallabyHop.Components.Export
 {
     /// <summary>
     /// Validates NC-Hops operationLines for SP/EP structural correctness.
@@ -22,7 +22,7 @@ namespace DynesticPostProcessor.Components.Export
             "Checks: SP/EP pairing, moves outside SP/EP blocks, duplicate tool calls, " +
             "and negative Z values (Bohrung cutZ, SP zEintauch below machine table). " +
             "Wire in HopContent from HopExport so the check runs on the fully assembled output.",
-            "DYNESTIC", "Export") { }
+            "Wallaby Hop", "Export") { }
 
         public override Guid ComponentGuid => new Guid("9e4f1a2b-c3d5-4e6f-8a7b-0c1d2e3f4a5b");
 
@@ -239,10 +239,10 @@ namespace DynesticPostProcessor.Components.Export
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

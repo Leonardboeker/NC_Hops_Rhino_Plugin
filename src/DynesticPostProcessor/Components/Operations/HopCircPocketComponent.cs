@@ -8,7 +8,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     public class HopCircPocketComponent : GH_Component
     {
@@ -23,7 +23,7 @@ namespace DynesticPostProcessor.Components.Operations
         public HopCircPocketComponent() : base(
             "HopCircPocket", "HopCircPocket",
             "Generates circular pocket operations (Kreistasche_V5 macro) for the DYNESTIC CNC. Creates a cylindrical pocket at the specified center point, radius, and depth.",
-            "DYNESTIC", "Fräsen") { }
+            "Wallaby Hop", "Fräsen") { }
 
         public override Guid ComponentGuid => new Guid("795d39f9-23ad-4499-966e-583a3e17439e");
 
@@ -179,14 +179,14 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Point(),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<25<500"),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<10<100"),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<0<50"),
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Point(),
+                WallabyHop.AutoWire.Spec.Float("1<25<500"),
+                WallabyHop.AutoWire.Spec.Float("1<10<100"),
+                WallabyHop.AutoWire.Spec.Float("0<0<50"),
+                WallabyHop.AutoWire.Spec.Int("1<1<20"),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

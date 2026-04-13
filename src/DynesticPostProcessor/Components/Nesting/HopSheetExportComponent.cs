@@ -12,14 +12,14 @@ using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
-namespace DynesticPostProcessor.Components.Nesting
+namespace WallabyHop.Components.Nesting
 {
     public class HopSheetExportComponent : GH_Component
     {
         public HopSheetExportComponent()
             : base("HopSheetExport", "HopSheetExport",
                 "Exports a per-sheet .hop file from nested HopPart objects. Filters parts by OpenNest sheet index, extracts sheet dimensions from curve, and writes NC-Hops format.",
-                "DYNESTIC", "Nesting")
+                "Wallaby Hop", "Nesting")
         {
         }
 
@@ -329,17 +329,17 @@ namespace DynesticPostProcessor.Components.Nesting
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
-                DynesticPostProcessor.AutoWire.Spec.Curve(),
-                DynesticPostProcessor.AutoWire.Spec.Int("0<0<20"),
-                DynesticPostProcessor.AutoWire.Spec.FilePath(),
-                DynesticPostProcessor.AutoWire.Spec.Panel("sheet_1"),
-                DynesticPostProcessor.AutoWire.Spec.Panel(""),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<18<200"),
-                DynesticPostProcessor.AutoWire.Spec.Toggle(),
+                WallabyHop.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Curve(),
+                WallabyHop.AutoWire.Spec.Int("0<0<20"),
+                WallabyHop.AutoWire.Spec.FilePath(),
+                WallabyHop.AutoWire.Spec.Panel("sheet_1"),
+                WallabyHop.AutoWire.Spec.Panel(""),
+                WallabyHop.AutoWire.Spec.Float("1<18<200"),
+                WallabyHop.AutoWire.Spec.Toggle(),
             });
         }
     }

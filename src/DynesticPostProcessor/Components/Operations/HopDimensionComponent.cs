@@ -7,7 +7,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     /// <summary>
     /// Generates dimension line markup (B2Punkte_V7) for the DYNESTIC CNC.
@@ -22,7 +22,7 @@ namespace DynesticPostProcessor.Components.Operations
             "Generates dimension line markup (B2Punkte_V7) for the DYNESTIC CNC.\n\n" +
             "Creates visual dimension arrows between two points, displayed on the machine controller.\n" +
             "Typical use: reference dimensions for setup verification.",
-            "DYNESTIC", "Utility") { }
+            "Wallaby Hop", "Utility") { }
 
         public override Guid ComponentGuid => new Guid("8f3061a2-93b4-1234-f012-345678901234");
 
@@ -120,14 +120,14 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Point(),
-                DynesticPostProcessor.AutoWire.Spec.Point(),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<20<200"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
-                DynesticPostProcessor.AutoWire.Spec.Float("5<20<100"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Point(),
+                WallabyHop.AutoWire.Spec.Point(),
+                WallabyHop.AutoWire.Spec.Float("0<20<200"),
+                WallabyHop.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Float("5<20<100"),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

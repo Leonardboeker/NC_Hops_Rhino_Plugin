@@ -8,7 +8,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     /// <summary>
     /// Generates format sawing operations (_saege_x_V7 / _saege_y_V7) for the DYNESTIC CNC.
@@ -32,7 +32,7 @@ namespace DynesticPostProcessor.Components.Operations
             "Direction X: saw travels in X, positioned at Y coordinate.\n" +
             "Direction Y: saw travels in Y, positioned at X coordinate.\n" +
             "KW (Keilwinkel) sets the bevel/miter angle. 0 = straight cut.",
-            "DYNESTIC", "Sägen") { }
+            "Wallaby Hop", "Sägen") { }
 
         public override Guid ComponentGuid => new Guid("3a8b1c2d-4e5f-6789-abcd-ef0123456789");
 
@@ -257,17 +257,17 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                WallabyHop.AutoWire.Spec.ValueList(
                     ("X-cut (fixed Y)", "0"),
                     ("Y-cut (fixed X)", "1")),
-                DynesticPostProcessor.AutoWire.Spec.Point(),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<19<100"),
-                DynesticPostProcessor.AutoWire.Spec.Float("-90<0<90"),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<0<3000"),
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Point(),
+                WallabyHop.AutoWire.Spec.Float("1<19<100"),
+                WallabyHop.AutoWire.Spec.Float("-90<0<90"),
+                WallabyHop.AutoWire.Spec.Float("0<0<3000"),
+                WallabyHop.AutoWire.Spec.Int("1<1<20"),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

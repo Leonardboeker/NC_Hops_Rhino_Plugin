@@ -1,11 +1,11 @@
 ---
-name: dynestic-postprocessor
+name: wallaby-hop
 version: 0.1.0
 authors:
-- DYNESTIC
+- Wallaby Hop
 description: >
-  Grasshopper plugin for generating NC-Hops .hop files for the DYNESTIC CNC.
-  10 components: contour cutting, drilling, pocketing, slots, nesting, and export.
+  Grasshopper plugin for generating NC-Hops .hop files for the HOLZ-HER DYNESTIC CNC.
+  32 components: drilling, milling, pocketing, contouring, slots, sawing, nesting, cabinet generation, and .hop export.
 url: ""
 keywords:
 - cnc
@@ -13,3 +13,5 @@ keywords:
 - grasshopper
 - nchops
 - postprocessor
+- holzher
+- wallaby-hop

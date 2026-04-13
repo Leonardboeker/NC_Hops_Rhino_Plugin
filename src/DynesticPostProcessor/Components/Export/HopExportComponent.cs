@@ -11,7 +11,7 @@ using Rhino.Geometry;
 using Grasshopper;
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Export
+namespace WallabyHop.Components.Export
 {
     public class HopExportComponent : GH_Component
     {
@@ -20,7 +20,7 @@ namespace DynesticPostProcessor.Components.Export
         public HopExportComponent()
             : base("HopExport", "HopExport",
                 "Assembles and writes a complete NC-Hops .hop file for the DYNESTIC CNC. Combines sheet dimensions, tool preset, and operation lines into the standard .hop format.",
-                "DYNESTIC", "Export")
+                "Wallaby Hop", "Export")
         {
         }
 
@@ -226,17 +226,17 @@ namespace DynesticPostProcessor.Components.Export
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.FilePath(),
-                DynesticPostProcessor.AutoWire.Spec.Panel("output"),
-                DynesticPostProcessor.AutoWire.Spec.Toggle(),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<2440<5000"),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<1220<5000"),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<18<200"),
-                DynesticPostProcessor.AutoWire.Spec.Panel(""),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),  // operationLines
-                DynesticPostProcessor.AutoWire.Spec.Skip(),  // labelVars — wire HopLabel manually
+                WallabyHop.AutoWire.Spec.FilePath(),
+                WallabyHop.AutoWire.Spec.Panel("output"),
+                WallabyHop.AutoWire.Spec.Toggle(),
+                WallabyHop.AutoWire.Spec.Float("0<2440<5000"),
+                WallabyHop.AutoWire.Spec.Float("0<1220<5000"),
+                WallabyHop.AutoWire.Spec.Float("0<18<200"),
+                WallabyHop.AutoWire.Spec.Panel(""),
+                WallabyHop.AutoWire.Spec.Skip(),  // operationLines
+                WallabyHop.AutoWire.Spec.Skip(),  // labelVars — wire HopLabel manually
             });
         }
     }

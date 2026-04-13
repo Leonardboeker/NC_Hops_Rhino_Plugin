@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Reflection;
 
-namespace DynesticPostProcessor
+namespace WallabyHop
 {
     internal static class IconHelper
     {
@@ -10,7 +10,7 @@ namespace DynesticPostProcessor
         public static Bitmap Load(string name)
         {
             var stream = _asm.GetManifestResourceStream(
-                "DynesticPostProcessor.Icons." + name + ".png");
+                "WallabyHop.Icons." + name + ".png");
             return stream != null ? new Bitmap(stream) : null;
         }
     }

@@ -4,14 +4,14 @@ using System.Drawing;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
-namespace DynesticPostProcessor.Components.Korpus
+namespace WallabyHop.Components.Korpus
 {
     public class HopCabinetBackComponent : GH_Component
     {
         public HopCabinetBackComponent()
             : base("HopCabinetBack", "HopCabinetBack",
                 "Cabinet back panel options. Wire into HopKorpus 'back' input.",
-                "DYNESTIC", "Cabinet")
+                "Wallaby Hop", "Cabinet")
         {
         }
 
@@ -112,14 +112,14 @@ namespace DynesticPostProcessor.Components.Korpus
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                WallabyHop.AutoWire.Spec.ValueList(
                     ("Eingef\u00e4lzt (Falznut)", "1"),
                     ("Eingenutert (Nut)", "2")),
-                DynesticPostProcessor.AutoWire.Spec.Float("3<8<25"),    // Thickness
-                DynesticPostProcessor.AutoWire.Spec.Float("6<10<15"),   // Tiefe (cut depth)
-                DynesticPostProcessor.AutoWire.Spec.Float("6<19<50"),   // Reststeg dist
+                WallabyHop.AutoWire.Spec.Float("3<8<25"),    // Thickness
+                WallabyHop.AutoWire.Spec.Float("6<10<15"),   // Tiefe (cut depth)
+                WallabyHop.AutoWire.Spec.Float("6<19<50"),   // Reststeg dist
             });
         }
     }

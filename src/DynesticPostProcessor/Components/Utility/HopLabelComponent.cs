@@ -4,7 +4,7 @@ using System.Drawing;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Utility
+namespace WallabyHop.Components.Utility
 {
     /// <summary>
     /// Produces VP variable lines for the EasyTronic Label printer.
@@ -23,7 +23,7 @@ namespace DynesticPostProcessor.Components.Utility
             "HopLabel", "HopLabel",
             "Creates label variable lines for the EasyTronic Label printer. " +
             "Connect output to HopExport LabelVars so the printed label carries job metadata.",
-            "DYNESTIC", "Utility") { }
+            "Wallaby Hop", "Utility") { }
 
         public override Guid ComponentGuid =>
             new Guid("a7c3e912-5d8f-4b2e-9061-7f42d8b5c130");

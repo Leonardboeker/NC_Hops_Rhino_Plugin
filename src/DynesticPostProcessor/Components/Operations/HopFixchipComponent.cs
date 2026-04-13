@@ -8,7 +8,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     /// <summary>
     /// Generates fixing clamp/chip operations (Fixchip_K) for the DYNESTIC CNC.
@@ -26,7 +26,7 @@ namespace DynesticPostProcessor.Components.Operations
             "Generates fixing clamp positions (Fixchip_K) for the DYNESTIC CNC.\n\n" +
             "Fixchips hold the workpiece to the nesting board during cutting.\n" +
             "Each input point defines one clamp position (SPX, SPY, SPZ).",
-            "DYNESTIC", "Beschläge") { }
+            "Wallaby Hop", "Beschläge") { }
 
         public override Guid ComponentGuid => new Guid("7e2f5061-8293-0123-ef01-234567890123");
 
@@ -124,10 +124,10 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Point(),
-                DynesticPostProcessor.AutoWire.Spec.Float("-360<0<360"),
+                WallabyHop.AutoWire.Spec.Point(),
+                WallabyHop.AutoWire.Spec.Float("-360<0<360"),
             });
         }
     }

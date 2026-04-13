@@ -8,7 +8,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     public class HopRectPocketComponent : GH_Component
     {
@@ -23,7 +23,7 @@ namespace DynesticPostProcessor.Components.Operations
         public HopRectPocketComponent() : base(
             "HopRectPocket", "HopRectPocket",
             "Generates rectangular pocket operations (_Rechteck_V7 macro) for the DYNESTIC CNC. Extracts center and dimensions from a rectangle curve's bounding box.",
-            "DYNESTIC", "Fräsen") { }
+            "Wallaby Hop", "Fräsen") { }
 
         public override Guid ComponentGuid => new Guid("6e2f23b6-557f-46a1-80a7-41feebc7982d");
 
@@ -237,15 +237,15 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Curve(),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<0<50"),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<0<360"),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<10<100"),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<0<50"),
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Curve(),
+                WallabyHop.AutoWire.Spec.Float("0<0<50"),
+                WallabyHop.AutoWire.Spec.Float("0<0<360"),
+                WallabyHop.AutoWire.Spec.Float("1<10<100"),
+                WallabyHop.AutoWire.Spec.Float("0<0<50"),
+                WallabyHop.AutoWire.Spec.Int("1<1<20"),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

@@ -8,7 +8,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     public class HopFreeSlotComponent : GH_Component
     {
@@ -23,7 +23,7 @@ namespace DynesticPostProcessor.Components.Operations
         public HopFreeSlotComponent() : base(
             "HopFreeSlot", "HopFreeSlot",
             "Generates free slot operations (nuten_frei_v5 macro) for the DYNESTIC CNC. Cuts an elongated slot between two points at the specified width and depth.",
-            "DYNESTIC", "Fräsen") { }
+            "Wallaby Hop", "Fräsen") { }
 
         public override Guid ComponentGuid => new Guid("6f5e6bd3-18f9-44e5-b90b-33be8ce95bcf");
 
@@ -212,14 +212,14 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Point(),
-                DynesticPostProcessor.AutoWire.Spec.Point(),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<8<50"),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<10<100"),
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Point(),
+                WallabyHop.AutoWire.Spec.Point(),
+                WallabyHop.AutoWire.Spec.Float("1<8<50"),
+                WallabyHop.AutoWire.Spec.Float("1<10<100"),
+                WallabyHop.AutoWire.Spec.Int("1<1<20"),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

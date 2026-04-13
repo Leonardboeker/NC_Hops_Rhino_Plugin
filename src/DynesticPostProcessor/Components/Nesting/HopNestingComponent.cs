@@ -6,7 +6,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Nesting
+namespace WallabyHop.Components.Nesting
 {
     /// <summary>
     /// Generates the complete nesting system block for the DYNESTIC CNC:
@@ -23,7 +23,7 @@ namespace DynesticPostProcessor.Components.Nesting
             "Generates the nesting system block for the DYNESTIC CNC.\n\n" +
             "Outputs Park_V7 + BN_NestKontur + BN_TrennerInnenAussen + HH_MarkLabel in the correct order.\n" +
             "Wire output into HopExport OperationLines (append after all cutting operations).",
-            "DYNESTIC", "Nesting") { }
+            "Wallaby Hop", "Nesting") { }
 
         public override Guid ComponentGuid => new Guid("9041a2b3-04c5-2345-0123-456789012345");
 
@@ -119,13 +119,13 @@ namespace DynesticPostProcessor.Components.Nesting
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
-                DynesticPostProcessor.AutoWire.Spec.Float("-360<0<360"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Float("-360<0<360"),
+                WallabyHop.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }
