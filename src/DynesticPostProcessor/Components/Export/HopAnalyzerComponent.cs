@@ -55,6 +55,9 @@ namespace WallabyHop.Components.Export
 
             pManager.AddTextParameter("Summary", "summary",
                 "One-line summary: SP count, EP count, errors.", GH_ParamAccess.item);
+
+            pManager.AddTextParameter("Stats", "stats",
+                "Operation breakdown: drill count, contour count, tool changes, estimated time.", GH_ParamAccess.list);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -88,6 +91,9 @@ namespace WallabyHop.Components.Export
             int emptyBlocks    = 0;
             int movesInBlock   = 0;
             int openSpLine     = -1;
+            int drillCount     = 0;
+            int callCount      = 0;
+            var toolCalls      = new HashSet<string>();
 
             // Parse DZ (plate thickness) from header: ";DZ=19.000"
             double headerDZ = 0;
@@ -144,10 +150,19 @@ namespace WallabyHop.Components.Export
                         errors.Add("L" + lineNum + ": Move outside SP/EP block: "
                             + s.Substring(0, Math.Min(s.Length, 50)));
                 }
+                else if (s.StartsWith("WZB ") || s.StartsWith("WZF ") || s.StartsWith("WZS "))
+                {
+                    toolCalls.Add(s);
+                }
+                else if (s.StartsWith("CALL "))
+                {
+                    callCount++;
+                }
                 else if (s.StartsWith("Bohrung ("))
                 {
                     // Z safety: Bohrung (x, y, surfaceZ, cutZ, ...) — params index 2 and 3
                     // drillDepth = surfaceZ - cutZ; warn if drillDepth > DZ + 5 mm
+                    drillCount++;
                     int bOpen = s.IndexOf('(');
                     int bClose = s.LastIndexOf(')');
                     if (bOpen >= 0 && bClose > bOpen && headerDZ > 0)
@@ -230,10 +245,30 @@ namespace WallabyHop.Components.Export
             if (zWarningMessages.Count > 0) allMessages.AddRange(zWarningMessages);
             if (allMessages.Count == 0) allMessages.Add("No errors.");
 
+            // ---------------------------------------------------------------
+            // STATS
+            // ---------------------------------------------------------------
+            int toolChangeCount = toolCalls.Count;
+            // Rough time estimate (seconds): drills ~3s, contour blocks ~30s, calls ~5s, tool changes ~15s
+            double estSeconds = drillCount * 3 + spCount * 30 + callCount * 5 + toolChangeCount * 15;
+            int estMin = (int)(estSeconds / 60);
+            int estSec = (int)(estSeconds % 60);
+
+            var stats = new List<string>
+            {
+                "Drills (Bohrung):    " + drillCount,
+                "Contour blocks (SP): " + spCount,
+                "Macro calls (CALL):  " + callCount,
+                "Tool changes:        " + toolChangeCount,
+                "Unique tools:        " + toolCalls.Count,
+                "Est. time:           ~" + estMin + "m " + estSec + "s  (rough estimate)",
+            };
+
             DA.SetData(0, isValid);
             DA.SetData(1, errors.Count);
             DA.SetDataList(2, allMessages);
             DA.SetData(3, summary);
+            DA.SetDataList(4, stats);
         }
 
         public override void AddedToDocument(GH_Document doc)
