@@ -4,7 +4,7 @@ using Grasshopper.Kernel;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
 
-namespace DynesticPostProcessor
+namespace WallabyHop
 {
     /// <summary>
     /// Creates and wires default input sources when a component is first

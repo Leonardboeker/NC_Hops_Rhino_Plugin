@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Linq;
 using Rhino.Geometry;
 
-namespace DynesticPostProcessor.Components.Korpus
+namespace WallabyHop.Components.Korpus
 {
     /// <summary>
     /// Data class representing a single flat panel of a cabinet body (Korpus).

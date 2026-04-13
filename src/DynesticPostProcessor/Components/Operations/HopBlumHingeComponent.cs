@@ -8,7 +8,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     /// <summary>
     /// Generates Blum cup hinge drilling operations (_Topf_V5) for the DYNESTIC CNC.
@@ -28,7 +28,7 @@ namespace DynesticPostProcessor.Components.Operations
             "Creates the 35mm cup hole + optional dowel holes at specified positions.\n" +
             "Distance: offset from edge to cup center (typically 22.5 mm from front).\n" +
             "Pos1..Pos4: Y positions of each hinge along the board.",
-            "DYNESTIC", "Beschläge") { }
+            "Wallaby Hop", "Beschläge") { }
 
         public override Guid ComponentGuid => new Guid("6d1e4f50-7182-9012-def0-123456789012");
 
@@ -213,19 +213,19 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Point(),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<22.5<100"),
-                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                WallabyHop.AutoWire.Spec.Point(),
+                WallabyHop.AutoWire.Spec.Float("1<22.5<100"),
+                WallabyHop.AutoWire.Spec.ValueList(
                     ("Front edge", "0"),
                     ("Back edge",  "1")),
-                DynesticPostProcessor.AutoWire.Spec.Float("10<35<50"),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<12.8<30"),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<8<20"),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<13<30"),
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Float("10<35<50"),
+                WallabyHop.AutoWire.Spec.Float("1<12.8<30"),
+                WallabyHop.AutoWire.Spec.Float("0<8<20"),
+                WallabyHop.AutoWire.Spec.Float("0<13<30"),
+                WallabyHop.AutoWire.Spec.Int("1<1<20"),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

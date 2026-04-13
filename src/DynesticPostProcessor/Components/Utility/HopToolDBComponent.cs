@@ -10,7 +10,7 @@ using System.Globalization;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 
-namespace DynesticPostProcessor.Components.Utility
+namespace WallabyHop.Components.Utility
 {
     /// <summary>
     /// Reads a NC-HOPS .too tool database file and provides a Value List for
@@ -27,7 +27,7 @@ namespace DynesticPostProcessor.Components.Utility
             "HopToolDB", "HopToolDB",
             "Reads the NC-HOPS .too tool database and provides a drop-down for tool selection. " +
             "Outputs tool number, diameter, and feedrate to wire into operation components.",
-            "DYNESTIC", "Utility") { }
+            "Wallaby Hop", "Utility") { }
 
         public override Guid ComponentGuid =>
             new Guid("c4e2f851-7b3d-4a9c-b602-3e91f7d8a043");
@@ -135,10 +135,10 @@ namespace DynesticPostProcessor.Components.Utility
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Skip(), // toolFile
-                DynesticPostProcessor.AutoWire.Spec.Skip(), // toolId — we create the ValueList
+                WallabyHop.AutoWire.Spec.Skip(), // toolFile
+                WallabyHop.AutoWire.Spec.Skip(), // toolId — we create the ValueList
             });
 
             // Parse with default path

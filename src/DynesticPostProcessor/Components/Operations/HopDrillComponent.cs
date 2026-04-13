@@ -8,7 +8,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     public class HopDrillComponent : GH_Component
     {
@@ -23,7 +23,7 @@ namespace DynesticPostProcessor.Components.Operations
         public HopDrillComponent() : base(
             "HopDrill", "HopDrill",
             "Generates vertical drilling operations (Bohrung macros) for the DYNESTIC CNC. Each input point becomes one drill call at the specified depth and diameter.",
-            "DYNESTIC", "Bohren") { }
+            "Wallaby Hop", "Bohren") { }
 
         public override Guid ComponentGuid => new Guid("2a763260-a3c1-4231-8ed0-cd0085267c94");
 
@@ -201,14 +201,14 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Point(),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<10<100"),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<8<50"),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<0<50"),
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Point(),
+                WallabyHop.AutoWire.Spec.Float("1<10<100"),
+                WallabyHop.AutoWire.Spec.Float("1<8<50"),
+                WallabyHop.AutoWire.Spec.Float("0<0<50"),
+                WallabyHop.AutoWire.Spec.Int("1<1<20"),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

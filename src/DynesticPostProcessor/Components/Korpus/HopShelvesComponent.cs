@@ -4,14 +4,14 @@ using System.Drawing;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
-namespace DynesticPostProcessor.Components.Korpus
+namespace WallabyHop.Components.Korpus
 {
     public class HopShelvesComponent : GH_Component
     {
         public HopShelvesComponent()
             : base("HopShelves", "HopShelves",
                 "Adjustable shelves with System-32 hole rows in side panels. Shelves are distributed evenly in the cabinet interior. Wire into HopKorpus 'shelves' input.",
-                "DYNESTIC", "Cabinet")
+                "Wallaby Hop", "Cabinet")
         {
         }
 

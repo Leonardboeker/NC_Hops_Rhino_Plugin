@@ -5,7 +5,7 @@ using Rhino.Geometry;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
-namespace DynesticPostProcessor.Components.Korpus
+namespace WallabyHop.Components.Korpus
 {
     public class HopKorpusComponent : GH_Component
     {
@@ -38,7 +38,7 @@ namespace DynesticPostProcessor.Components.Korpus
         public HopKorpusComponent()
             : base("HopKorpus", "HopKorpus",
                 "Parametric cabinet body generator. Produces 5 flat panels (Bottom, Top, LeftSide, RightSide, BackPanel, open front) from dimension sliders. Outputs CabinetData dictionary and individual panel objects for HopPart nesting.",
-                "DYNESTIC", "Cabinet")
+                "Wallaby Hop", "Cabinet")
         {
         }
 
@@ -871,21 +871,21 @@ namespace DynesticPostProcessor.Components.Korpus
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Float("100<600<2400"),  // Width
-                DynesticPostProcessor.AutoWire.Spec.Float("100<720<2400"),  // Height
-                DynesticPostProcessor.AutoWire.Spec.Float("100<560<800"),   // Depth
-                DynesticPostProcessor.AutoWire.Spec.Float("8<19<38"),       // Thickness
-                DynesticPostProcessor.AutoWire.Spec.Panel("Cabinet"),       // Type
-                DynesticPostProcessor.AutoWire.Spec.Skip(),                 // Colour
-                DynesticPostProcessor.AutoWire.Spec.Skip(),                 // Back
-                DynesticPostProcessor.AutoWire.Spec.Skip(),                 // Connectors
-                DynesticPostProcessor.AutoWire.Spec.Skip(),                 // Shelves
-                DynesticPostProcessor.AutoWire.Spec.Skip(),                 // Feet
-                DynesticPostProcessor.AutoWire.Spec.Skip(),                 // Door
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),          // DrillToolNr
-                DynesticPostProcessor.AutoWire.Spec.Int("0<0<20"),          // RouterToolNr
+                WallabyHop.AutoWire.Spec.Float("100<600<2400"),  // Width
+                WallabyHop.AutoWire.Spec.Float("100<720<2400"),  // Height
+                WallabyHop.AutoWire.Spec.Float("100<560<800"),   // Depth
+                WallabyHop.AutoWire.Spec.Float("8<19<38"),       // Thickness
+                WallabyHop.AutoWire.Spec.Panel("Cabinet"),       // Type
+                WallabyHop.AutoWire.Spec.Skip(),                 // Colour
+                WallabyHop.AutoWire.Spec.Skip(),                 // Back
+                WallabyHop.AutoWire.Spec.Skip(),                 // Connectors
+                WallabyHop.AutoWire.Spec.Skip(),                 // Shelves
+                WallabyHop.AutoWire.Spec.Skip(),                 // Feet
+                WallabyHop.AutoWire.Spec.Skip(),                 // Door
+                WallabyHop.AutoWire.Spec.Int("1<1<20"),          // DrillToolNr
+                WallabyHop.AutoWire.Spec.Int("0<0<20"),          // RouterToolNr
             });
         }
     }

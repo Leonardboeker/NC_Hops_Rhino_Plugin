@@ -8,7 +8,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     public class HopEngravingComponent : GH_Component
     {
@@ -25,7 +25,7 @@ namespace DynesticPostProcessor.Components.Operations
             "Generates engraving paths (WZF + SP/G01/G03M/EP) for the DYNESTIC CNC.\n\n" +
             "Follows the input curve exactly -- no kerf offset. Designed for shallow cuts " +
             "with V-bits or engraving spindles. Multiple curves produce one continuous engraving path per curve.",
-            "DYNESTIC", "Fräsen") { }
+            "Wallaby Hop", "Fräsen") { }
 
         public override Guid ComponentGuid => new Guid("d3a19f7c-5b2e-4d8a-b6c1-9f0e2a4c7d83");
 
@@ -303,13 +303,13 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Curve(),
-                DynesticPostProcessor.AutoWire.Spec.Float("0.1<0.5<5"),
-                DynesticPostProcessor.AutoWire.Spec.Float("0.01<0.05<1"),
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Curve(),
+                WallabyHop.AutoWire.Spec.Float("0.1<0.5<5"),
+                WallabyHop.AutoWire.Spec.Float("0.01<0.05<1"),
+                WallabyHop.AutoWire.Spec.Int("1<1<20"),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

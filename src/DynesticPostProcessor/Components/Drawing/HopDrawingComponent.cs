@@ -14,7 +14,7 @@ using Rhino.Geometry;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
-namespace DynesticPostProcessor.Components.Drawing
+namespace WallabyHop.Components.Drawing
 {
     /// <summary>
     /// Generates a Rhino layout page (Dreitafelansicht + Iso + title block + material list)
@@ -32,7 +32,7 @@ namespace DynesticPostProcessor.Components.Drawing
                 "Generates a Rhino layout page with Dreitafelansicht (Top/Front/Side/Iso), " +
                 "title block from a .3dm template, outer dimensions, and material list. " +
                 "Wire HopKorpus 'AssembledBreps' → 'geo', and optionally 'Panels' → 'parts'.",
-                "DYNESTIC", "Drawing")
+                "Wallaby Hop", "Drawing")
         {
         }
 
@@ -630,18 +630,18 @@ namespace DynesticPostProcessor.Components.Drawing
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Skip(),                                         // Geometry
-                DynesticPostProcessor.AutoWire.Spec.Skip(),                                         // Parts
-                DynesticPostProcessor.AutoWire.Spec.Panel(
+                WallabyHop.AutoWire.Spec.Skip(),                                         // Geometry
+                WallabyHop.AutoWire.Spec.Skip(),                                         // Parts
+                WallabyHop.AutoWire.Spec.Panel(
                     @"E:\Rhino Resourcen\Plan Köpfe\Leonard Elias Böker.3dm"),                      // TemplatePath
-                DynesticPostProcessor.AutoWire.Spec.Panel("Projekt"),                               // ProjectName
-                DynesticPostProcessor.AutoWire.Spec.Panel(""),                                      // DrawBy
-                DynesticPostProcessor.AutoWire.Spec.Int("5<10<50"),                                 // Scale
-                DynesticPostProcessor.AutoWire.Spec.Panel("Grundriss_01"),                          // LayoutName
-                DynesticPostProcessor.AutoWire.Spec.FilePath(),                                     // Folder
-                DynesticPostProcessor.AutoWire.Spec.Toggle(),                                       // Generate
+                WallabyHop.AutoWire.Spec.Panel("Projekt"),                               // ProjectName
+                WallabyHop.AutoWire.Spec.Panel(""),                                      // DrawBy
+                WallabyHop.AutoWire.Spec.Int("5<10<50"),                                 // Scale
+                WallabyHop.AutoWire.Spec.Panel("Grundriss_01"),                          // LayoutName
+                WallabyHop.AutoWire.Spec.FilePath(),                                     // Folder
+                WallabyHop.AutoWire.Spec.Toggle(),                                       // Generate
             });
         }
     }

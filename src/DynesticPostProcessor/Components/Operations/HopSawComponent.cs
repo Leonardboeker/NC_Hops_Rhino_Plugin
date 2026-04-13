@@ -8,7 +8,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     public class HopSawComponent : GH_Component
     {
@@ -28,7 +28,7 @@ namespace DynesticPostProcessor.Components.Operations
             "These are two independent parameters: direction is where the saw goes, blade angle is how the blade is tilted.\n\n" +
             "Side: kerf placement Left / Center / Right of the direction line.\n" +
             "Extend: runs the blade past both endpoints so the kerf fully exits the panel edge.",
-            "DYNESTIC", "Sägen") { }
+            "Wallaby Hop", "Sägen") { }
 
         public override Guid ComponentGuid => new Guid("c8d2f1a3-4b7e-4c9d-a1f5-2e3b6d8c0f14");
 
@@ -355,20 +355,20 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Curve(),
-                DynesticPostProcessor.AutoWire.Spec.Float("-90<0<90"),
-                DynesticPostProcessor.AutoWire.Spec.Float("10<600<3000"),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<3.2<20"),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<19<100"),
-                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                WallabyHop.AutoWire.Spec.Curve(),
+                WallabyHop.AutoWire.Spec.Float("-90<0<90"),
+                WallabyHop.AutoWire.Spec.Float("10<600<3000"),
+                WallabyHop.AutoWire.Spec.Float("1<3.2<20"),
+                WallabyHop.AutoWire.Spec.Float("1<19<100"),
+                WallabyHop.AutoWire.Spec.ValueList(
                     ("Left",   "-1"),
                     ("Center", "0"),
                     ("Right",  "1")),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<0<50"),
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Float("0<0<50"),
+                WallabyHop.AutoWire.Spec.Int("1<1<20"),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

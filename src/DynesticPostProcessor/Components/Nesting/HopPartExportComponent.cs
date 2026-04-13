@@ -9,7 +9,7 @@ using Rhino.Geometry;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
-namespace DynesticPostProcessor.Components.Nesting
+namespace WallabyHop.Components.Nesting
 {
     public class HopPartExportComponent : GH_Component
     {
@@ -17,7 +17,7 @@ namespace DynesticPostProcessor.Components.Nesting
             : base("HopPartExport", "HopPartExport",
                 "Exports one .hop file per part from a list of HopPart or HopKorpus panel dictionaries. " +
                 "When CabinetData is connected, automatically creates a subfolder named Korpus_{Nr}_{W}x{H}x{D}.",
-                "DYNESTIC", "Nesting")
+                "Wallaby Hop", "Nesting")
         {
         }
 
@@ -308,15 +308,15 @@ namespace DynesticPostProcessor.Components.Nesting
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Skip(),             // Parts
-                DynesticPostProcessor.AutoWire.Spec.FilePath(),         // Folder
-                DynesticPostProcessor.AutoWire.Spec.Skip(),             // CabinetData
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<99"),      // CorpusNr
-                DynesticPostProcessor.AutoWire.Spec.Panel("7023K_681"), // WZGV
-                DynesticPostProcessor.AutoWire.Spec.Float("1<19<200"),  // DZ
-                DynesticPostProcessor.AutoWire.Spec.Toggle(),           // Export
+                WallabyHop.AutoWire.Spec.Skip(),             // Parts
+                WallabyHop.AutoWire.Spec.FilePath(),         // Folder
+                WallabyHop.AutoWire.Spec.Skip(),             // CabinetData
+                WallabyHop.AutoWire.Spec.Int("1<1<99"),      // CorpusNr
+                WallabyHop.AutoWire.Spec.Panel("7023K_681"), // WZGV
+                WallabyHop.AutoWire.Spec.Float("1<19<200"),  // DZ
+                WallabyHop.AutoWire.Spec.Toggle(),           // Export
             });
         }
     }

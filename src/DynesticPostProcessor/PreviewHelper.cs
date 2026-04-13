@@ -7,7 +7,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor
+namespace WallabyHop
 {
     /// <summary>
     /// Shared preview rendering helpers for all operation components.

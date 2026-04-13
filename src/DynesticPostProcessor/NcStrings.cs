@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 
-namespace DynesticPostProcessor
+namespace WallabyHop
 {
     internal static class NcDrill
     {

@@ -1,8 +1,8 @@
-# DYNESTIC Post-Processor
+# Wallaby Hop
 
 A Grasshopper plugin for generating `.hop` NC files for the **HOLZ-HER DYNESTIC 7535** CNC machine, controlled via the **HOPS 7.7** CAM software and **HOLZHER CAMPUS** machine controller.
 
-Instead of writing NC code by hand or going through HOPS, you design parametrically in Rhino/Grasshopper, wire components together, and export production-ready `.hop` files directly.
+Design parametrically in Rhino/Grasshopper, wire components together, and export production-ready `.hop` files directly — no manual NC coding, no HOPS GUI.
 
 ---
 
@@ -12,11 +12,15 @@ Instead of writing NC code by hand or going through HOPS, you design parametrica
 - [Installation](#installation)
 - [The .hop file format](#the-hop-file-format)
 - [Component reference](#component-reference)
-  - [Operations](#operations)
+  - [Drilling (Bohren)](#drilling-bohren)
+  - [Milling (Fräsen)](#milling-fräsen)
+  - [Sawing (Sägen)](#sawing-sägen)
+  - [Hardware (Beschläge)](#hardware-beschläge)
   - [Export](#export)
-  - [Cabinet (Korpus)](#cabinet-korpus)
+  - [Cabinet (Cabinet)](#cabinet-cabinet)
   - [Nesting](#nesting)
   - [Drawing](#drawing)
+  - [Utility](#utility)
 - [AutoWire](#autowire)
 - [Typical workflows](#typical-workflows)
 - [Machine & software notes](#machine--software-notes)
@@ -50,16 +54,14 @@ The `.hop` format is not G-code. It is a macro language interpreted by the HOLZH
 - Grasshopper (included with Rhino)
 
 **Steps:**
-1. Build the project in Visual Studio:  
-   `src/DynesticPostProcessor/DynesticPostProcessor.csproj`  
+1. Build the project in Visual Studio:
+   `src/DynesticPostProcessor/DynesticPostProcessor.csproj`
    Target framework: `.NET Framework 4.8` (required by Rhino 7/8)
 
-2. Copy the compiled `.gha` file from `bin/Release/` to your Grasshopper Libraries folder:  
+2. The post-build step automatically copies `WallabyHop.gha` to:
    `%AppData%\Grasshopper\Libraries\`
 
-3. Restart Rhino. The components appear in the **DYNESTIC** tab in the Grasshopper toolbar.
-
-Alternatively, open the Grasshopper definition `Grasshopper Post.gh` which uses the pre-built components directly.
+3. Restart Rhino. The components appear in the **Wallaby Hop** tab in the Grasshopper toolbar.
 
 ---
 
@@ -91,29 +93,36 @@ Bohrung (100.0,200.0,19.0,2.0,8.0,0,0,0,0,0,0,0)   ← Operation macro
 | Macro | Operation | Component |
 |-------|-----------|-----------|
 | `Bohrung(x,y,surfZ,cutZ,dia,...)` | Vertical drill | HopDrill |
-| `SP(...)` / `G01(...)` / `G03M(...)` / `EP(...)` | Contour cutting path | HopContour |
+| `CALL _Bohgx_V5(...)` / `_Bohgy_V5(...)` | Drill row (X/Y) | HopDrillRow |
+| `SP(...)` / `G01(...)` / `G02M(...)` / `G03M(...)` / `EP(...)` | Contour / engraving path | HopContour, HopEngraving |
 | `CALL _RechteckTasche_V5(...)` | Rectangular pocket | HopRectPocket |
 | `CALL _Kreistasche_V5(...)` | Circular pocket | HopCircPocket |
 | `CALL _Kreisbahn_V5(...)` | Circular path | HopCircPath |
 | `CALL _nuten_frei_v5(...)` | Free slot | HopFreeSlot |
-| `WZB(...)` | Drill tool call | All drill ops |
-| `WZF(...)` | Milling tool call | All mill ops |
+| `CALL _Nuten_X_V5(...)` / `_Nuten_Y_V5(...)` | Groove slot (X/Y axis) | HopGrooveSlot |
+| `CALL _saege_x_V7(...)` / `_saege_y_V7(...)` | Format saw cut | HopFormatCut |
+| `WZS(...)` + saw path | Circular saw path | HopSaw |
+| `CALL _Topf_V5(...)` | Blum hinge cup drill | HopBlumHinge |
+| `Fixchip_K(...)` | Fixing clamp | HopFixchip |
+| `B2Punkte_V7(...)` | Dimension line markup | HopDimension |
+| `WZB(...)` | Drill tool call | All WZB ops |
+| `WZF(...)` | Milling tool call | All WZF ops |
+| `WZS(...)` | Saw tool call | All WZS ops |
 
 ---
 
 ## Component reference
 
-### Operations
-
-These components produce `operationLines` — lists of NC macro strings that wire into **HopExport**.
+All components live in the **Wallaby Hop** tab in Grasshopper. Subcategories group them by operation type.
 
 ---
+
+### Drilling (Bohren)
 
 #### HopDrill
 
 Converts a list of 3D points into vertical drilling operations.
 
-**Category:** DYNESTIC → Operations  
 **NC macro:** `Bohrung(...)`
 
 | Input | Type | Description |
@@ -130,17 +139,37 @@ Converts a list of 3D points into vertical drilling operations.
 | `operationLines` | string list | NC macro strings → wire into HopExport |
 
 **Notes:**
-- `surfaceZ` is automatically derived as the maximum Z across all input points.
+- `surfaceZ` auto-derived as max Z across all input points.
 - With `stepdown > 0`, drilling is split into multiple Bohrung passes at increasing depth.
 - Renders translucent drill cylinders in the Rhino viewport.
 
 ---
 
+#### HopDrillRow
+
+Generates a parametric row of equally spaced holes along the X or Y axis using the `_Bohgx_V5` / `_Bohgy_V5` macros.
+
+**NC macro:** `CALL _Bohgx_V5(...)` or `CALL _Bohgy_V5(...)`
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `startPoint` | Point3d | First hole position |
+| `count` | int | Number of holes in the row |
+| `spacing` | float | Distance between holes in mm |
+| `axis` | int | 0 = X-axis row, 1 = Y-axis row |
+| `depth` | float | Drilling depth in mm |
+| `diameter` | float | Drill diameter in mm |
+| `toolNr` | int | Tool magazine position |
+| `colour` | Color | Viewport preview color |
+
+---
+
+### Milling (Fräsen)
+
 #### HopContour
 
-Converts a planar curve into a 2D contour cutting path using `SP/G01/G03M/EP` macros. Handles both straight segments and arcs.
+Converts a planar curve into a 2D contour cutting path using `SP/G01/G02M/G03M/EP` macros. Handles both straight segments and arcs.
 
-**Category:** DYNESTIC → Operations  
 **NC macros:** `SP`, `G01`, `G02M`, `G03M`, `EP`
 
 | Input | Type | Description |
@@ -149,55 +178,44 @@ Converts a planar curve into a 2D contour cutting path using `SP/G01/G03M/EP` ma
 | `depth` | float | Cutting depth in mm. Default: 1.0 |
 | `plungeZ` | float | First-pass plunge depth override. 0 = same as depth. |
 | `tolerance` | float | NURBS → polyline/arc conversion tolerance in mm. Default: 0.1 |
-| `toolNr` | int | Tool magazine position (must be > 0) |
+| `toolNr` | int | Tool magazine position |
 | `toolDiameter` | float | Tool diameter for kerf offset. Default: 8.0 |
 | `side` | int | Kerf compensation: -1 = inside, 0 = center, +1 = outside |
 | `stepdown` | float | Depth per pass for multi-pass cutting. 0 = single pass. |
 | `colour` | Color | Viewport preview color |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `operationLines` | string list | NC macro strings → wire into HopExport |
-
 **Notes:**
-- Internally converts each curve piece to lines and arcs using Rhino's `ToArcsAndLines`. Lines become `G01`, arcs become `G02M`/`G03M` (CW/CCW determined from arc normal). Both `PolyCurve` and single `ArcCurve`/`LineCurve` results are handled correctly.
-- Kerf compensation is a **geometric pre-offset** applied to the curve before decomposition, using Rhino's `Curve.Offset`. No machine-side radius compensation (G41/G42) is used.
-- With `stepdown`, multiple full contour passes are generated at increasing depths.
-- Renders a shaded toolpath volume and dashed approach line in the viewport.
+- Lines → `G01`, arcs → `G02M`/`G03M` (CW/CCW from arc normal).
+- Kerf compensation is geometric pre-offset — no machine-side G41/G42.
+- With `stepdown`, multiple full contour passes are generated.
+- Renders a shaded toolpath volume in the viewport.
 
 ---
 
 #### HopEngraving
 
-Generates engraving paths for one or more curves using `SP/G01/G03M/EP` macros. Follows the input curve exactly — no kerf offset. Designed for shallow cuts with V-bits or engraving spindles.
+Generates engraving paths for one or more curves. Follows the input curve exactly — no kerf offset. Designed for shallow cuts with V-bits or engraving spindles.
 
-**Category:** DYNESTIC → Operations  
 **NC macros:** `SP`, `G01`, `G02M`, `G03M`, `EP`
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `curves` | Curve list | One or more planar curves to engrave. Each curve becomes one or more SP/EP blocks. |
-| `depth` | float | Engraving depth in mm below the curve's Z position. Default: 0.5 |
-| `tolerance` | float | NURBS → polyline/arc conversion tolerance in mm. Default: 0.05 |
-| `toolNr` | int | Tool magazine position (must be > 0) |
+| `curves` | Curve list | One or more planar curves to engrave. |
+| `depth` | float | Engraving depth in mm. Default: 0.5 |
+| `tolerance` | float | NURBS conversion tolerance. Default: 0.05 |
+| `toolNr` | int | Tool magazine position |
 | `colour` | Color | Viewport preview color |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `operationLines` | string list | NC macro strings → wire into HopExport |
-
 **Notes:**
-- Multiple input curves each produce their own SP/EP block sequence within one `WZF` tool call.
-- Internally handles both `PolyCurve` and single `ArcCurve`/`LineCurve` results from `ToArcsAndLines` — single-segment curves are not silently dropped.
-- Preview renders a pipe volume along the engraving path (radius = depth, approximating the V-bit footprint at surface level).
+- Multiple input curves each produce their own SP/EP block within one WZF call.
+- Preview renders a pipe volume along the engraving path.
 
 ---
 
 #### HopRectPocket
 
-Generates a rectangular pocket using the `_RechteckTasche_V5` macro. Dimensions are extracted from the input curve's bounding box.
+Generates a rectangular pocket using the `_RechteckTasche_V5` macro. Dimensions from the input curve's bounding box.
 
-**Category:** DYNESTIC → Operations  
 **NC macro:** `CALL _RechteckTasche_V5(...)`
 
 | Input | Type | Description |
@@ -207,7 +225,7 @@ Generates a rectangular pocket using the `_RechteckTasche_V5` macro. Dimensions 
 | `angle` | float | Rotation angle in degrees. 0 = axis-aligned. |
 | `depth` | float | Pocket depth in mm. Default: 1.0 |
 | `stepdown` | float | Depth per pass (Zustellung). 0 = single pass. |
-| `toolNr` | int | Tool magazine position (must be > 0) |
+| `toolNr` | int | Tool magazine position |
 | `colour` | Color | Viewport preview color |
 
 ---
@@ -216,36 +234,34 @@ Generates a rectangular pocket using the `_RechteckTasche_V5` macro. Dimensions 
 
 Generates a circular pocket using the `_Kreistasche_V5` macro.
 
-**Category:** DYNESTIC → Operations  
 **NC macro:** `CALL _Kreistasche_V5(...)`
 
 | Input | Type | Description |
 |-------|------|-------------|
 | `center` | Point3d | Center of the pocket. Z = plate surface. |
-| `radius` | float | Pocket radius in mm (must be > 0) |
+| `radius` | float | Pocket radius in mm |
 | `depth` | float | Pocket depth in mm. Default: 1.0 |
 | `stepdown` | float | Depth per pass. 0 = single pass. |
-| `toolNr` | int | Tool magazine position (must be > 0) |
+| `toolNr` | int | Tool magazine position |
 | `colour` | Color | Viewport preview color |
 
 ---
 
 #### HopCircPath
 
-Generates a circular profile cutting path using the `_Kreisbahn_V5` macro. Cuts along a circle (not a full pocket — just the path).
+Generates a circular profile cutting path using the `_Kreisbahn_V5` macro. Cuts along a circle (not a full pocket — path only).
 
-**Category:** DYNESTIC → Operations  
 **NC macro:** `CALL _Kreisbahn_V5(...)`
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `center` | Point3d | Center of the circular path. Z = plate surface. |
-| `radius` | float | Path radius in mm (must be > 0) |
+| `center` | Point3d | Center of the circular path. |
+| `radius` | float | Path radius in mm |
 | `radiusCorr` | int | Radius correction: -1 = outside, 0 = center, +1 = inside |
 | `depth` | float | Cut depth in mm. Default: 1.0 |
-| `stepdown` | float | Depth per pass (ZuTiefe). 0 = single pass. |
+| `stepdown` | float | Depth per pass. 0 = single pass. |
 | `angle` | float | Arc angle in degrees. 360 = full circle. Default: 360. |
-| `toolNr` | int | Tool magazine position (must be > 0) |
+| `toolNr` | int | Tool magazine position |
 | `colour` | Color | Viewport preview color |
 
 ---
@@ -254,21 +270,98 @@ Generates a circular profile cutting path using the `_Kreisbahn_V5` macro. Cuts 
 
 Generates a free slot (Nut) between two points using the `_nuten_frei_v5` macro.
 
-**Category:** DYNESTIC → Operations  
 **NC macro:** `CALL _nuten_frei_v5(...)`
 
 | Input | Type | Description |
 |-------|------|-------------|
 | `p1` | Point3d | Slot start point |
 | `p2` | Point3d | Slot end point |
-| `slotWidth` | float | Slot width in mm (must be > 0) |
+| `slotWidth` | float | Slot width in mm |
 | `depth` | float | Slot depth in mm. Default: 1.0 |
-| `toolNr` | int | Tool magazine position (must be > 0) |
+| `toolNr` | int | Tool magazine position |
 | `colour` | Color | Viewport preview color |
 
-**Notes:**
-- `surfaceZ` = max Z of p1 and p2.
-- Renders the slot as a swept box volume in the viewport.
+---
+
+#### HopGrooveSlot
+
+Generates axis-aligned groove operations using `_Nuten_X_V5` (horizontal) or `_Nuten_Y_V5` (vertical) macros. Designed for through-slot or stopped-slot dado cuts.
+
+**NC macro:** `CALL _Nuten_X_V5(...)` or `CALL _Nuten_Y_V5(...)`
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `startPoint` | Point3d | Slot start position |
+| `length` | float | Slot length in mm |
+| `axis` | int | 0 = X-axis groove, 1 = Y-axis groove |
+| `width` | float | Groove width in mm |
+| `depth` | float | Groove depth in mm |
+| `toolNr` | int | Tool magazine position |
+| `colour` | Color | Viewport preview color |
+
+---
+
+### Sawing (Sägen)
+
+#### HopFormatCut
+
+Generates format saw cuts using the `_saege_x_V7` / `_saege_y_V7` macros. Used for straight trim cuts along X or Y axis.
+
+**NC macro:** `CALL _saege_x_V7(...)` or `CALL _saege_y_V7(...)`
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `position` | float | Cut position (X or Y coordinate) |
+| `axis` | int | 0 = cut along X, 1 = cut along Y |
+| `depth` | float | Saw depth in mm |
+| `toolNr` | int | Saw tool magazine position |
+| `colour` | Color | Viewport preview color |
+
+---
+
+#### HopSaw
+
+Generates a freeform saw path (WZS tool call + contour sequence). For non-axis-aligned saw cuts or curved saw paths.
+
+**NC macro:** `WZS(...)` + `SP`/`G01`/`EP`
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `curve` | Curve | Saw path curve |
+| `depth` | float | Saw depth in mm |
+| `toolNr` | int | Saw tool magazine position |
+| `colour` | Color | Viewport preview color |
+
+---
+
+### Hardware (Beschläge)
+
+#### HopBlumHinge
+
+Generates Blum cup hinge drilling operations using the `_Topf_V5` macro. Handles standard 35mm cup bore with face-frame or inset mounting.
+
+**NC macro:** `CALL _Topf_V5(...)`
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `positions` | Point3d list | Hinge center positions |
+| `cupDiameter` | float | Cup bore diameter in mm. Default: 35.0 |
+| `depth` | float | Cup bore depth in mm. Default: 13.0 |
+| `toolNr` | int | Tool magazine position |
+| `colour` | Color | Viewport preview color |
+
+---
+
+#### HopFixchip
+
+Generates fixing clamp positions using the `Fixchip_K` macro. Used to define clamping points that secure the workpiece during machining.
+
+**NC macro:** `Fixchip_K(...)`
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `positions` | Point3d list | Clamp center positions |
+| `toolNr` | int | Tool magazine position |
 
 ---
 
@@ -277,8 +370,6 @@ Generates a free slot (Nut) between two points using the `_nuten_frei_v5` macro.
 #### HopExport
 
 Assembles all operation lines into a complete `.hop` file and writes it to disk.
-
-**Category:** DYNESTIC → Export
 
 | Input | Type | Description |
 |-------|------|-------------|
@@ -293,15 +384,14 @@ Assembles all operation lines into a complete `.hop` file and writes it to disk.
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `hopContent` | string | Full file content as string (for inspection in a panel) |
+| `hopContent` | string | Full file content as string (for inspection) |
 | `statusMsg` | string | Export status message with file path |
 
 **Notes:**
-- Multiple operation components can be merged using a standard Grasshopper **Merge** component before wiring into `operationLines`.
-- `.hop` extension is added automatically — no need to include it in `fileName`.
-- File is written with **ASCII encoding** and **CRLF line endings** (required by the CAMPUS controller).
-- The export guard (`export = false`) means the component is completely silent until you toggle it — no accidental file writes.
-- Operations are automatically sorted before writing: **WZB → WZF → WZS → rest**. Sorting is block-based — each tool call and all of its following SP/EP/G01/G03M lines stay together as a unit. This ensures drill operations run before milling, and milling before sawing, without breaking any SP/EP structure.
+- Merge multiple operation components using a Grasshopper **Merge** component before wiring into `operationLines`.
+- Operations are automatically sorted: **WZB → WZF → WZS → rest**. Sorting is block-based — each tool call with all its following SP/EP/G01 lines moves together as a unit.
+- File is written with ASCII encoding and CRLF line endings (required by CAMPUS controller).
+- `export = false` means no accidental file writes.
 
 **Generated file structure:**
 ```
@@ -324,31 +414,29 @@ CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)
 
 #### HopAnalyzer
 
-Validates the final `.hop` file content for SP/EP structural correctness. Wire `HopContent` from HopExport directly — the check runs on the fully sorted and assembled output, not on raw operation lines.
-
-**Category:** DYNESTIC → Export
+Validates the final `.hop` file content for SP/EP structural correctness. Wire `hopContent` from HopExport directly.
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `hopContent` | string | Full `.hop` file content. Wire from HopExport's `hopContent` output. |
-| `run` | bool | Set True to run the analysis. Default: false. |
+| `hopContent` | string | Full `.hop` file content from HopExport. |
+| `run` | bool | Set True to run the analysis. |
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `isValid` | bool | True if no structural errors were found. |
+| `isValid` | bool | True if no structural errors found. |
 | `errorCount` | int | Total number of errors. |
 | `errors` | string list | Error messages with line numbers. |
 | `summary` | string | One-line summary: SP/EP counts, move count, error count. |
 
 **Checks performed:**
 - Every `SP` has a matching `EP`
-- No `G01`/`G02M`/`G03M` moves appear outside an `SP/EP` block
-- No empty `SP/EP` blocks (SP immediately followed by EP with no moves)
-- No duplicate tool numbers (same `WZB`/`WZF`/`WZS` tool number called twice)
+- No moves (`G01`/`G02M`/`G03M`) outside an `SP/EP` block
+- No empty `SP/EP` blocks
+- No duplicate tool numbers (same `WZB`/`WZF`/`WZS` called twice)
 
 ---
 
-### Cabinet (Korpus)
+### Cabinet (Cabinet)
 
 High-level parametric components for generating complete furniture carcasses.
 
@@ -358,15 +446,13 @@ High-level parametric components for generating complete furniture carcasses.
 
 Parametric cabinet body generator. Takes outer dimensions and produces all flat panels with correct joinery dimensions, optional back panel routing, shelf pin holes, connector holes, and levelling feet holes.
 
-**Category:** DYNESTIC → Cabinet
-
 | Input | Type | Description |
 |-------|------|-------------|
 | `W` | float | Cabinet width in mm (outer). Default: 600 |
 | `H` | float | Cabinet height in mm (outer). Default: 720 |
 | `D` | float | Cabinet depth in mm (outer). Default: 560 |
 | `t` | float | Material thickness in mm. Default: 19 |
-| `type` | string | Label for the cabinet type (no structural effect) |
+| `type` | string | Label for the cabinet type |
 | `colour` | Color | Viewport preview color |
 | `back` | dict | Back panel config from HopCabinetBack (optional) |
 | `connectors` | dict | Connector config from HopConnector (optional) |
@@ -375,10 +461,10 @@ Parametric cabinet body generator. Takes outer dimensions and produces all flat 
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `Panels` | dict list | One dictionary per panel. Wire into HopPart for nesting. |
+| `Panels` | dict list | One dict per panel → wire into HopPart for nesting. |
 | `AssembledBreps` | Brep list | 3D assembled model for visualization and HopDrawing. |
 
-**Generated panels:** Bottom, Top, LeftSide, RightSide, BackPanel — each with their correct finished dimensions after accounting for material thickness overlaps.
+**Generated panels:** Bottom, Top, LeftSide, RightSide, BackPanel.
 
 ---
 
@@ -386,7 +472,7 @@ Parametric cabinet body generator. Takes outer dimensions and produces all flat 
 
 Configures the back panel type for HopKorpus.
 
-**Options:** Surface-mounted (screwed on), grooved (Falznut routed into sides), or full inset.
+**Options:** Surface-mounted (screwed on), grooved (Falznut), or full inset.
 
 ---
 
@@ -424,25 +510,18 @@ Components for preparing parts for OpenNest and generating per-part `.hop` files
 
 Bundles a flat panel outline curve and its operation lines into a single part object for nesting.
 
-**Category:** DYNESTIC → Nesting
-
 | Input | Type | Description |
 |-------|------|-------------|
-| `dict` | dict | Panel dict from HopKorpus `Panels` output. When connected, other inputs are ignored. |
+| `dict` | dict | Panel dict from HopKorpus (optional). When connected, other inputs are ignored. |
 | `outline` | Curve | Closed part boundary curve (manual mode). |
 | `operationLines` | string list | NC macro strings (manual mode). |
 | `grainAngle` | float | Grain direction angle in degrees. 0 = along X. |
-| `colour` | Color | Preview color for the outline. |
+| `colour` | Color | Preview color |
 
 | Output | Type | Description |
 |--------|------|-------------|
 | `Part` | dict | Part object for HopSheetExport |
 | `Outline` | Curve | Flat outline for OpenNest `Geo` input |
-
-**Notes:**
-- In **HopKorpus mode** (dict connected): all geometry and operations come from the panel dictionary.
-- In **manual mode**: connect any outline curve and operation lines from individual operation components.
-- Renders the outline and a grain direction arrow in the viewport.
 
 ---
 
@@ -465,9 +544,7 @@ Extracts sheet dimensions from a curve or Brep for use with HopExport and OpenNe
 
 #### HopSheetExport
 
-After OpenNest has placed parts on a sheet, applies the nesting transformations to each part's operation lines and exports one `.hop` file per part.
-
-**Category:** DYNESTIC → Nesting
+After OpenNest has placed parts on a sheet, applies nesting transforms to each part's operation lines and exports one `.hop` file per part.
 
 | Input | Type | Description |
 |-------|------|-------------|
@@ -475,7 +552,7 @@ After OpenNest has placed parts on a sheet, applies the nesting transformations 
 | `Transforms` | Transform list | Placement transforms from OpenNest |
 | `folder` | string | Output directory |
 | `export` | bool | Toggle to trigger export |
-| `dx`, `dy`, `dz` | float | Sheet dimensions for the hop header |
+| `dx`, `dy`, `dz` | float | Sheet dimensions for hop header |
 
 ---
 
@@ -485,17 +562,21 @@ Exports a single part (without nesting) directly to a `.hop` file. Use when part
 
 ---
 
+#### HopNesting
+
+Generates the nesting system block (nested sheet layout metadata) in the `.hop` header. Required when using OpenNest-based workflows.
+
+---
+
 ### Drawing
 
 #### HopDrawing
 
-Generates a Rhino layout page (Dreitafelansicht — Top/Front/Side/Iso views) with title block, outer dimensions, and material list from the assembled 3D model.
-
-**Category:** DYNESTIC → Drawing
+Generates a Rhino layout page (Dreitafelansicht — Top/Front/Side/Iso) with title block, outer dimensions, and material list from the assembled 3D model.
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `geo` | Brep list | 3D geometry — wire from HopKorpus `AssembledBreps` |
+| `geo` | Brep list | 3D geometry from HopKorpus `AssembledBreps` |
 | `parts` | dict list | Panel dicts from HopKorpus `Panels` (for material list) |
 | `template` | string | Path to `.3dm` file containing title block objects |
 | `project` | string | Project name for the title block |
@@ -503,10 +584,7 @@ Generates a Rhino layout page (Dreitafelansicht — Top/Front/Side/Iso views) wi
 | `scale` | int | Scale denominator: 10 = 1:10, 20 = 1:20 |
 | `layoutName` | string | Name of the Rhino layout page to create or update |
 
-**Notes:**
-- Creates or updates a named layout page directly in the active Rhino document.
-- Imports title block objects from the template `.3dm` file into layout space.
-- Automatically calculates view extents and positions viewports.
+---
 
 #### HopMaterialList
 
@@ -514,17 +592,71 @@ Extracts panel data from HopKorpus and outputs a formatted material list (part n
 
 ---
 
+### Utility
+
+#### HopToolDB
+
+Loads tool definitions from a JSON tool database file. Outputs tool number, diameter, and name for use in operation components.
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `filePath` | string | Path to tool database JSON file. Defaults to `reference-hops/` directory. |
+| `toolNr` | int | Tool number to look up |
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `toolNr` | int | Tool magazine number |
+| `diameter` | float | Tool diameter in mm |
+| `name` | string | Tool name/description |
+
+---
+
+#### HopLayerScan
+
+Scans the current Rhino document layers and returns matching geometry for use in operation components. Enables layer-based workflow where drawing geometry drives machining.
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `layerName` | string | Layer name to scan (exact match) |
+| `run` | bool | Toggle to trigger scan |
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `curves` | Curve list | All curves found on the specified layer |
+| `points` | Point3d list | All points found on the specified layer |
+
+---
+
+#### HopLabel
+
+Generates a label/tag object for use in HopDrawing layouts. Outputs formatted text with position for placement in Rhino layout space.
+
+---
+
+#### HopDimension
+
+Generates dimension line markup using the `B2Punkte_V7` macro. Used for adding measurement annotations to the `.hop` file.
+
+**NC macro:** `B2Punkte_V7(...)`
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `p1` | Point3d | Start point of dimension |
+| `p2` | Point3d | End point of dimension |
+| `offset` | float | Dimension line offset from geometry in mm |
+| `toolNr` | int | Tool magazine position |
+
+---
+
 ## AutoWire
 
-When you drop a component onto the Grasshopper canvas, **AutoWire** automatically creates and connects sensible default input sources — sliders with min/default/max, toggles, number panels — so you can start working immediately without manually adding and connecting each input.
+When you drop a component onto the Grasshopper canvas, **AutoWire** automatically creates and connects sensible default input sources — sliders with min/default/max, toggles, number panels — so you can start working immediately.
 
 **Behavior:**
 - Only triggers when the component has **no existing connections** (safe on copy/paste and file reload).
-- Slider positions are right-aligned to the component's left edge, each pinned to its input's Y position.
-- Panels are created for text inputs (you fill the value yourself).
+- Slider positions are right-aligned to the component's left edge.
+- Panels are created for text inputs.
 - Boolean toggles default to `false`.
-
-This is implemented in `AutoWire.cs` and called from each component's `AddedToDocument` override.
 
 ---
 
@@ -536,6 +668,8 @@ This is implemented in `AutoWire.cs` and called from each component's `AddedToDo
 [Points] → [HopDrill] ──────────────────┐
 [Curve]  → [HopContour] ─────[Merge]──→ [HopExport] → part.hop
 [Rect]   → [HopRectPocket] ─────────────┘
+                                ↓
+                          [HopAnalyzer]
 ```
 
 ### Full cabinet from dimensions
@@ -556,6 +690,14 @@ This is implemented in `AutoWire.cs` and called from each component's `AddedToDo
 [HopKorpus] → Panels → [HopPart] → [HopPartExport] → one .hop per panel
 ```
 
+### Layer-based workflow
+
+```
+[HopLayerScan "Drill"] → points → [HopDrill] ──┐
+[HopLayerScan "Cut"]   → curves → [HopContour] ─┼→ [Merge] → [HopExport]
+[HopToolDB]            → toolNr →──────────────-┘
+```
+
 ---
 
 ## Machine & software notes
@@ -564,15 +706,16 @@ This is implemented in `AutoWire.cs` and called from each component's `AddedToDo
 |-------|-------|
 | Machine | HOLZ-HER DYNESTIC 7535 |
 | Controller | HOLZHER CAMPUS |
-| CAM software | HOPS 7.7.12.80 (direkt cns-systeme gmbh) |
+| CAM software | HOPS 7.7.12.80 (direkt cnc-systeme gmbh) |
 | File format | `.hop` (NC-Hops Part Program) |
 | Encoding | ASCII, CRLF line endings |
 | Licensed 3D milling | Not available on current HOPS dongle |
 
-**Important:** 3DMilling, Mill5Axis, and VSPMillSAxis are **not licensed** on the current HOPS dongle (ID: 3-5709426). The machine (7535) supports 5-axis mechanically, but HOPS cannot simulate or verify 5-axis paths. All operations in this plugin are 2.5D (XY movement + vertical Z plunge).
+**Important:** 3DMilling, Mill5Axis, and VSPMillSAxis are **not licensed** on the current HOPS dongle (ID: 3-5709426). All operations in this plugin are 2.5D (XY movement + vertical Z plunge).
 
 **Tool type codes:**
 - `WZB` — drilling tool (Bohrwerkzeug)
 - `WZF` — milling tool (Fräswerkzeug)
+- `WZS` — saw tool (Sägewerkzeug)
 
 Feed rates, spindle speed, and approach behavior are handled at the machine level via the tool magazine configuration. This plugin does not write feed values — only tool position number and the `_VE`, `_VA`, `_SD` placeholders that CAMPUS resolves at runtime.

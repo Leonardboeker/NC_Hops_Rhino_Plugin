@@ -4,14 +4,14 @@ using System.Drawing;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
-namespace DynesticPostProcessor.Components.Korpus
+namespace WallabyHop.Components.Korpus
 {
     public class HopFeetComponent : GH_Component
     {
         public HopFeetComponent()
             : base("HopFeet", "HopFeet",
                 "Cabinet levelling feet via Befestigungsplatte (92x79mm, 64x64mm hole grid). Generates 4 drill holes per foot corner. Wire into HopKorpus 'feet' input.",
-                "DYNESTIC", "Cabinet")
+                "Wallaby Hop", "Cabinet")
         {
         }
 

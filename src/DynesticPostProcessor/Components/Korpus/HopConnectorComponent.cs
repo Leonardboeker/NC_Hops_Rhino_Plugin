@@ -4,14 +4,14 @@ using System.Drawing;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
-namespace DynesticPostProcessor.Components.Korpus
+namespace WallabyHop.Components.Korpus
 {
     public class HopConnectorComponent : GH_Component
     {
         public HopConnectorComponent()
             : base("HopConnector", "HopConnector",
                 "Cabinet corner connector options. Generates corner drill/routing operations for the panels. Wire into HopKorpus 'connectors' input.",
-                "DYNESTIC", "Cabinet")
+                "Wallaby Hop", "Cabinet")
         {
         }
 
@@ -126,16 +126,16 @@ namespace DynesticPostProcessor.Components.Korpus
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                WallabyHop.AutoWire.Spec.ValueList(
                     ("Holzd\u00fcbel 8\u00d730", "0"),
                     ("Holzd\u00fcbel 8\u00d740", "1"),
                     ("Cabineo 8", "2"),
                     ("Clamex P-14", "3"),
                     ("Nesting-D\u00fcbel", "4")),       // Type
-                DynesticPostProcessor.AutoWire.Spec.Toggle(),           // AutoCount
-                DynesticPostProcessor.AutoWire.Spec.Int("1<2<6"),       // Count
+                WallabyHop.AutoWire.Spec.Toggle(),           // AutoCount
+                WallabyHop.AutoWire.Spec.Int("1<2<6"),       // Count
             });
         }
     }

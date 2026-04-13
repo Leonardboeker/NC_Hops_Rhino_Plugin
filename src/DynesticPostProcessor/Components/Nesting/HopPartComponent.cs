@@ -10,7 +10,7 @@ using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
-namespace DynesticPostProcessor.Components.Nesting
+namespace WallabyHop.Components.Nesting
 {
     public class HopPartComponent : GH_Component
     {
@@ -25,7 +25,7 @@ namespace DynesticPostProcessor.Components.Nesting
         public HopPartComponent()
             : base("HopPart", "HopPart",
                 "Bundles a closed part outline curve with operation lines into a single part object for OpenNest nesting. Supports grain direction and coloured preview.",
-                "DYNESTIC", "Nesting")
+                "Wallaby Hop", "Nesting")
         {
         }
 
@@ -227,13 +227,13 @@ namespace DynesticPostProcessor.Components.Nesting
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Skip(),         // PartDict
-                DynesticPostProcessor.AutoWire.Spec.Curve(),        // Outline
-                DynesticPostProcessor.AutoWire.Spec.Skip(),         // OperationLines
-                DynesticPostProcessor.AutoWire.Spec.Float("0<0<360"), // GrainAngle
-                DynesticPostProcessor.AutoWire.Spec.Skip(),         // Colour
+                WallabyHop.AutoWire.Spec.Skip(),         // PartDict
+                WallabyHop.AutoWire.Spec.Curve(),        // Outline
+                WallabyHop.AutoWire.Spec.Skip(),         // OperationLines
+                WallabyHop.AutoWire.Spec.Float("0<0<360"), // GrainAngle
+                WallabyHop.AutoWire.Spec.Skip(),         // Colour
             });
         }
     }

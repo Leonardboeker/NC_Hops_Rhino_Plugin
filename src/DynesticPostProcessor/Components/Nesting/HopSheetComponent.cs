@@ -9,7 +9,7 @@ using Rhino.Geometry;
 using Grasshopper;
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Nesting
+namespace WallabyHop.Components.Nesting
 {
     public class HopSheetComponent : GH_Component
     {
@@ -21,7 +21,7 @@ namespace DynesticPostProcessor.Components.Nesting
         public HopSheetComponent()
             : base("HopSheet", "HopSheet",
                 "Extracts sheet dimensions (dx, dy, dz) from a closed curve or Brep geometry's bounding box. Wire outputs directly into HopExport dx/dy/dz inputs.",
-                "DYNESTIC", "Nesting")
+                "Wallaby Hop", "Nesting")
         {
         }
 
@@ -167,9 +167,9 @@ namespace DynesticPostProcessor.Components.Nesting
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.Brep(),
+                WallabyHop.AutoWire.Spec.Brep(),
             });
         }
     }

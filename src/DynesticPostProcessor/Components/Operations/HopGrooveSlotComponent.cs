@@ -8,7 +8,7 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
-namespace DynesticPostProcessor.Components.Operations
+namespace WallabyHop.Components.Operations
 {
     /// <summary>
     /// Generates groove/slot milling operations (_Nuten_X_V5 / _Nuten_Y_V5) for the DYNESTIC CNC.
@@ -28,7 +28,7 @@ namespace DynesticPostProcessor.Components.Operations
             "Generates groove/slot operations (_Nuten_X_V5 / _Nuten_Y_V5) for the DYNESTIC CNC.\n\n" +
             "X-groove: runs in X direction, positioned at Y. Y-groove: runs in Y, positioned at X.\n" +
             "Typical use: shelf dado grooves, back panel grooves.",
-            "DYNESTIC", "Fräsen") { }
+            "Wallaby Hop", "Fräsen") { }
 
         public override Guid ComponentGuid => new Guid("4b9c2d3e-5f60-7890-bcde-f01234567890");
 
@@ -214,17 +214,17 @@ namespace DynesticPostProcessor.Components.Operations
         public override void AddedToDocument(GH_Document doc)
         {
             base.AddedToDocument(doc);
-            DynesticPostProcessor.AutoWire.Apply(this, doc, new[]
+            WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                DynesticPostProcessor.AutoWire.Spec.ValueList(
+                WallabyHop.AutoWire.Spec.ValueList(
                     ("X-groove", "0"),
                     ("Y-groove", "1")),
-                DynesticPostProcessor.AutoWire.Spec.Point(),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<8<50"),
-                DynesticPostProcessor.AutoWire.Spec.Float("1<8<50"),
-                DynesticPostProcessor.AutoWire.Spec.Float("0<0<100"),
-                DynesticPostProcessor.AutoWire.Spec.Int("1<1<20"),
-                DynesticPostProcessor.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Point(),
+                WallabyHop.AutoWire.Spec.Float("1<8<50"),
+                WallabyHop.AutoWire.Spec.Float("1<8<50"),
+                WallabyHop.AutoWire.Spec.Float("0<0<100"),
+                WallabyHop.AutoWire.Spec.Int("1<1<20"),
+                WallabyHop.AutoWire.Spec.Skip(),
             });
         }
     }

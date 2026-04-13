@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <AssemblyName>DynesticPostProcessor</AssemblyName>
-    <RootNamespace>DynesticPostProcessor</RootNamespace>
+    <AssemblyName>WallabyHop</AssemblyName>
+    <RootNamespace>WallabyHop</RootNamespace>
     <OutputType>Library</OutputType>
     <LangVersion>latest</LangVersion>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
