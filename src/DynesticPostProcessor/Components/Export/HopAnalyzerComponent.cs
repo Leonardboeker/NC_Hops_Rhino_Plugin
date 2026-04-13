@@ -94,6 +94,9 @@ namespace WallabyHop.Components.Export
             int drillCount     = 0;
             int callCount      = 0;
             var toolCalls      = new HashSet<string>();
+            double pathLength  = 0.0;
+            double prevX       = double.NaN;
+            double prevY       = double.NaN;
 
             // Parse DZ (plate thickness) from header: ";DZ=19.000"
             double headerDZ = 0;
@@ -123,6 +126,25 @@ namespace WallabyHop.Components.Export
                     spCount++;
                     movesInBlock = 0;
                     openSpLine = lineNum;
+
+                    // Parse SP Z as 3rd positional arg: SP (X, Y, Z, ...)
+                    int spOpen = s.IndexOf('('), spClose = s.LastIndexOf(')');
+                    if (spOpen >= 0 && spClose > spOpen)
+                    {
+                        string[] spParts = s.Substring(spOpen + 1, spClose - spOpen - 1).Split(',');
+                        if (spParts.Length >= 3
+                            && double.TryParse(spParts[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double spX)
+                            && double.TryParse(spParts[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double spY)
+                            && double.TryParse(spParts[2].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double spZ))
+                        {
+                            deepestZ = Math.Min(deepestZ, spZ);
+                            prevX = spX; prevY = spY;
+                            if (headerDZ > 0 && spZ < -(headerDZ + SpoilboardAllowance))
+                                zWarningMessages.Add("L" + lineNum + ": SP depth=" + spZ.ToString("F3", CultureInfo.InvariantCulture)
+                                    + " mm exceeds plate DZ=" + headerDZ.ToString("F1", CultureInfo.InvariantCulture)
+                                    + " mm + 5 mm spoilboard allowance");
+                        }
+                    }
                 }
                 else if (s.StartsWith("EP "))
                 {
@@ -149,6 +171,21 @@ namespace WallabyHop.Components.Export
                     if (spStack.Count == 0)
                         errors.Add("L" + lineNum + ": Move outside SP/EP block: "
                             + s.Substring(0, Math.Min(s.Length, 50)));
+
+                    // Accumulate XY path length from positional args: CMD (X, Y, ...)
+                    int mOpen = s.IndexOf('('), mClose = s.IndexOf(')');
+                    if (mOpen >= 0 && mClose > mOpen)
+                    {
+                        string[] mp = s.Substring(mOpen + 1, mClose - mOpen - 1).Split(',');
+                        if (mp.Length >= 2
+                            && double.TryParse(mp[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double mx)
+                            && double.TryParse(mp[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double my))
+                        {
+                            if (!double.IsNaN(prevX))
+                                pathLength += Math.Sqrt((mx - prevX) * (mx - prevX) + (my - prevY) * (my - prevY));
+                            prevX = mx; prevY = my;
+                        }
+                    }
                 }
                 else if (s.StartsWith("WZB ") || s.StartsWith("WZF ") || s.StartsWith("WZS "))
                 {
@@ -182,36 +219,14 @@ namespace WallabyHop.Components.Export
                     }
                 }
 
-                // ---- Find deepest Z across all macro types ----
-                // CALL macros: TIEFE:=, SZ:=, T:= (absolute Z cut depth)
-                // SP/EP lines: Z<value>, G01/G02M/G03M lines: Z<value>
+                // ---- Deepest Z from CALL macro named params ----
+                if (s.StartsWith("CALL "))
                 {
-                    double parsedZ = double.MaxValue;
-                    if (s.StartsWith("CALL "))
+                    foreach (string paramName in new[] { "TIEFE", "SZ", "TOPF_T", "DUEBEL_T" })
                     {
-                        // Named Z params in CALL macros
-                        foreach (string paramName in new[] { "TIEFE", "SZ", "TOPF_T", "DUEBEL_T" })
-                        {
-                            var m = Regex.Match(s, paramName + @":=([-\d.]+)");
-                            if (m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double pz))
-                            {
-                                parsedZ = Math.Min(parsedZ, pz);
-                            }
-                        }
-                    }
-                    else if (s.StartsWith("SP ") || s.StartsWith("G01 ") || s.StartsWith("G02M ") || s.StartsWith("G03M "))
-                    {
-                        var m = Regex.Match(s, @"\bZ([-\d.]+)");
-                        if (m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double gz))
-                            parsedZ = gz;
-                    }
-
-                    if (parsedZ < double.MaxValue)
-                    {
-                        deepestZ = Math.Min(deepestZ, parsedZ);
-                        if (parsedZ < -0.2)
-                            zWarningMessages.Add("L" + lineNum + ": cutZ=" + parsedZ.ToString("F3", CultureInfo.InvariantCulture)
-                                + " mm is more than 0.2 mm below machine table — risk of table damage");
+                        var m = Regex.Match(s, paramName + @":=([-\d.]+)");
+                        if (m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double pz))
+                            deepestZ = Math.Min(deepestZ, pz);
                     }
                 }
             }
@@ -261,6 +276,7 @@ namespace WallabyHop.Components.Export
                 "Macro calls (CALL):  " + callCount,
                 "Tool changes:        " + toolChangeCount,
                 "Unique tools:        " + toolCalls.Count,
+                "Path length:         " + (pathLength / 1000.0).ToString("F2", CultureInfo.InvariantCulture) + " m",
                 "Est. time:           ~" + estMin + "m " + estSec + "s  (rough estimate)",
             };
 

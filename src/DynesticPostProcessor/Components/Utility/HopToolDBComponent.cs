@@ -43,8 +43,8 @@ namespace WallabyHop.Components.Utility
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddTextParameter("ToolFile", "toolFile",
-                "Full path to the NC-HOPS .too tool database file.",
-                GH_ParamAccess.item, @"D:\Projekte\SynologyDrive\53_post-processor\reference-hops\werkzeug klemp.too");
+                "Full path to the NC-HOPS .too tool database file (e.g. C:\\HOPS\\werkzeug.too).",
+                GH_ParamAccess.item, "");
             pManager[0].Optional = true;
 
             pManager.AddIntegerParameter("ToolID", "toolId",

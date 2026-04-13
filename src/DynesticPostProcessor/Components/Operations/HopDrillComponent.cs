@@ -111,6 +111,17 @@ namespace WallabyHop.Components.Operations
             if (depth <= 0) depth = 1.0;
             if (diameter <= 0) diameter = 8.0;
 
+            // Minimum distance check: warn if any two points are closer than the tool diameter
+            for (int i = 0; i < points.Count; i++)
+                for (int j = i + 1; j < points.Count; j++)
+                {
+                    double dist = points[i].DistanceTo(points[j]);
+                    if (dist < diameter)
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                            "Points " + i + " and " + j + " are " + dist.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)
+                            + " mm apart — less than tool diameter " + diameter.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + " mm.");
+                }
+
             // surfaceZ: highest Z across all input points
             double surfaceZ = points[0].Z;
             foreach (Point3d p in points) if (p.Z > surfaceZ) surfaceZ = p.Z;

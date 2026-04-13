@@ -43,6 +43,8 @@ namespace WallabyHop.Components.Operations
             pManager.AddIntegerParameter("Passes", "passes", "Number of passes (Zustellungen) for multi-pass cutting. 1 = single pass at full depth. Default 1.", GH_ParamAccess.item, 1);
             pManager.AddNumberParameter("Overcut", "overcut", "Extra depth in mm added as a final pass after all Zustellungen (e.g. 0.2 to ensure full cut-through). Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddNumberParameter("LeadOut", "leadOut", "Lead-out length in mm. Extends the path past the end point for a clean exit. Default 0.", GH_ParamAccess.item, 0.0);
+            pManager.AddBooleanParameter("AutoFlip", "autoFlip", "When true, automatically reverse curve direction so the kerf offset goes to the correct (outer) side. Only applies to closed curves with side != 0. Default false.", GH_ParamAccess.item, false);
+            pManager.AddIntegerParameter("CornerStyle", "cornerStyle", "Offset corner style for kerf compensation.\n0 = Sharp (default)\n1 = Round\n2 = Smooth\nConnect a ValueList for dropdown.", GH_ParamAccess.item, 0);
             pManager.AddColourParameter("Colour", "colour", "Preview colour for the toolpath volume in the Rhino viewport.", GH_ParamAccess.item, Color.Yellow);
 
             // Mark optional parameters
@@ -55,6 +57,8 @@ namespace WallabyHop.Components.Operations
             pManager[8].Optional = true;
             pManager[9].Optional = true;
             pManager[10].Optional = true;
+            pManager[11].Optional = true;
+            pManager[12].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
@@ -85,6 +89,8 @@ namespace WallabyHop.Components.Operations
             double leadIn = 0.0;
             double overcut = 0.0;
             double leadOut = 0.0;
+            bool autoFlip = false;
+            int cornerStyle = 0;
             double tolerance = 0.1;
             int toolNr = 0;
             double toolDiameter = 8.0;
@@ -97,12 +103,14 @@ namespace WallabyHop.Components.Operations
             DA.GetData(2, ref leadIn);
             DA.GetData(8, ref overcut);
             DA.GetData(9, ref leadOut);
+            DA.GetData(10, ref autoFlip);
+            DA.GetData(11, ref cornerStyle);
             DA.GetData(3, ref tolerance);
             if (!DA.GetData(4, ref toolNr)) return;
             DA.GetData(5, ref toolDiameter);
             DA.GetData(6, ref side);
             DA.GetData(7, ref passes);
-            DA.GetData(10, ref colour);
+            DA.GetData(12, ref colour);
 
             _drawColor = colour.IsEmpty ? _defaultColor : colour;
 
@@ -160,11 +168,37 @@ namespace WallabyHop.Components.Operations
 
             Curve cuttingCurve = curve;
 
+            // Curve direction check / AutoFlip for closed curves with side offset
+            if (side != 0 && curve.IsClosed)
+            {
+                var orient = curve.ClosedCurveOrientation(Plane.WorldXY);
+                bool isCW  = orient == CurveOrientation.Clockwise;
+                bool wrongSide = (side == 1 && isCW) || (side == -1 && !isCW);
+                if (wrongSide)
+                {
+                    if (autoFlip)
+                    {
+                        curve = curve.DuplicateCurve();
+                        curve.Reverse();
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
+                            "AutoFlip: curve direction reversed so offset goes to correct side.");
+                    }
+                    else
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                            "Curve direction (" + (isCW ? "CW" : "CCW") + ") with side=" + side +
+                            " produces an INWARD offset. Enable AutoFlip or reverse the curve.");
+                    }
+                }
+            }
+
             if (side != 0)
             {
                 double offsetDist = side * radius;
-                Curve[] offsets = curve.Offset(Plane.WorldXY, offsetDist, tol,
-                    CurveOffsetCornerStyle.Sharp);
+                CurveOffsetCornerStyle cs = cornerStyle == 1 ? CurveOffsetCornerStyle.Round
+                                          : cornerStyle == 2 ? CurveOffsetCornerStyle.Smooth
+                                          : CurveOffsetCornerStyle.Sharp;
+                Curve[] offsets = curve.Offset(Plane.WorldXY, offsetDist, tol, cs);
 
                 if (offsets == null || offsets.Length == 0)
                 {
