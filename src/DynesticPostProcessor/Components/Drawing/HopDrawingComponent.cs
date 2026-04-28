@@ -14,6 +14,8 @@ using Rhino.Geometry;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Drawing
 {
     /// <summary>
@@ -517,15 +519,15 @@ namespace WallabyHop.Components.Drawing
         }
 
         // ---------------------------------------------------------------
-        // MATERIAL LIST
+        // MATERIAL LIST — extracts plain part data from Rhino-typed input,
+        // then delegates formatting to the pure MaterialListBuilder.
         // ---------------------------------------------------------------
         private static string BuildMaterialList(List<object> parts)
         {
             if (parts == null || parts.Count == 0)
                 return "(no Parts connected)";
 
-            var groups = new SortedDictionary<double, List<string>>();
-
+            var pureParts = new List<MaterialListBuilder.Part>();
             foreach (var p in parts)
             {
                 var wrapper = p as GH_ObjectWrapper;
@@ -538,39 +540,16 @@ namespace WallabyHop.Components.Drawing
                 if (outline == null) continue;
 
                 BoundingBox bb = outline.GetBoundingBox(true);
-                double dx  = bb.Max.X - bb.Min.X;
-                double dy  = bb.Max.Y - bb.Min.Y;
-                double m2  = (dx / 1000.0) * (dy / 1000.0);
-
-                if (!groups.ContainsKey(thickness))
-                    groups[thickness] = new List<string>();
-
-                groups[thickness].Add(string.Format(CultureInfo.InvariantCulture,
-                    "{0,-14} {1:F0}x{2:F0}={3:F3}m²", name, dx, dy, m2));
-            }
-
-            var sb = new StringBuilder();
-            foreach (var kv in groups)
-            {
-                double sum = 0;
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "t={0:F0}mm:", kv.Key));
-                foreach (var line in kv.Value)
+                pureParts.Add(new MaterialListBuilder.Part
                 {
-                    sb.AppendLine("  " + line);
-                    // parse last token for sum
-                    var tok = line.TrimEnd().Split('=');
-                    if (tok.Length > 0)
-                    {
-                        double a;
-                        var raw = tok[tok.Length - 1].Replace("m²", "").Trim();
-                        if (double.TryParse(raw, NumberStyles.Any,
-                            CultureInfo.InvariantCulture, out a)) sum += a;
-                    }
-                }
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    "  Σ {0} parts / {1:F3}m²", kv.Value.Count, sum));
+                    Name = name,
+                    Thickness = thickness,
+                    DxMm = bb.Max.X - bb.Min.X,
+                    DyMm = bb.Max.Y - bb.Min.Y,
+                });
             }
-            return sb.ToString().TrimEnd();
+
+            return MaterialListBuilder.Build(pureParts);
         }
 
         // ---------------------------------------------------------------

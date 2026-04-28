@@ -1,18 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Globalization;
-using System.Text;
-using System.Text.RegularExpressions;
 
 using Grasshopper.Kernel;
+
+using WallabyHop.Logic;
 
 namespace WallabyHop.Components.Export
 {
     /// <summary>
-    /// Validates NC-Hops operationLines for SP/EP structural correctness.
-    /// Accepts the raw string list from any HopXxx component so you can catch
-    /// errors before writing to disk.
+    /// Validates assembled .hop content for SP/EP structural correctness
+    /// and Z-depth safety. Wraps the pure HopAnalyzer logic and routes
+    /// its results into Grasshopper outputs + runtime messages.
     /// </summary>
     public class HopAnalyzerComponent : GH_Component
     {
@@ -68,9 +67,6 @@ namespace WallabyHop.Components.Export
             if (!DA.GetData(0, ref hopContent)) return;
             DA.GetData(1, ref run);
 
-            string[] splitLines = hopContent.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-            List<string> opLines = new List<string>(splitLines);
-
             if (!run)
             {
                 DA.SetData(0, false);
@@ -80,211 +76,25 @@ namespace WallabyHop.Components.Export
                 return;
             }
 
-            // ---------------------------------------------------------------
-            // ANALYZE
-            // ---------------------------------------------------------------
-            var spStack        = new Stack<int>();
-            var errors         = new List<string>();
-            int spCount        = 0;
-            int epCount        = 0;
-            int moveCount      = 0;
-            int emptyBlocks    = 0;
-            int movesInBlock   = 0;
-            int openSpLine     = -1;
-            int drillCount     = 0;
-            int callCount      = 0;
-            var toolCalls      = new HashSet<string>();
-            double pathLength  = 0.0;
-            double prevX       = double.NaN;
-            double prevY       = double.NaN;
-
-            // Parse DZ (plate thickness) from header: ";DZ=19.000"
-            double headerDZ = 0;
-            foreach (string hLine in opLines)
-            {
-                string hl = (hLine ?? "").Trim();
-                if (hl.StartsWith(";DZ="))
-                {
-                    double.TryParse(hl.Substring(4), NumberStyles.Any, CultureInfo.InvariantCulture, out headerDZ);
-                    break;
-                }
-            }
-
-            // Z safety tracking — warn if drill depth > DZ + 5 mm (into spoilboard beyond tolerance)
-            const double SpoilboardAllowance = 5.0;
-            double deepestZ = double.MaxValue;
-            var zWarningMessages = new List<string>();
-
-            for (int i = 0; i < opLines.Count; i++)
-            {
-                string s = (opLines[i] ?? "").Trim();
-                int lineNum = i + 1;
-
-                if (s.StartsWith("SP "))
-                {
-                    spStack.Push(lineNum);
-                    spCount++;
-                    movesInBlock = 0;
-                    openSpLine = lineNum;
-
-                    // Parse SP Z as 3rd positional arg: SP (X, Y, Z, ...)
-                    int spOpen = s.IndexOf('('), spClose = s.LastIndexOf(')');
-                    if (spOpen >= 0 && spClose > spOpen)
-                    {
-                        string[] spParts = s.Substring(spOpen + 1, spClose - spOpen - 1).Split(',');
-                        if (spParts.Length >= 3
-                            && double.TryParse(spParts[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double spX)
-                            && double.TryParse(spParts[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double spY)
-                            && double.TryParse(spParts[2].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double spZ))
-                        {
-                            deepestZ = Math.Min(deepestZ, spZ);
-                            prevX = spX; prevY = spY;
-                            if (headerDZ > 0 && spZ < -(headerDZ + SpoilboardAllowance))
-                                zWarningMessages.Add("L" + lineNum + ": SP depth=" + spZ.ToString("F3", CultureInfo.InvariantCulture)
-                                    + " mm exceeds plate DZ=" + headerDZ.ToString("F1", CultureInfo.InvariantCulture)
-                                    + " mm + 5 mm spoilboard allowance");
-                        }
-                    }
-                }
-                else if (s.StartsWith("EP "))
-                {
-                    epCount++;
-                    if (spStack.Count > 0)
-                    {
-                        int matchedSp = spStack.Pop();
-                        if (movesInBlock == 0)
-                        {
-                            emptyBlocks++;
-                            errors.Add("L" + matchedSp + ": Empty SP/EP block (no moves between SP and EP)");
-                        }
-                        movesInBlock = 0;
-                    }
-                    else
-                    {
-                        errors.Add("L" + lineNum + ": EP without preceding SP");
-                    }
-                }
-                else if (s.StartsWith("G01 ") || s.StartsWith("G02M ") || s.StartsWith("G03M "))
-                {
-                    moveCount++;
-                    movesInBlock++;
-                    if (spStack.Count == 0)
-                        errors.Add("L" + lineNum + ": Move outside SP/EP block: "
-                            + s.Substring(0, Math.Min(s.Length, 50)));
-
-                    // Accumulate XY path length from positional args: CMD (X, Y, ...)
-                    int mOpen = s.IndexOf('('), mClose = s.IndexOf(')');
-                    if (mOpen >= 0 && mClose > mOpen)
-                    {
-                        string[] mp = s.Substring(mOpen + 1, mClose - mOpen - 1).Split(',');
-                        if (mp.Length >= 2
-                            && double.TryParse(mp[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double mx)
-                            && double.TryParse(mp[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double my))
-                        {
-                            if (!double.IsNaN(prevX))
-                                pathLength += Math.Sqrt((mx - prevX) * (mx - prevX) + (my - prevY) * (my - prevY));
-                            prevX = mx; prevY = my;
-                        }
-                    }
-                }
-                else if (s.StartsWith("WZB ") || s.StartsWith("WZF ") || s.StartsWith("WZS "))
-                {
-                    toolCalls.Add(s);
-                }
-                else if (s.StartsWith("CALL "))
-                {
-                    callCount++;
-                }
-                else if (s.StartsWith("Bohrung ("))
-                {
-                    // Z safety: Bohrung (drill) (x, y, surfaceZ, cutZ, ...) — params index 2 and 3
-                    // drillDepth = surfaceZ - cutZ; warn if drillDepth > DZ + 5 mm
-                    drillCount++;
-                    int bOpen = s.IndexOf('(');
-                    int bClose = s.LastIndexOf(')');
-                    if (bOpen >= 0 && bClose > bOpen && headerDZ > 0)
-                    {
-                        string[] bParts = s.Substring(bOpen + 1, bClose - bOpen - 1).Split(',');
-                        if (bParts.Length >= 4
-                            && double.TryParse(bParts[2].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double surfZ)
-                            && double.TryParse(bParts[3].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double cutZ))
-                        {
-                            double drillDepth = surfZ - cutZ;
-                            deepestZ = Math.Min(deepestZ, cutZ);
-                            if (drillDepth > headerDZ + SpoilboardAllowance)
-                                zWarningMessages.Add("L" + lineNum + ": Drill depth=" + drillDepth.ToString("F1", CultureInfo.InvariantCulture)
-                                    + " mm exceeds plate DZ=" + headerDZ.ToString("F1", CultureInfo.InvariantCulture)
-                                    + " mm + 5 mm spoilboard allowance");
-                        }
-                    }
-                }
-
-                // ---- Deepest Z from CALL macro named params ----
-                if (s.StartsWith("CALL "))
-                {
-                    foreach (string paramName in new[] { "TIEFE", "SZ", "TOPF_T", "DUEBEL_T" })
-                    {
-                        var m = Regex.Match(s, paramName + @":=([-\d.]+)");
-                        if (m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double pz))
-                            deepestZ = Math.Min(deepestZ, pz);
-                    }
-                }
-            }
-
-            foreach (int openLine in spStack)
-                errors.Add("L" + openLine + ": SP never closed (no matching EP)");
-
-            bool isValid = errors.Count == 0;
-
-            string summary = "SP=" + spCount + " EP=" + epCount
-                + " Moves=" + moveCount + " Lines=" + opLines.Count;
-            if (emptyBlocks > 0)
-                summary += " EmptyBlocks=" + emptyBlocks;
-            if (deepestZ < double.MaxValue)
-                summary += " DeepestZ=" + deepestZ.ToString("F3", CultureInfo.InvariantCulture);
-            if (zWarningMessages.Count > 0)
-                summary += " ZWarnings=" + zWarningMessages.Count;
-            if (isValid)
-                summary = "OK  " + summary;
-            else
-                summary = errors.Count + " error(s)  " + summary;
+            // Delegate the entire analysis to pure HopAnalyzer logic
+            var result = HopAnalyzer.Analyze(hopContent);
 
             AddRuntimeMessage(
-                isValid ? GH_RuntimeMessageLevel.Remark : GH_RuntimeMessageLevel.Warning,
-                summary);
-            foreach (string zw in zWarningMessages)
+                result.IsValid ? GH_RuntimeMessageLevel.Remark : GH_RuntimeMessageLevel.Warning,
+                result.Summary);
+            foreach (string zw in result.ZWarnings)
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, zw);
 
             var allMessages = new List<string>();
-            if (errors.Count > 0) allMessages.AddRange(errors);
-            if (zWarningMessages.Count > 0) allMessages.AddRange(zWarningMessages);
+            if (result.Errors.Count > 0) allMessages.AddRange(result.Errors);
+            if (result.ZWarnings.Count > 0) allMessages.AddRange(result.ZWarnings);
             if (allMessages.Count == 0) allMessages.Add("No errors.");
 
-            // ---------------------------------------------------------------
-            // STATS
-            // ---------------------------------------------------------------
-            int toolChangeCount = toolCalls.Count;
-            // Rough time estimate (seconds): drills ~3s, contour blocks ~30s, calls ~5s, tool changes ~15s
-            double estSeconds = drillCount * 3 + spCount * 30 + callCount * 5 + toolChangeCount * 15;
-            int estMin = (int)(estSeconds / 60);
-            int estSec = (int)(estSeconds % 60);
-
-            var stats = new List<string>
-            {
-                "Drills:              " + drillCount,
-                "Contour blocks (SP): " + spCount,
-                "Macro calls (CALL):  " + callCount,
-                "Tool changes:        " + toolChangeCount,
-                "Unique tools:        " + toolCalls.Count,
-                "Path length:         " + (pathLength / 1000.0).ToString("F2", CultureInfo.InvariantCulture) + " m",
-                "Est. time:           ~" + estMin + "m " + estSec + "s  (rough estimate)",
-            };
-
-            DA.SetData(0, isValid);
-            DA.SetData(1, errors.Count);
+            DA.SetData(0, result.IsValid);
+            DA.SetData(1, result.ErrorCount);
             DA.SetDataList(2, allMessages);
-            DA.SetData(3, summary);
-            DA.SetDataList(4, stats);
+            DA.SetData(3, result.Summary);
+            DA.SetDataList(4, result.Stats);
         }
 
         public override void AddedToDocument(GH_Document doc)

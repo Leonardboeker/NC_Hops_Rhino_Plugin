@@ -25,5 +25,7 @@
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\FormatCutLogic.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\FixchipLogic.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\CabinetPlanner.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\MaterialListBuilder.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\HopAnalyzer.cs" />
   </ItemGroup>
 </Project>
