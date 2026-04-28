@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     /// <summary>
@@ -151,16 +153,14 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // BUILD OUTPUT
             // ---------------------------------------------------------------
-            List<string> lines = new List<string>();
-            lines.Add("WZS (" + toolNr + ",_VE,_V*0.3,_VA,_SD,0,'')");
-
+            // PREVIEW (Rhino-side) + collect pure positions
+            var purePositions = new List<FormatCutLogic.CutPosition>();
             for (int i = 0; i < positions.Count; i++)
             {
                 Point3d pt = positions[i];
                 double surfaceZ = pt.Z;
-                double cutZ     = surfaceZ - Math.Abs(thickness);
+                double cutZ = surfaceZ - Math.Abs(thickness);
 
-                // Preview: a thin box representing the kerf
                 double halfLen = defaultLength / 2.0;
                 Point3d p1, p2;
                 if (isXCut)
@@ -175,7 +175,6 @@ namespace WallabyHop.Components.Operations
                 }
                 _approachLines.Add(new Line(new Point3d(p1.X, p1.Y, surfaceZ + 20.0), p1));
 
-                // Build preview box (thin kerf)
                 double kerfW = 3.2;
                 Vector3d perp = isXCut ? Vector3d.YAxis : Vector3d.XAxis;
                 var corners = new List<Point3d>
@@ -185,46 +184,13 @@ namespace WallabyHop.Components.Operations
                     p2 - perp * (kerfW / 2),
                     p1 - perp * (kerfW / 2),
                 };
-                var bottomCorners = new List<Point3d>();
-                foreach (var c in corners)
-                    bottomCorners.Add(new Point3d(c.X, c.Y, cutZ));
-
                 Brep box = Brep.CreateFromCornerPoints(corners[0], corners[1], corners[2], corners[3], tol);
                 if (box != null) _previewVolumes.Add(box);
 
-                // NC macro
-                string macro;
-                if (isXCut)
+                purePositions.Add(new FormatCutLogic.CutPosition
                 {
-                    // _saege_x_V7: saw in X direction, fixed Y position (SY)
-                    macro = "CALL _saege_x_V7(VAL "
-                        + "SX:=0,"
-                        + "SY:=" + NcFmt.F(pt.Y) + ","
-                        + "SZ:=" + NcFmt.F(cutZ) + ","
-                        + (lengthOverride > 0 ? "EX:=" + NcFmt.F(lengthOverride) + "," : "EX:=0,")
-                        + "EZ:=" + NcFmt.F(-0.2) + ","
-                        + "BL:=2,"
-                        + "EINPASSEN:=0,EL:=0,AL:=0,PARALLEL:=0,"
-                        + "K:=2,"
-                        + "KW:=" + NcFmt.F(kw) + ","
-                        + "BH:=0,RITZVERSATZ:=0.05,ESZ:=0,ESXY1:=1,ESX:=3)";
-                }
-                else
-                {
-                    // _saege_y_V7: saw in Y direction, fixed X position (SX)
-                    macro = "CALL _saege_y_V7(VAL "
-                        + "SX:=" + NcFmt.F(pt.X) + ","
-                        + "SY:=0,"
-                        + "SZ:=" + NcFmt.F(cutZ) + ","
-                        + (lengthOverride > 0 ? "EY:=" + NcFmt.F(lengthOverride) + "," : "EY:=0,")
-                        + "EZ:=" + NcFmt.F(-0.2) + ","
-                        + "BL:=2,"
-                        + "EINPASSEN:=0,EL:=0,AL:=0,PARALLEL:=0,"
-                        + "K:=2,"
-                        + "KW:=" + NcFmt.F(kw) + ","
-                        + "BH:=0,RITZVERSATZ:=0.05,ESZ:=0,ESXY1:=1,ESX:=3)";
-                }
-                lines.Add(macro);
+                    X = pt.X, Y = pt.Y, SurfaceZ = surfaceZ,
+                });
 
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                     "[" + i + "] " + (isXCut ? "X-cut at Y=" : "Y-cut at X=")
@@ -232,6 +198,16 @@ namespace WallabyHop.Components.Operations
                     + "  SZ=" + NcFmt.F(cutZ)
                     + "  KW=" + kw.ToString("F2", CultureInfo.InvariantCulture));
             }
+
+            var lines = FormatCutLogic.Generate(new FormatCutLogic.FormatCutInput
+            {
+                IsXCut = isXCut,
+                Positions = purePositions,
+                Thickness = thickness,
+                Kw = kw,
+                LengthOverride = lengthOverride,
+                ToolNr = toolNr,
+            });
 
             DA.SetDataList(0, lines);
         }

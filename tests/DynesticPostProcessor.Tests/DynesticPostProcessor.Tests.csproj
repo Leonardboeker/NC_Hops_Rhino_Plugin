@@ -19,5 +19,10 @@
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\EngravingLogic.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\DrillRowLogic.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\PocketLogic.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\SlotLogic.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\CircPathLogic.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\BlumHingeLogic.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\FormatCutLogic.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\FixchipLogic.cs" />
   </ItemGroup>
 </Project>

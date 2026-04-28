@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     /// <summary>
@@ -151,16 +153,13 @@ namespace WallabyHop.Components.Operations
 
             double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
 
-            List<string> lines = new List<string>();
-            lines.Add("WZB (" + toolNr + ",_VE,_V*1,_VA,_SD,0,'')");
-
+            // PREVIEW (cup cylinders) — kept in component since uses Rhino types
+            var purePositions = new List<BlumHingeLogic.HingePosition>();
             for (int i = 0; i < positions.Count; i++)
             {
                 Point3d pt = positions[i];
                 double surfaceZ = pt.Z;
-                double cupCutZ = surfaceZ - Math.Abs(cupDepth);
 
-                // Preview: cup cylinder
                 double cupRadius = cupDiameter / 2.0;
                 Point3d cupCenter = new Point3d(pt.X, pt.Y, surfaceZ);
                 Plane cupPlane = new Plane(cupCenter, Vector3d.ZAxis);
@@ -169,28 +168,28 @@ namespace WallabyHop.Components.Operations
                 if (cupBrep != null) _previewVolumes.Add(cupBrep);
                 _approachLines.Add(new Line(new Point3d(pt.X, pt.Y, surfaceZ + 20.0), cupCenter));
 
-                // _Topf_V5 takes up to 4 Y positions in one call
-                // Here we output one call per position for simplicity
-                string macro = "CALL _Topf_V5(VAL "
-                    + "SEITE:=" + side + ","
-                    + "DISTANCE:=" + NcFmt.F(distance) + ","
-                    + "POS1:=" + NcFmt.F(pt.Y) + ","
-                    + "POS2:=0,POS3:=0,POS4:=0,"
-                    + "A:=9.5,B:=45,"
-                    + "TOPF_D:=" + NcFmt.F(cupDiameter) + ","
-                    + "TOPF_T:=" + NcFmt.F(-Math.Abs(cupDepth)) + ","
-                    + "DUEBEL_D:=" + NcFmt.F(dowelDiameter) + ","
-                    + "DUEBEL_T:=" + NcFmt.F(-Math.Abs(dowelDepth)) + ","
-                    + "ESX1:=0,ESX2:=0,ESX3:=0,ESX4:=0,"
-                    + "ESY1:=0,ESY2:=0,ESY3:=0,ESY4:=0,"
-                    + "USE2:=0,USE3:=0,USE4:=0)";
-                lines.Add(macro);
+                purePositions.Add(new BlumHingeLogic.HingePosition
+                {
+                    X = pt.X, Y = pt.Y, SurfaceZ = surfaceZ,
+                });
 
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                     "[" + i + "] Hinge at Y=" + NcFmt.F(pt.Y)
                     + "  DISTANCE=" + NcFmt.F(distance)
                     + "  Cup Ø" + NcFmt.F(cupDiameter));
             }
+
+            var lines = BlumHingeLogic.Generate(new BlumHingeLogic.BlumHingeInput
+            {
+                Positions = purePositions,
+                Distance = distance,
+                Side = side,
+                CupDiameter = cupDiameter,
+                CupDepth = cupDepth,
+                DowelDiameter = dowelDiameter,
+                DowelDepth = dowelDepth,
+                ToolNr = toolNr,
+            });
 
             DA.SetDataList(0, lines);
         }

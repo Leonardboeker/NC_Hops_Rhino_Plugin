@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     public class HopCircPathComponent : GH_Component
@@ -148,28 +150,20 @@ namespace WallabyHop.Components.Operations
             _approachLines.Add(new Line(new Point3d(entryPt.X, entryPt.Y, safeZ), entryPt));
 
             // ---------------------------------------------------------------
-            // 4. BUILD TOOL CALL + MACRO
+            // 4. DELEGATE TO PURE CircPathLogic
             // ---------------------------------------------------------------
-            List<string> lines = new List<string>();
-            lines.Add(toolType + " (" + toolNr.ToString()
-                + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
-                + ",_VA,_SD,0,'')");
-
-            // surfaceZ: Z of the input center point
-            double surfaceZ  = center.Z;
-            double cutZ      = surfaceZ - Math.Abs(depth);
-            double stepdownVal = (stepdown > 0) ? stepdown : 0;
-
-            lines.Add("CALL _Kreisbahn_V5(VAL "
-                + "X_Mitte:=" + center.X.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y_Mitte:=" + center.Y.ToString(CultureInfo.InvariantCulture) + ","
-                + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                + "ZuTiefe:=" + stepdownVal.ToString(CultureInfo.InvariantCulture) + ","
-                + "Radius:=" + radius.ToString(CultureInfo.InvariantCulture) + ","
-                + "Radiuskorrektur:=" + radiusCorr.ToString() + ","
-                + "AB:=1,Aufmass:=0,Bearb_umkehren:=1,"
-                + "Winkel:=" + angle.ToString(CultureInfo.InvariantCulture) + ","
-                + "ANF:=_ANF,ABF:=_ANF,Rampe:=1,Interpol:=0,esxy:=0,esmd:=0,laser:=0)");
+            var lines = CircPathLogic.Generate(new CircPathLogic.CircPathInput
+            {
+                CenterX = center.X, CenterY = center.Y, SurfaceZ = center.Z,
+                Radius = radius,
+                RadiusCorr = radiusCorr,
+                Depth = depth,
+                Stepdown = stepdown,
+                Angle = angle,
+                ToolNr = toolNr,
+                ToolType = toolType,
+                FeedFactor = feedFactor,
+            });
 
             // ---------------------------------------------------------------
             // 5. OUTPUT
