@@ -1,0 +1,15 @@
+# meta.yml — Publishing-Metadaten fuer 53_post-processor
+# Wird vom Build-Skript der Website (und spaeter Insta/LinkedIn) gelesen.
+
+slug: wallaby-hop
+nummer: 53
+titel: Wallaby Hop — Grasshopper-Plugin für CNC-Postprocessing
+kunde: Eigenentwicklung     # leer = unbekannt, bitte ergaenzen
+datum: 2026-04     # YYYY-MM
+status: draft                        # draft | published | private — niemals automatisch auf published
+tags: [Software, Grasshopper, CAM, CNC, Open Source]
+
+# titelbild: cover.jpg               # bitte Bild auswaehlen und Datei nach _Website/Galerie/cover.jpg legen
+
+review_needed: false
+review_notes: ""

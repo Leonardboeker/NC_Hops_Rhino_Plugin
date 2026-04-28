@@ -53,7 +53,7 @@ namespace WallabyHop.Components.Drawing
             pManager.AddTextParameter("TemplatePath", "template",
                 "Path to .3dm file with title block. Objects are placed in layout page space.",
                 GH_ParamAccess.item,
-                @"E:\Rhino Resourcen\Plan Köpfe\Leonard Elias Böker.3dm");
+                PluginConfig.DefaultTemplatePath);
             pManager[2].Optional = true;
 
             // 3
@@ -126,7 +126,7 @@ namespace WallabyHop.Components.Drawing
             var parts = new List<object>();
             DA.GetDataList(1, parts);
 
-            string templatePath = @"E:\Rhino Resourcen\Plan Köpfe\Leonard Elias Böker.3dm";
+            string templatePath = PluginConfig.DefaultTemplatePath;
             DA.GetData(2, ref templatePath);
 
             string projectName = "Projekt";
@@ -635,7 +635,7 @@ namespace WallabyHop.Components.Drawing
                 WallabyHop.AutoWire.Spec.Skip(),                                         // Geometry
                 WallabyHop.AutoWire.Spec.Skip(),                                         // Parts
                 WallabyHop.AutoWire.Spec.Panel(
-                    @"E:\Rhino Resourcen\Plan Köpfe\Leonard Elias Böker.3dm"),                      // TemplatePath
+                    PluginConfig.DefaultTemplatePath),                      // TemplatePath
                 WallabyHop.AutoWire.Spec.Panel("Project"),                               // ProjectName
                 WallabyHop.AutoWire.Spec.Panel(""),                                      // DrawBy
                 WallabyHop.AutoWire.Spec.Int("5<10<50"),                                 // Scale

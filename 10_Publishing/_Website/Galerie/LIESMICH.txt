@@ -1,0 +1,3 @@
+Hier die finalen Web-Bilder reinlegen.
+Format: komprimiertes JPEG, max 1600 px Breite, ca. 80% Quality.
+Dateinamen kurz und sprechend (z.B. cover.jpg, 01.jpg, 02.jpg).
