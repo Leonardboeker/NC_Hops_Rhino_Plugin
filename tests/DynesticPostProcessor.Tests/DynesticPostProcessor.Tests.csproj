@@ -16,5 +16,6 @@
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\DrillLogic.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\SawLogic.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\ContourLogic.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\EngravingLogic.cs" />
   </ItemGroup>
 </Project>

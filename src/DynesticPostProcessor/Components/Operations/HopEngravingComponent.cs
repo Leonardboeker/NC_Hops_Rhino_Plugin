@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     public class HopEngravingComponent : GH_Component
@@ -130,13 +132,10 @@ namespace WallabyHop.Components.Operations
             double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
 
             // ---------------------------------------------------------------
-            // BUILD NC OUTPUT
+            // BUILD NC OUTPUT — collect per-curve segments, delegate to EngravingLogic
             // ---------------------------------------------------------------
-            List<string> allLines = new List<string>();
-            allLines.Add(toolType + " (" + toolNr.ToString()
-                + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
-                + ",_VA,_SD,0,'')");
-
+            var pureCurves = new List<IReadOnlyList<ContourLogic.ContourSegment>>();
+            var surfaceZs = new List<double>();
             int curveCount = 0;
 
             for (int ci = 0; ci < curves.Count; ci++)
@@ -152,13 +151,8 @@ namespace WallabyHop.Components.Operations
                 }
 
                 double surfaceZ = curve.GetBoundingBox(true).Max.Z;
-                double cutZ     = surfaceZ - Math.Abs(depth);
 
-                // ---------------------------------------------------------------
-                // PREVIEW: pipe along engraving path
-                // radius = depth (45deg V-bit footprint at surface = 2*depth wide)
-                // Pipe is reliable on all curve types including complex letter shapes
-                // ---------------------------------------------------------------
+                // PREVIEW: pipe along engraving path (radius = depth → 45deg V-bit footprint)
                 double angleTol = RhinoDoc.ActiveDoc != null
                     ? RhinoDoc.ActiveDoc.ModelAngleToleranceRadians : 0.01;
                 Brep[] engPipe = Brep.CreatePipe(
@@ -171,11 +165,7 @@ namespace WallabyHop.Components.Operations
                 _approachLines.Add(new Line(
                     new Point3d(startP.X, startP.Y, bb.Max.Z + 20.0), startP));
 
-                // ---------------------------------------------------------------
-                // CURVE DECOMPOSITION
-                // Join segments first so connected pieces stay together.
-                // Each joined piece = one SP...EP block (tool lifts between pieces).
-                // ---------------------------------------------------------------
+                // Decompose: join → ToArcsAndLines → flatten to leaf segments
                 Curve[] segs2 = curve.DuplicateSegments();
                 Curve[] joined = (segs2 != null && segs2.Length > 1)
                     ? Curve.JoinCurves(segs2, tol)
@@ -183,106 +173,94 @@ namespace WallabyHop.Components.Operations
                 if (joined == null || joined.Length == 0)
                     joined = new Curve[] { curve };
 
-                // ---------------------------------------------------------------
-                // SP...moves...EP per joined piece
-                // Each joined piece is converted independently. Non-PolyCurve
-                // results (single ArcCurve / LineCurve) are handled directly
-                // instead of silently dropped by "as PolyCurve".
-                // Within each piece, connected segment runs get their own block.
-                // ---------------------------------------------------------------
-                bool anyEmitted = false;
+                var allFlat = new List<Curve>();
                 foreach (Curve jc in joined)
                 {
                     if (jc == null) continue;
-
                     Curve converted = jc.ToArcsAndLines(tolerance, 0.1, 0.0, 0.0);
                     if (converted == null) continue;
 
-                    // Collect leaf segments for this piece
-                    var pieceSegs = new List<Curve>();
                     PolyCurve pc2 = converted as PolyCurve;
                     if (pc2 != null)
                     {
                         Curve[] flat = pc2.Explode();
                         if (flat != null && flat.Length > 0)
-                            pieceSegs.AddRange(flat);
+                            allFlat.AddRange(flat);
                         else
                             for (int si = 0; si < pc2.SegmentCount; si++)
                             {
                                 Curve s = pc2.SegmentCurve(si);
-                                if (s != null) pieceSegs.Add(s);
+                                if (s != null) allFlat.Add(s);
                             }
                     }
                     else
                     {
-                        pieceSegs.Add(converted); // single ArcCurve or LineCurve
-                    }
-
-                    if (pieceSegs.Count == 0) continue;
-
-                    // Group consecutive connected segments → one SP/EP block each
-                    int gStart = 0;
-                    while (gStart < pieceSegs.Count)
-                    {
-                        int gEnd = gStart;
-                        while (gEnd + 1 < pieceSegs.Count &&
-                               pieceSegs[gEnd].PointAtEnd.DistanceTo(
-                                   pieceSegs[gEnd + 1].PointAtStart) <= tol * 10)
-                            gEnd++;
-
-                        Point3d sp = pieceSegs[gStart].PointAtStart;
-                        allLines.Add("SP ("
-                            + sp.X.ToString(CultureInfo.InvariantCulture) + ","
-                            + sp.Y.ToString(CultureInfo.InvariantCulture) + ","
-                            + cutZ.ToString(CultureInfo.InvariantCulture)
-                            + ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)");
-
-                        for (int i = gStart; i <= gEnd; i++)
-                        {
-                            Curve seg = pieceSegs[i];
-                            ArcCurve arcSeg = seg as ArcCurve;
-                            if (arcSeg != null)
-                            {
-                                Arc arc    = arcSeg.Arc;
-                                Point3d ep = arc.EndPoint;
-                                Point3d cp = arc.Center;
-                                Point3d   eMid    = arc.PointAt(arc.Angle * 0.5);
-                                Vector3d  eToSt   = arc.StartPoint - arc.Center;
-                                Vector3d  eToMid  = eMid - arc.Center;
-                                bool isCCW = (eToSt.X * eToMid.Y - eToSt.Y * eToMid.X) > 0;
-                                string cmd = isCCW ? "G03M" : "G02M";
-                                allLines.Add(cmd + " ("
-                                    + ep.X.ToString(CultureInfo.InvariantCulture) + ","
-                                    + ep.Y.ToString(CultureInfo.InvariantCulture) + ",0,"
-                                    + cp.X.ToString(CultureInfo.InvariantCulture) + ","
-                                    + cp.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,2,0)");
-                                continue;
-                            }
-                            Point3d fep = seg.PointAtEnd;
-                            allLines.Add("G01 ("
-                                + fep.X.ToString(CultureInfo.InvariantCulture) + ","
-                                + fep.Y.ToString(CultureInfo.InvariantCulture) + ",0,0,0,2)");
-                        }
-
-                        allLines.Add("EP (0,_ANF,0)");
-                        gStart = gEnd + 1;
-                        anyEmitted = true;
+                        allFlat.Add(converted);
                     }
                 }
 
-                if (!anyEmitted)
+                if (allFlat.Count == 0)
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
                         "Curve " + ci + " produced no NC output -- skipped");
                     continue;
                 }
+
+                pureCurves.Add(ToContourSegments(allFlat));
+                surfaceZs.Add(surfaceZ);
                 curveCount++;
             }
+
+            var allLines = EngravingLogic.Generate(new EngravingLogic.EngravingInput
+            {
+                Curves = pureCurves,
+                SurfaceZPerCurve = surfaceZs,
+                Depth = depth,
+                ToolNr = toolNr,
+                Tolerance = tol,
+                ToolType = toolType,
+                FeedFactor = feedFactor,
+            });
 
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                 "Engraving: " + curveCount + " curves, depth=" + depth.ToString(CultureInfo.InvariantCulture) + "mm");
 
             DA.SetDataList(0, allLines);
+        }
+
+        // ---------------------------------------------------------------
+        // HELPER: Convert Rhino Curve segments to pure ContourSegment list.
+        // (Same arc CCW determination as HopContourComponent.)
+        // ---------------------------------------------------------------
+        private static IReadOnlyList<ContourLogic.ContourSegment> ToContourSegments(List<Curve> flat)
+        {
+            var result = new List<ContourLogic.ContourSegment>();
+            if (flat == null) return result;
+            foreach (Curve seg in flat)
+            {
+                if (seg == null) continue;
+                ArcCurve arcSeg = seg as ArcCurve;
+                if (arcSeg != null)
+                {
+                    Arc arc = arcSeg.Arc;
+                    Point3d sp = arc.StartPoint;
+                    Point3d ep = arc.EndPoint;
+                    Point3d cp = arc.Center;
+                    Point3d mid = arc.PointAt(arc.Angle * 0.5);
+                    Vector3d toStart = arc.StartPoint - cp;
+                    Vector3d toMid = mid - cp;
+                    bool isCCW = (toStart.X * toMid.Y - toStart.Y * toMid.X) > 0;
+                    result.Add(ContourLogic.ContourSegment.Arc(
+                        sp.X, sp.Y, ep.X, ep.Y, cp.X, cp.Y, isCCW, 0, 0, 0, 0));
+                }
+                else
+                {
+                    Point3d sp = seg.PointAtStart;
+                    Point3d ep = seg.PointAtEnd;
+                    result.Add(ContourLogic.ContourSegment.Line(sp.X, sp.Y, ep.X, ep.Y));
+                }
+            }
+            return result;
         }
 
         // ---------------------------------------------------------------
