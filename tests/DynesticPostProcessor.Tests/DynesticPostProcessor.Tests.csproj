@@ -10,7 +10,9 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Reference plugin source directly so internal classes are visible -->
+    <!-- Reference plugin source directly so internal classes are visible.
+         These files have NO Rhino/Grasshopper dependency — pure logic only. -->
     <Compile Include="..\..\src\DynesticPostProcessor\NcStrings.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\DrillLogic.cs" />
   </ItemGroup>
 </Project>
