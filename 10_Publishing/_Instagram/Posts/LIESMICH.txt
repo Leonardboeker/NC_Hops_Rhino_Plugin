@@ -1,0 +1,3 @@
+Hier die Instagram-Posts ablegen.
+Format: quadratisch 1:1, mindestens 1080 x 1080 px (besser 1440 x 1440 px).
+JPEG ist OK; bei Carousel: 01.jpg, 02.jpg, ... in der Reihenfolge des Posts.

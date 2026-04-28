@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # The test project (net48 target) compiles only NcStrings.cs and the
+      # Logic/*.cs files directly via <Compile Include>, so it does not need
+      # Rhino DLLs at test time. The main plugin csproj references Rhino
+      # DLLs that are not on the runner — that's why we restrict restore +
+      # build + test to the test project alone.
+      - name: Restore
+        run: dotnet restore tests/DynesticPostProcessor.Tests/DynesticPostProcessor.Tests.csproj
+
+      - name: Build tests
+        run: dotnet build tests/DynesticPostProcessor.Tests/DynesticPostProcessor.Tests.csproj --no-restore --configuration Release
+
+      - name: Run tests
+        run: dotnet test tests/DynesticPostProcessor.Tests/DynesticPostProcessor.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
