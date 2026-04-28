@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     /// <summary>
@@ -78,22 +80,22 @@ namespace WallabyHop.Components.Operations
                 return;
             }
 
-            List<string> lines = new List<string>();
-
+            // Preview lines + collect pure positions
+            var purePositions = new List<DrillLogic.Point2dz>();
             for (int i = 0; i < positions.Count; i++)
             {
                 Point3d pt = positions[i];
                 _approachLines.Add(new Line(
                     new Point3d(pt.X, pt.Y, pt.Z + 20.0),
                     new Point3d(pt.X, pt.Y, pt.Z)));
-
-                string macro = "Fixchip_K ("
-                    + NcFmt.F(pt.X) + ","
-                    + NcFmt.F(pt.Y) + ","
-                    + NcFmt.F(pt.Z) + ","
-                    + NcFmt.F(angle) + ")";
-                lines.Add(macro);
+                purePositions.Add(new DrillLogic.Point2dz(pt.X, pt.Y, pt.Z));
             }
+
+            var lines = FixchipLogic.Generate(new FixchipLogic.FixchipInput
+            {
+                Positions = purePositions,
+                Angle = angle,
+            });
 
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                 positions.Count + " fixchip position(s)  WKLXY=" + angle.ToString("F1", CultureInfo.InvariantCulture));

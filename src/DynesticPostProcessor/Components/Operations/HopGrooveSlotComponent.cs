@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     /// <summary>
@@ -137,16 +139,14 @@ namespace WallabyHop.Components.Operations
             double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
             double previewLen = 600.0;
 
-            List<string> lines = new List<string>();
-            lines.Add("WZF (" + toolNr + ",_VE,_V*1,_VA,_SD,0,'')");
-
+            // PREVIEW boxes (Rhino-side; pure logic computes NC strings only)
+            var purePositions = new List<SlotLogic.GroovePosition>();
             for (int i = 0; i < positions.Count; i++)
             {
                 Point3d pt = positions[i];
                 double surfaceZ = pt.Z;
                 double cutZ = surfaceZ - Math.Abs(depth);
 
-                // Preview box
                 double halfLen = previewLen / 2.0;
                 Point3d p1, p2;
                 if (isXGroove)
@@ -164,27 +164,10 @@ namespace WallabyHop.Components.Operations
                 if (box != null) _previewVolumes.Add(box);
                 _approachLines.Add(new Line(new Point3d(pt.X, pt.Y, surfaceZ + 20.0), new Point3d(pt.X, pt.Y, surfaceZ)));
 
-                // NC macro
-                string macro;
-                if (isXGroove)
+                purePositions.Add(new SlotLogic.GroovePosition
                 {
-                    macro = "CALL _Nuten_X_V5(VAL "
-                        + "NB:=" + NcFmt.F(width) + ","
-                        + "NT:=" + NcFmt.F(Math.Abs(depth)) + ","
-                        + "EBENE:=" + NcFmt.F(surfaceZ) + ","
-                        + "ARAND:=" + NcFmt.F(edgeDist) + ","
-                        + "ALINKS:=0,ARECHTS:=0,RK:=0,ESMD:=1)";
-                }
-                else
-                {
-                    macro = "CALL _Nuten_Y_V5(VAL "
-                        + "NB:=" + NcFmt.F(width) + ","
-                        + "NT:=" + NcFmt.F(Math.Abs(depth)) + ","
-                        + "EBENE:=" + NcFmt.F(surfaceZ) + ","
-                        + "ARAND:=" + NcFmt.F(edgeDist) + ","
-                        + "ALINKS:=0,ARECHTS:=0,RK:=0,ESMD:=1)";
-                }
-                lines.Add(macro);
+                    X = pt.X, Y = pt.Y, SurfaceZ = surfaceZ,
+                });
 
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                     "[" + i + "] " + (isXGroove ? "X-groove" : "Y-groove")
@@ -192,6 +175,16 @@ namespace WallabyHop.Components.Operations
                     + "  NT=" + NcFmt.F(depth)
                     + "  EBENE=" + NcFmt.F(surfaceZ));
             }
+
+            var lines = SlotLogic.GenerateGroove(new SlotLogic.GrooveInput
+            {
+                IsXGroove = isXGroove,
+                Positions = purePositions,
+                Width = width,
+                Depth = depth,
+                EdgeDist = edgeDist,
+                ToolNr = toolNr,
+            });
 
             DA.SetDataList(0, lines);
         }

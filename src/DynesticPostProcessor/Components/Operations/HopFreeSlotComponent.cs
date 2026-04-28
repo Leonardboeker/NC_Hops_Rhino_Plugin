@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     public class HopFreeSlotComponent : GH_Component
@@ -159,24 +161,18 @@ namespace WallabyHop.Components.Operations
             _approachLines.Add(new Line(new Point3d(a.X, a.Y, safeZVal), a));
 
             // ---------------------------------------------------------------
-            // 4. BUILD TOOL CALL + MACRO
+            // 4. DELEGATE TO PURE SlotLogic
             // ---------------------------------------------------------------
-            List<string> lines = new List<string>();
-            lines.Add(toolType + " (" + toolNr.ToString()
-                + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
-                + ",_VA,_SD,0,'')");
-
-            // surfaceZ: highest Z of the two input points (already computed as topZ above)
-            double cutZ = topZ - Math.Abs(depth);
-
-            lines.Add("CALL _nuten_frei_v5(VAL "
-                + "X1:=" + p1.X.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y1:=" + p1.Y.ToString(CultureInfo.InvariantCulture) + ","
-                + "X2:=" + p2.X.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y2:=" + p2.Y.ToString(CultureInfo.InvariantCulture) + ","
-                + "NB:=" + slotWidth.ToString(CultureInfo.InvariantCulture) + ","
-                + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                + "LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)");
+            var lines = SlotLogic.GenerateFreeSlot(new SlotLogic.FreeSlotInput
+            {
+                P1X = p1.X, P1Y = p1.Y, P1Z = p1.Z,
+                P2X = p2.X, P2Y = p2.Y, P2Z = p2.Z,
+                SlotWidth = slotWidth,
+                Depth = depth,
+                ToolNr = toolNr,
+                ToolType = toolType,
+                FeedFactor = feedFactor,
+            });
 
             // ---------------------------------------------------------------
             // 5. OUTPUT
