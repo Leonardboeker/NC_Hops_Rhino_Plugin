@@ -1,115 +1,115 @@
 # Plugin Design & Branding
 
-*Stand: 2026-04-13*
+*As of: 2026-04-13*
 
 ---
 
 ## Name
 
-### Entscheidung: **Wallaby Hop**
+### Decision: **Wallaby Hop**
 
-**Wallaby Hop** verbindet zwei Bedeutungsebenen:
-- **Wallaby** — ein Beuteltier, kleiner Cousin des NC-HOPS-Kängurus. Eigenständiges Tier, kein Markenschutzkonflikt. Springt präzise und wendig (wie kurze CNC-Verfahrbewegungen = "Hops").
-- **Hop** — direkter Verweis auf das `.hop`-Dateiformat von NC-HOPS.
+**Wallaby Hop** combines two layers of meaning:
+- **Wallaby** — a marsupial, smaller cousin of the NC-HOPS kangaroo. A distinct animal, no trademark conflict. Hops precisely and nimbly (like short CNC travel moves = "hops").
+- **Hop** — a direct reference to the `.hop` file format of NC-HOPS.
 
-Das Wallaby ist bewusst *nicht* das Känguru — es ist kleiner, agiler, und damit passend für ein Plugin das mit Feinheit Werkzeugpfade übersetzen.
+The wallaby is deliberately *not* the kangaroo — it is smaller, more agile, and therefore fitting for a plugin that translates toolpaths with finesse.
 
-| Name | Verfügbar | Bewertung |
-|------|-----------|-----------|
-| **Wallaby Hop** | ja | Tier + Format in einem, kein Konflikt mit NC-HOPS-Känguru |
-| ~~Horntail~~ | ja | Vorherige Empfehlung, ersetzt |
-| ~~Bark Beetle~~ | **vergeben** | GitHub, CNC-Toolpath-Generator |
-| ~~Locust~~ | **vergeben** | CERVER Tools |
-| ~~Termite~~ | **vergeben** | 3D-Druck Clay-Plugin |
-| ~~Silkworm~~ | **vergeben** | 3D-Druck GCode |
-| ~~Woodpecker~~ | **vergeben** | Holzbau BTL/BTLX Export |
+| Name | Available | Rating |
+|------|-----------|--------|
+| **Wallaby Hop** | yes | Animal + format in one, no conflict with the NC-HOPS kangaroo |
+| ~~Horntail~~ | yes | Previous recommendation, replaced |
+| ~~Bark Beetle~~ | **taken** | GitHub, CNC toolpath generator |
+| ~~Locust~~ | **taken** | CERVER Tools |
+| ~~Termite~~ | **taken** | 3D-print clay plugin |
+| ~~Silkworm~~ | **taken** | 3D-print GCode |
+| ~~Woodpecker~~ | **taken** | Timber construction BTL/BTLX export |
 
 ---
 
-## Ökosystem-Kontext
+## Ecosystem context
 
-Das Plugin sitzt zwischen zwei bestehenden Markenwelten:
+The plugin sits between two existing brand worlds:
 
 | | NC-HOPS (direkt cnc-systeme) | HOLZ-HER |
 |---|---|---|
-| Logo-Tier | Känguru (springend, senfgelb) | "H"-Buchstabe auf Orange |
-| Primärfarbe | Blau `#2ea3f2` (Website) / Gelb `#fbf69e` (Logo) | Orange `#ff6600` |
-| Schrift | Gill Sans MT Bold (Logo), Rajdhani + Open Sans (Web) | Lato |
-| Ton | Professionell, technisch, sympathisch | Premium-industriell |
+| Logo animal | Kangaroo (jumping, mustard yellow) | "H" letter on orange |
+| Primary colour | Blue `#2ea3f2` (website) / Yellow `#fbf69e` (logo) | Orange `#ff6600` |
+| Typeface | Gill Sans MT Bold (logo), Rajdhani + Open Sans (web) | Lato |
+| Tone | Professional, technical, friendly | Premium industrial |
 
-**Wichtig:** Kein Känguru verwenden — ist NC-HOPS-Markenschutz. Ein **Wallaby** ist ein anderes Tier und explizit kein Konflikt — kleinere Silhouette, andere Körperproportionen (kürzere Ohren, kompakterer Körper, kürzerer Schwanz).
-
----
-
-## Farbpalette
-
-Strategie: Orange von HOLZ-HER leicht gedämpft, um Eigenständigkeit zu zeigen aber die Maschinenwelt zu spiegeln.
-
-| Rolle | Farbe | Hex |
-|-------|-------|-----|
-| Primär (Plugin-Farbe) | Gedämpftes CNC-Orange | `#e05a00` |
-| Sekundär | Anthrazit | `#2d2d2d` |
-| Akzent | Naturholz / Amber | `#c4a060` |
-| Hintergrund | Warmweiß | `#f5f0eb` |
-
-Nicht verwenden: NC-HOPS-Gelb `#fbf69e` (zu nah an Känguru-Logo), HOLZ-HER-Orange `#ff6600` 1:1 (zu nah an Hersteller-Branding).
+**Important:** Do not use a kangaroo — that is NC-HOPS trademarked. A **wallaby** is a different animal and explicitly not a conflict — smaller silhouette, different body proportions (shorter ears, more compact body, shorter tail).
 
 ---
 
-## Typografie
+## Colour palette
 
-- **Lato** (Regular/Medium/Bold) — wie HOLZ-HER, kostenlos, humanistisch
-- Alternativ: **Open Sans** — wie NC-HOPS Website
-- Keine Display-Schriften, keine Gill Sans (lizenzpflichtig, zu sehr NC-HOPS)
+Strategy: tone HOLZ-HER's orange down slightly to show independence while still mirroring the machine world.
 
----
+| Role | Colour | Hex |
+|------|--------|-----|
+| Primary (plugin colour) | Muted CNC orange | `#e05a00` |
+| Secondary | Anthracite | `#2d2d2d` |
+| Accent | Natural wood / amber | `#c4a060` |
+| Background | Warm white | `#f5f0eb` |
 
-## Icon-Konzept
-
-### Größe
-
-| Auflösung | Verwendung |
-|-----------|-----------|
-| **24×24px** | Standard GH-Render (1×) |
-| **48×48px** | Empfohlen als Master — GH skaliert intern auf 24px, aber HiDPI/Retina zeigt die volle Auflösung. Kein Nachteil beim Bereitstellen der größeren Version. |
-
-Forum-Quellen: grasshopper3d.com/forum/topics/about-component-icons, /icon-size-in-gh-1-0-0004-v6-beta
-→ **Fazit: Icons als 48×48px PNG erstellen, aber pixelgenau auf 24px-Raster ausrichten.**
-
-### Stil
-
-Alle Icons: **Wallaby-Figur + Werkzeug-Geste** — das Tier führt die Operation aus, ist aber nicht der Fokus. Werkzeug / Geometrie dominiert das Icon, Wallaby-Silhouette ist erkennbar aber klein.
-
-Farbige Hintergrundfläche (gedämpftes Orange `#e05a00`), weiße Symbolik darauf.
-
-### Plugin-Haupticon
-
-**Wallaby Hop — Masterbrand:** Wallaby-Silhouette in Seitenansicht, springend. Hält in den Vorderpfoten eine stilisierte Frässpindel (Bohrfutter + Schaft, top-down). Hintergrund: `#e05a00`. Klar lesbar als "CNC + springendes Tier".
-
-### Komponenten-Icons nach Kategorie
-
-| Komponente | Icon-Idee | Wallaby-Geste |
-|-----------|-----------|---------------|
-| `HopDrill` | Bohrer von oben (Spiralbohrer-Symbol) | Wallaby hält Bohrer senkrecht nach unten |
-| `HopContour` | Kurvenpfad mit Richtungspfeil | Wallaby läuft / springt entlang einer Kurve |
-| `HopPocket` | Rechteck mit Schraffur (Tasche) | Wallaby steht in/über einer Vertiefung, Fräser rein |
-| `HopExport` | Pfeil nach rechts aus Block | Wallaby trägt Chip/Datei-Symbol weg |
-| `HopNesting` | Verschachtelte Rechtecke | Wallaby mit Beutel (Marsupium) = Teile eingebettet |
-| `HopAnalyzer` | Lupe / Checkmark | Wallaby mit Lupe über Werkstück |
-| `HopKorpus` | Schrank-Silhouette | Wallaby baut/hält Korpus-Rahmen |
-
-### Konstruktionshinweise für 48×48px
-
-- Wallaby-Silhouette: max. 12–14px breit, oben-rechts oder oben-links positioniert (Werkzeug dominiert Mitte)
-- Linien: 2px oder 4px (entspricht 1px / 2px bei 24px-Darstellung)
-- Keine diagonalen Linien mit <15° oder >75° zur Horizontalen (Anti-Aliasing-Artefakte bei 24px)
-- Werkzeug-Symbol: mittig oder unten-zentriert, größte Fläche des Icons
+Do not use: NC-HOPS yellow `#fbf69e` (too close to the kangaroo logo), HOLZ-HER orange `#ff6600` 1:1 (too close to manufacturer branding).
 
 ---
 
-## Quellen
+## Typography
 
-- Vollständige Branding-Analyse: `branding-research.md`
-- Bark-Beetle-Vergleich: `bark-beetle-analysis.md`
-- Icon-Größe GH Forum: grasshopper3d.com/forum/topics/about-component-icons
-- Icon-Größe GH v6 Beta: grasshopper3d.com/forum/topics/icon-size-in-gh-1-0-0004-v6-beta
+- **Lato** (Regular/Medium/Bold) — like HOLZ-HER, free, humanist
+- Alternative: **Open Sans** — like the NC-HOPS website
+- No display fonts, no Gill Sans (licensed, too closely tied to NC-HOPS)
+
+---
+
+## Icon concept
+
+### Size
+
+| Resolution | Use |
+|------------|-----|
+| **24×24px** | Standard GH render (1×) |
+| **48×48px** | Recommended as master — GH scales internally to 24px, but HiDPI/Retina shows the full resolution. No drawback to providing the larger version. |
+
+Forum sources: grasshopper3d.com/forum/topics/about-component-icons, /icon-size-in-gh-1-0-0004-v6-beta
+→ **Conclusion: create icons as 48×48px PNG, but align pixel-perfectly to a 24px grid.**
+
+### Style
+
+All icons: **wallaby figure + tool gesture** — the animal performs the operation but is not the focus. The tool / geometry dominates the icon, the wallaby silhouette is recognisable but small.
+
+Coloured background (muted orange `#e05a00`), white symbol on top.
+
+### Main plugin icon
+
+**Wallaby Hop — masterbrand:** wallaby silhouette in side view, jumping. Holds a stylised milling spindle (chuck + shaft, top-down) in its forepaws. Background: `#e05a00`. Clearly readable as "CNC + jumping animal".
+
+### Component icons by category
+
+| Component | Icon idea | Wallaby gesture |
+|-----------|-----------|-----------------|
+| `HopDrill` | Drill from above (twist drill symbol) | Wallaby holds drill vertically downward |
+| `HopContour` | Curve path with direction arrow | Wallaby runs / hops along a curve |
+| `HopPocket` | Rectangle with hatching (pocket) | Wallaby stands in/over a recess, cutter going in |
+| `HopExport` | Arrow pointing right out of a block | Wallaby carries chip / file symbol away |
+| `HopNesting` | Nested rectangles | Wallaby with pouch (marsupium) = parts embedded |
+| `HopAnalyzer` | Magnifier / checkmark | Wallaby with magnifier over workpiece |
+| `HopKorpus` | Cabinet silhouette | Wallaby builds/holds cabinet frame |
+
+### Construction hints for 48×48px
+
+- Wallaby silhouette: max. 12–14px wide, positioned top-right or top-left (the tool dominates the centre)
+- Lines: 2px or 4px (corresponds to 1px / 2px at 24px display)
+- No diagonal lines below 15° or above 75° from the horizontal (anti-aliasing artefacts at 24px)
+- Tool symbol: centred or bottom-centred, takes the largest area of the icon
+
+---
+
+## Sources
+
+- Full branding analysis: `branding-research.md`
+- Bark-beetle comparison: `bark-beetle-analysis.md`
+- Icon size GH forum: grasshopper3d.com/forum/topics/about-component-icons
+- Icon size GH v6 beta: grasshopper3d.com/forum/topics/icon-size-in-gh-1-0-0004-v6-beta

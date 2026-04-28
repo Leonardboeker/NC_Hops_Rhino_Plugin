@@ -28,7 +28,7 @@ namespace WallabyHop.Components.Operations
             "Generates groove/slot operations (_Nuten_X_V5 / _Nuten_Y_V5) for the DYNESTIC CNC.\n\n" +
             "X-groove: runs in X direction, positioned at Y. Y-groove: runs in Y, positioned at X.\n" +
             "Typical use: shelf dado grooves, back panel grooves.",
-            "Wallaby Hop", "Fräsen") { }
+            "Wallaby Hop", "Milling") { }
 
         public override Guid ComponentGuid => new Guid("4b9c2d3e-5f60-7890-bcde-f01234567890");
 

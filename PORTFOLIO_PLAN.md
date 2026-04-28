@@ -1,26 +1,26 @@
 # Portfolio Plan — DYNESTIC Post-Processor
-**Ziel:** 4–5 generierte Bilder, die den Plugin-Workflow visuell erklären.
-**Stil:** Dark, industrial, technisch — passt zur Portfolio-Ästhetik (RAL 9005, Grain Overlay, Bebas Neue).
-**Methode:** Nano Banana → Review → Revision in Schleife bis gut.
+**Goal:** 4–5 generated images that explain the plugin workflow visually.
+**Style:** Dark, industrial, technical — fits the portfolio aesthetic (RAL 9005, grain overlay, Bebas Neue).
+**Method:** Nano Banana → review → revision in a loop until good.
 
 ---
 
-## Visueller Ablauf (Story in 4 Bildern)
+## Visual flow (story in 4 images)
 
 ```
-[Rhino Geometry] → [GH Canvas + Plugin] → [.hop Code] → [CNC Maschine]
-     Bild 1              Bild 2              Bild 3          Bild 4
+[Rhino Geometry] → [GH Canvas + Plugin] → [.hop Code] → [CNC Machine]
+     Image 1            Image 2              Image 3        Image 4
 ```
 
-Optionales 5. Bild: Hero-Compositing (alle 4 Schritte in einem Bild).
+Optional 5th image: hero compositing (all 4 steps in one image).
 
 ---
 
-## Bild 1 — Rhino Geometry / Input
+## Image 1 — Rhino Geometry / Input
 
-**Was es zeigt:** Den Ausgangspunkt — 2D-Kurven (Konturen, Bohrpunkte, Taschen) auf einem flachen Sheet im Rhino Viewport. Klar, präzise, CAD-Ästhetik.
+**What it shows:** the starting point — 2D curves (contours, drill points, pockets) on a flat sheet in the Rhino viewport. Clear, precise, CAD aesthetic.
 
-**Nano Banana Prompt (Start):**
+**Nano Banana prompt (start):**
 ```
 Technical 3D visualization of a CAD/CAM workflow: a flat rectangular sheet (MDF board) 
 in a dark Rhino 3D viewport, showing 2D vector curves on the surface — outer contour 
@@ -29,20 +29,20 @@ Dark background #0d0d0d, thin white grid, professional engineering aesthetic.
 Top-down perspective slightly angled. Ultra-sharp, no motion blur, photorealistic render style.
 ```
 
-**Revision-Loop Fragen:**
-- Sind die Kurvenfarben klar lesbar (rot/blau/cyan)?
-- Wirkt es wie ein echter CAD-Viewport oder zu illustrativ?
-- Ist das Sheet klar als Material erkennbar?
+**Revision-loop questions:**
+- Are the curve colours clearly readable (red/blue/cyan)?
+- Does it look like a real CAD viewport or too illustrative?
+- Is the sheet clearly recognisable as material?
 
-**Ziel-Feeling:** Wie ein Rhino-Screenshot, aber cinematisch.
+**Target feel:** Like a Rhino screenshot, but cinematic.
 
 ---
 
-## Bild 2 — Grasshopper Canvas / Plugin
+## Image 2 — Grasshopper Canvas / Plugin
 
-**Was es zeigt:** Den GH-Canvas mit den Custom-Komponenten (HopSheet, HopContour, HopDrill, HopExport) — orange gefärbt (GH custom plugin style), mit Wires verbunden. Zeigt: Das ist echte Software, kein generisches Diagramm.
+**What it shows:** the GH canvas with the custom components (HopSheet, HopContour, HopDrill, HopExport) — coloured orange (GH custom plugin style), connected with wires. Conveys: this is real software, not a generic diagram.
 
-**Nano Banana Prompt (Start):**
+**Nano Banana prompt (start):**
 ```
 Close-up illustration of a Grasshopper 3D visual programming canvas, dark grey background. 
 Custom orange-colored plugin components labeled: "HopSheet", "HopContour", "HopDrill", 
@@ -51,20 +51,20 @@ Clean node-graph aesthetic. Small parameter sliders visible.
 Dark UI chrome, minimal typography. Technical software screenshot style, slightly stylized.
 ```
 
-**Revision-Loop Fragen:**
-- Sind die Komponenten-Labels lesbar?
-- Wirkt der Canvas wie echte GH-Software?
-- Ist die Verbindungslogik (Wires) nachvollziehbar?
+**Revision-loop questions:**
+- Are the component labels readable?
+- Does the canvas look like real GH software?
+- Is the connection logic (wires) understandable?
 
-**Ziel-Feeling:** Erkennbar als parametrische Software, nicht als generisches Diagramm.
+**Target feel:** Recognisable as parametric software, not a generic diagram.
 
 ---
 
-## Bild 3 — .hop NC-Code / Output
+## Image 3 — .hop NC code / output
 
-**Was es zeigt:** Das generierte `.hop` NC-File in einem dunklen Code-Editor. Zeigt echte HOPS-Makro-Syntax (`Bohrug`, `Tasche`, `HopContour`) — erklärt: Das Plugin schreibt maschinenlesbaren Code.
+**What it shows:** the generated `.hop` NC file in a dark code editor. Shows real HOPS macro syntax (`Bohrug`, `Tasche`, `HopContour`) — explains: the plugin writes machine-readable code.
 
-**Nano Banana Prompt (Start):**
+**Nano Banana prompt (start):**
 ```
 Dark code editor screenshot showing CNC machine NC programming code. 
 Black background, monospace font. Code lines include:
@@ -77,20 +77,20 @@ Clean terminal aesthetic, slightly glowing text, professional dark IDE style.
 No extra UI chrome — just the code, full bleed.
 ```
 
-**Revision-Loop Fragen:**
-- Ist der Code lesbar und plausibel wirkend?
-- Passt das Farbschema zur Portfolio-Ästhetik?
-- Wirkt es wie echte NC-Syntax, nicht wie Python/JS?
+**Revision-loop questions:**
+- Is the code readable and plausible-looking?
+- Does the colour scheme fit the portfolio aesthetic?
+- Does it look like real NC syntax, not Python/JS?
 
-**Ziel-Feeling:** "Das Plugin schreibt echten Maschinencode" — sofort verständlich.
+**Target feel:** "The plugin writes real machine code" — immediately understandable.
 
 ---
 
-## Bild 4 — CNC Maschine / Execution
+## Image 4 — CNC machine / execution
 
-**Was es zeigt:** Eine 5-Achs Nesting-CNC (Flachbett-Gantry-Stil wie DYNESTIC) fräst MDF. Späne fliegen, Spindel im Fokus, industriell. Beweist: Das ist kein akademisches Tool, das läuft real.
+**What it shows:** a 5-axis nesting CNC (flatbed gantry style like the DYNESTIC) milling MDF. Chips flying, spindle in focus, industrial. Proves: this is not an academic tool, it actually runs.
 
-**Nano Banana Prompt (Start):**
+**Nano Banana prompt (start):**
 ```
 Industrial photograph of a large-format 5-axis CNC nesting machine (gantry style) 
 cutting into an MDF sheet. Close-up of the spindle head with wood dust and chips flying. 
@@ -99,20 +99,20 @@ The machine is black powder-coated steel. Shallow depth of field, spindle in sha
 Cinematic, high-contrast, no people visible. Photorealistic.
 ```
 
-**Revision-Loop Fragen:**
-- Sieht die Maschine nach industrieller CNC aus (nicht Hobby-Router)?
-- Wirkt der Staub/Span-Effekt realistisch?
-- Passt die Beleuchtung zum dunklen Portfolio-Stil?
+**Revision-loop questions:**
+- Does the machine look like an industrial CNC (not a hobby router)?
+- Does the dust/chip effect look realistic?
+- Does the lighting fit the dark portfolio style?
 
-**Ziel-Feeling:** Schwer, industrial, real — keine Render-Klischees.
+**Target feel:** Heavy, industrial, real — no render clichés.
 
 ---
 
-## Bild 5 (optional) — Pipeline Hero
+## Image 5 (optional) — Pipeline hero
 
-**Was es zeigt:** Alle 4 Schritte in einem Bild — horizontal nebeneinander, verbunden durch Pfeile/Lichtlinien. Für das Portfolio-Hero-Bild oder als Übersichtsbild in der Detailseite.
+**What it shows:** all 4 steps in one image — horizontal side-by-side, connected by arrows / light lines. For the portfolio hero image or as an overview image on the detail page.
 
-**Nano Banana Prompt (Start):**
+**Nano Banana prompt (start):**
 ```
 Horizontal triptych/sequence diagram on dark background showing a CNC fabrication 
 digital workflow: left panel shows CAD curves on a flat sheet (Rhino viewport style), 
@@ -121,61 +121,61 @@ right panel shows a CNC machine cutting MDF. Connected by thin glowing arrow lin
 Cinematic, dark industrial aesthetic, ultra-wide 21:9 format, no text labels needed.
 ```
 
-**Revision-Loop Fragen:**
-- Sind alle 3 Panels klar voneinander getrennt aber verbunden?
-- Liest sich die Pipeline von links nach rechts intuitiv?
-- Ist das Gesamtbild als Hero-Banner verwendbar?
+**Revision-loop questions:**
+- Are all 3 panels clearly separated yet connected?
+- Does the pipeline read intuitively from left to right?
+- Is the overall image usable as a hero banner?
 
 ---
 
-## Revision-Loop Protokoll
+## Revision-loop protocol
 
-Für jedes Bild:
+For each image:
 
 ```
-Runde 1: Prompt → Bild generieren → Review gegen Fragen oben
-Runde 2: Schwächen benennen → gezielter Revision-Prompt ("make the spindle more industrial, 
+Round 1: prompt → generate image → review against questions above
+Round 2: name the weaknesses → targeted revision prompt ("make the spindle more industrial, 
          reduce the brightness, add wood chips")
-Runde 3: Finales Bild → sharp-resize auf 1400px, quality 82
-Runde 4: In assets/images/projects/post-processor/ speichern
+Round 3: final image → sharp-resize to 1400px, quality 82
+Round 4: save into assets/images/projects/post-processor/
 ```
 
-**Abbruchkriterium pro Bild:** Nicht mehr als 5 Revisionen. Wenn nach Runde 4 noch nicht gut → anderen Prompt-Ansatz wählen (zB. illustrativ statt photorealistisch).
+**Stop criterion per image:** no more than 5 revisions. If still not good after round 4 → switch to a different prompt approach (e.g. illustrative instead of photorealistic).
 
 ---
 
-## Datei-Plan für Website_2
+## File plan for Website_2
 
 ```
 assets/images/projects/post-processor/
-  hero.jpg          ← Bild 4 (CNC-Maschine) oder Bild 5 (Pipeline)
-  gallery_1.jpg     ← Bild 1 (Rhino Geometry)
-  gallery_2.jpg     ← Bild 2 (GH Canvas)
-  gallery_3.jpg     ← Bild 3 (.hop Code)
-  gallery_4.jpg     ← Bild 4 (CNC Maschine)
+  hero.jpg          ← Image 4 (CNC machine) or Image 5 (pipeline)
+  gallery_1.jpg     ← Image 1 (Rhino geometry)
+  gallery_2.jpg     ← Image 2 (GH canvas)
+  gallery_3.jpg     ← Image 3 (.hop code)
+  gallery_4.jpg     ← Image 4 (CNC machine)
 ```
 
-**Card für projekte.html:** Bild 4 (CNC Maschine) oder Bild 1 (Rhino + Kurven) — beides hat visuellen Impact.
+**Card for projekte.html:** Image 4 (CNC machine) or Image 1 (Rhino + curves) — both have visual impact.
 
 ---
 
-## Projektseite — Textentwurf (DE/EN)
+## Project page — text draft (DE/EN)
 
 **Label:** `DIGITAL FABRICATION · GRASSHOPPER PLUGIN · C#`
-**Titel:** `DYNESTIC POST-PROCESSOR`
+**Title:** `DYNESTIC POST-PROCESSOR`
 
-**Sidebar-Infos:**
-- Kategorie: Digital Fabrication Tool
-- Maschine: HOLZ-HER DYNESTIC 7535
+**Sidebar info:**
+- Category: Digital Fabrication Tool
+- Machine: HOLZ-HER DYNESTIC 7535
 - Stack: C# · Grasshopper · Rhino 8
-- Output: `.hop` NC-File (NC-Hops Format)
-- Operationen: Kontur · Tasche · Bohrung · 3D-Fräsen
+- Output: `.hop` NC file (NC-Hops format)
+- Operations: Contour · Pocket · Drill · 3D milling
 
-**Fließtext DE:**
-> Der DYNESTIC Post-Processor ist ein Grasshopper-Plugin für die direkte Übersetzung von parametrischen Rhino-Geometrien in maschinenlesbare `.hop`-Dateien für die HOLZ-HER DYNESTIC 7535 — eine 5-Achs Nesting-CNC.
+**Body text EN:**
+> The DYNESTIC Post-Processor is a Grasshopper plugin for translating parametric Rhino geometry directly into machine-readable `.hop` files for the HOLZ-HER DYNESTIC 7535 — a 5-axis nesting CNC.
 >
-> Statt des Umwegs über proprietäre CAM-Software (RhinoCAM) entsteht der Maschinencode vollständig aus dem Grasshopper-Canvas heraus: Konturen, Taschen, Bohrungen und 3D-Fräsbahnen werden als native GH-Komponenten (HopContour, HopDrill, HopSheet, HopExport) definiert, visuell als Toolpath-Preview verifiziert und per Klick als fertige `.hop`-Datei exportiert.
+> Instead of the detour via proprietary CAM software (RhinoCAM), the machine code is generated entirely from the Grasshopper canvas: contours, pockets, drills and 3D milling paths are defined as native GH components (HopContour, HopDrill, HopSheet, HopExport), verified visually as a toolpath preview, and exported as a finished `.hop` file at the click of a button.
 
 ---
 
-*Erstellt: 2026-04-06 — Nächste Aktion: Nano Banana Image Loop starten*
+*Created: 2026-04-06 — Next action: start the Nano Banana image loop*

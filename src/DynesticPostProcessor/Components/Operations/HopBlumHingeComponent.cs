@@ -28,7 +28,7 @@ namespace WallabyHop.Components.Operations
             "Creates the 35mm cup hole + optional dowel holes at specified positions.\n" +
             "Distance: offset from edge to cup center (typically 22.5 mm from front).\n" +
             "Pos1..Pos4: Y positions of each hinge along the board.",
-            "Wallaby Hop", "Beschläge") { }
+            "Wallaby Hop", "Hardware") { }
 
         public override Guid ComponentGuid => new Guid("6d1e4f50-7182-9012-def0-123456789012");
 

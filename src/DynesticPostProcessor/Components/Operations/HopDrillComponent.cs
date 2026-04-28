@@ -23,7 +23,7 @@ namespace WallabyHop.Components.Operations
         public HopDrillComponent() : base(
             "HopDrill", "HopDrill",
             "Generates vertical drilling operations (Bohrung macros) for the DYNESTIC CNC. Each input point becomes one drill call at the specified depth and diameter.",
-            "Wallaby Hop", "Bohren") { }
+            "Wallaby Hop", "Drilling") { }
 
         public override Guid ComponentGuid => new Guid("2a763260-a3c1-4231-8ed0-cd0085267c94");
 
@@ -166,7 +166,7 @@ namespace WallabyHop.Components.Operations
                     {
                         double passDepth = Math.Min((p + 1) * stepdown, depth);
                         double cutZ = surfaceZ - passDepth;
-                        lines.Add(NcDrill.BohrungLine(pt.X, pt.Y, surfaceZ, cutZ, diameter));
+                        lines.Add(NcDrill.DrillLine(pt.X, pt.Y, surfaceZ, cutZ, diameter));
                     }
                 }
             }
@@ -176,7 +176,7 @@ namespace WallabyHop.Components.Operations
                 for (int i = 0; i < points.Count; i++)
                 {
                     Point3d pt = points[i];
-                    lines.Add(NcDrill.BohrungLine(pt.X, pt.Y, surfaceZ, cutZ, diameter));
+                    lines.Add(NcDrill.DrillLine(pt.X, pt.Y, surfaceZ, cutZ, diameter));
                 }
             }
 

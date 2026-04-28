@@ -25,7 +25,7 @@ namespace WallabyHop.Components.Operations
             "Generates engraving paths (WZF + SP/G01/G03M/EP) for the DYNESTIC CNC.\n\n" +
             "Follows the input curve exactly -- no kerf offset. Designed for shallow cuts " +
             "with V-bits or engraving spindles. Multiple curves produce one continuous engraving path per curve.",
-            "Wallaby Hop", "Fräsen") { }
+            "Wallaby Hop", "Milling") { }
 
         public override Guid ComponentGuid => new Guid("d3a19f7c-5b2e-4d8a-b6c1-9f0e2a4c7d83");
 

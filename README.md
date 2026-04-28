@@ -12,10 +12,10 @@ Design parametrically in Rhino/Grasshopper, wire components together, and export
 - [Installation](#installation)
 - [The .hop file format](#the-hop-file-format)
 - [Component reference](#component-reference)
-  - [Drilling (Bohren)](#drilling-bohren)
-  - [Milling (Fräsen)](#milling-fräsen)
-  - [Sawing (Sägen)](#sawing-sägen)
-  - [Hardware (Beschläge)](#hardware-beschläge)
+  - [Drilling](#drilling)
+  - [Milling](#milling)
+  - [Sawing](#sawing)
+  - [Hardware](#hardware)
   - [Export](#export)
   - [Cabinet (Cabinet)](#cabinet-cabinet)
   - [Nesting](#nesting)
@@ -117,7 +117,7 @@ All components live in the **Wallaby Hop** tab in Grasshopper. Subcategories gro
 
 ---
 
-### Drilling (Bohren)
+### Drilling
 
 #### HopDrill
 
@@ -164,7 +164,7 @@ Generates a parametric row of equally spaced holes along the X or Y axis using t
 
 ---
 
-### Milling (Fräsen)
+### Milling
 
 #### HopContour
 
@@ -224,7 +224,7 @@ Generates a rectangular pocket using the `_RechteckTasche_V5` macro. Dimensions 
 | `cornerRadius` | float | Fillet radius in mm. 0 = sharp corners. |
 | `angle` | float | Rotation angle in degrees. 0 = axis-aligned. |
 | `depth` | float | Pocket depth in mm. Default: 1.0 |
-| `stepdown` | float | Depth per pass (Zustellung). 0 = single pass. |
+| `stepdown` | float | Depth per pass. 0 = single pass. |
 | `toolNr` | int | Tool magazine position |
 | `colour` | Color | Viewport preview color |
 
@@ -268,7 +268,7 @@ Generates a circular profile cutting path using the `_Kreisbahn_V5` macro. Cuts 
 
 #### HopFreeSlot
 
-Generates a free slot (Nut) between two points using the `_nuten_frei_v5` macro.
+Generates a free slot between two points using the `_nuten_frei_v5` macro.
 
 **NC macro:** `CALL _nuten_frei_v5(...)`
 
@@ -301,7 +301,7 @@ Generates axis-aligned groove operations using `_Nuten_X_V5` (horizontal) or `_N
 
 ---
 
-### Sawing (Sägen)
+### Sawing
 
 #### HopFormatCut
 
@@ -334,7 +334,7 @@ Generates a freeform saw path (WZS tool call + contour sequence). For non-axis-a
 
 ---
 
-### Hardware (Beschläge)
+### Hardware
 
 #### HopBlumHinge
 
@@ -472,7 +472,7 @@ Parametric cabinet body generator. Takes outer dimensions and produces all flat 
 
 Configures the back panel type for HopKorpus.
 
-**Options:** Surface-mounted (screwed on), grooved (Falznut), or full inset.
+**Options:** Surface-mounted (screwed on), grooved (rabbet), or full inset.
 
 ---
 
@@ -572,7 +572,7 @@ Generates the nesting system block (nested sheet layout metadata) in the `.hop` 
 
 #### HopDrawing
 
-Generates a Rhino layout page (Dreitafelansicht — Top/Front/Side/Iso) with title block, outer dimensions, and material list from the assembled 3D model.
+Generates a Rhino layout page (three-view orthographic — Top/Front/Side/Iso) with title block, outer dimensions, and material list from the assembled 3D model.
 
 | Input | Type | Description |
 |-------|------|-------------|
@@ -714,8 +714,8 @@ When you drop a component onto the Grasshopper canvas, **AutoWire** automaticall
 **Important:** 3DMilling, Mill5Axis, and VSPMillSAxis are **not licensed** on the current HOPS dongle (ID: 3-5709426). All operations in this plugin are 2.5D (XY movement + vertical Z plunge).
 
 **Tool type codes:**
-- `WZB` — drilling tool (Bohrwerkzeug)
-- `WZF` — milling tool (Fräswerkzeug)
-- `WZS` — saw tool (Sägewerkzeug)
+- `WZB` — drilling tool
+- `WZF` — milling tool
+- `WZS` — saw tool
 
 Feed rates, spindle speed, and approach behavior are handled at the machine level via the tool magazine configuration. This plugin does not write feed values — only tool position number and the `_VE`, `_VA`, `_SD` placeholders that CAMPUS resolves at runtime.

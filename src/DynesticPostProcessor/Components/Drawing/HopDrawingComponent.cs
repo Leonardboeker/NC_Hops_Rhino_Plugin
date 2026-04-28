@@ -17,7 +17,7 @@ using Grasshopper.Kernel.Types;
 namespace WallabyHop.Components.Drawing
 {
     /// <summary>
-    /// Generates a Rhino layout page (Dreitafelansicht + Iso + title block + material list)
+    /// Generates a Rhino layout page (three-view orthographic + iso + title block + material list)
     /// from assembled Breps. Works with HopKorpus AssembledBreps or any solid geometry.
     /// </summary>
     public class HopDrawingComponent : GH_Component
@@ -29,7 +29,7 @@ namespace WallabyHop.Components.Drawing
 
         public HopDrawingComponent()
             : base("HopDrawing", "HopDrawing",
-                "Generates a Rhino layout page with Dreitafelansicht (Top/Front/Side/Iso), " +
+                "Generates a Rhino layout page with three-view orthographic (Top/Front/Side/Iso), " +
                 "title block from a .3dm template, outer dimensions, and material list. " +
                 "Wire HopKorpus 'AssembledBreps' → 'geo', and optionally 'Panels' → 'parts'.",
                 "Wallaby Hop", "Drawing")
@@ -59,7 +59,7 @@ namespace WallabyHop.Components.Drawing
             // 3
             pManager.AddTextParameter("ProjectName", "project",
                 "Project name shown in the title block.",
-                GH_ParamAccess.item, "Projekt");
+                GH_ParamAccess.item, "Project");
             pManager[3].Optional = true;
 
             // 4
@@ -77,7 +77,7 @@ namespace WallabyHop.Components.Drawing
             // 6
             pManager.AddTextParameter("LayoutName", "layoutName",
                 "Name of the Rhino layout page to create or update.",
-                GH_ParamAccess.item, "Grundriss_01");
+                GH_ParamAccess.item, "FloorPlan_01");
             pManager[6].Optional = true;
 
             // 7
@@ -331,14 +331,14 @@ namespace WallabyHop.Components.Drawing
             AddLine(doc, pa, new Point3d(m,    midY,     0), new Point3d(sepX - m, midY,  0));
 
             // View labels
-            AddText(doc, pa, "DRAUFSICHT",      m + 1, pageH - m - 5, 2.0);
-            AddText(doc, pa, "ISOMETRIE",        m + halfX + m + 1, pageH - m - 5, 2.0);
-            AddText(doc, pa, "VORDERANSICHT",    m + 1, midY - m - 5, 2.0);
-            AddText(doc, pa, "SEITENANSICHT",    m + halfX + m + 1, midY - m - 5, 2.0);
+            AddText(doc, pa, "TOP VIEW",         m + 1, pageH - m - 5, 2.0);
+            AddText(doc, pa, "ISOMETRIC",        m + halfX + m + 1, pageH - m - 5, 2.0);
+            AddText(doc, pa, "FRONT VIEW",       m + 1, midY - m - 5, 2.0);
+            AddText(doc, pa, "SIDE VIEW",        m + halfX + m + 1, midY - m - 5, 2.0);
 
             // Outer dimension annotation (below grid)
             string dimText = string.Format(CultureInfo.InvariantCulture,
-                "B={0:F0}  H={1:F0}  T={2:F0}  mm     Maßstab 1:{3}",
+                "W={0:F0}  H={1:F0}  D={2:F0}  mm     Scale 1:{3}",
                 bbW, bbH, bbD, scale);
             AddText(doc, pa, dimText, m + 1, m + 2, 2.5);
 
@@ -356,7 +356,7 @@ namespace WallabyHop.Components.Drawing
 
             // Material list in title block area
             double mlY = templateOk ? 135.0 : 125.0;
-            AddText(doc, pa, "MATERIALISTE:", tbX, mlY, 2.5);
+            AddText(doc, pa, "MATERIAL LIST:", tbX, mlY, 2.5);
             double lineY = mlY - 5.5;
             foreach (var line in matList.Split('\n'))
             {
@@ -379,8 +379,8 @@ namespace WallabyHop.Components.Drawing
                 pdfResult = TryExportPdf(page, pdfPath);
             }
 
-            return string.Format("Layout '{0}' erstellt. Template={1}. {2}",
-                layoutName, templateOk ? "geladen" : "nicht gefunden", pdfResult);
+            return string.Format("Layout '{0}' created. Template={1}. {2}",
+                layoutName, templateOk ? "loaded" : "not found", pdfResult);
         }
 
         // ---------------------------------------------------------------
@@ -489,9 +489,9 @@ namespace WallabyHop.Components.Drawing
                 AddLine(doc, pa, new Point3d(x0 - 2, hy, 0), new Point3d(x1, hy, 0));
 
             AddText(doc, pa, project,                         x0, y1 - 9,  4.5);
-            AddText(doc, pa, "Gezeichnet:  " + drawBy,        x0, y1 - 22, 2.5);
-            AddText(doc, pa, "Maßstab:  1:" + scale,          x0, y1 - 36, 2.5);
-            AddText(doc, pa, "Datum:  " + DateTime.Now.ToString("dd.MM.yyyy"), x0, y1 - 50, 2.5);
+            AddText(doc, pa, "Drawn by:  " + drawBy,           x0, y1 - 22, 2.5);
+            AddText(doc, pa, "Scale:  1:" + scale,             x0, y1 - 36, 2.5);
+            AddText(doc, pa, "Date:  " + DateTime.Now.ToString("dd.MM.yyyy"), x0, y1 - 50, 2.5);
         }
 
         // ---------------------------------------------------------------
@@ -512,7 +512,7 @@ namespace WallabyHop.Components.Drawing
             }
             catch (Exception ex)
             {
-                return "(PDF fehlgeschlagen: " + ex.Message + ")";
+                return "(PDF failed: " + ex.Message + ")";
             }
         }
 
@@ -522,7 +522,7 @@ namespace WallabyHop.Components.Drawing
         private static string BuildMaterialList(List<object> parts)
         {
             if (parts == null || parts.Count == 0)
-                return "(keine Parts verbunden)";
+                return "(no Parts connected)";
 
             var groups = new SortedDictionary<double, List<string>>();
 
@@ -568,7 +568,7 @@ namespace WallabyHop.Components.Drawing
                     }
                 }
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    "  Σ {0} Teile / {1:F3}m²", kv.Value.Count, sum));
+                    "  Σ {0} parts / {1:F3}m²", kv.Value.Count, sum));
             }
             return sb.ToString().TrimEnd();
         }
@@ -636,10 +636,10 @@ namespace WallabyHop.Components.Drawing
                 WallabyHop.AutoWire.Spec.Skip(),                                         // Parts
                 WallabyHop.AutoWire.Spec.Panel(
                     @"E:\Rhino Resourcen\Plan Köpfe\Leonard Elias Böker.3dm"),                      // TemplatePath
-                WallabyHop.AutoWire.Spec.Panel("Projekt"),                               // ProjectName
+                WallabyHop.AutoWire.Spec.Panel("Project"),                               // ProjectName
                 WallabyHop.AutoWire.Spec.Panel(""),                                      // DrawBy
                 WallabyHop.AutoWire.Spec.Int("5<10<50"),                                 // Scale
-                WallabyHop.AutoWire.Spec.Panel("Grundriss_01"),                          // LayoutName
+                WallabyHop.AutoWire.Spec.Panel("FloorPlan_01"),                          // LayoutName
                 WallabyHop.AutoWire.Spec.FilePath(),                                     // Folder
                 WallabyHop.AutoWire.Spec.Toggle(),                                       // Generate
             });

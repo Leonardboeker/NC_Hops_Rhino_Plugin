@@ -28,7 +28,7 @@ namespace WallabyHop.Components.Operations
             "X-row: holes spaced along X, fixed Y position.\n" +
             "Y-row: holes spaced along Y, fixed X position.\n" +
             "Up to 4 increment spacing values (BIX..BIIIIX / BIY..BIIIIY).",
-            "Wallaby Hop", "Bohren") { }
+            "Wallaby Hop", "Drilling") { }
 
         public override Guid ComponentGuid => new Guid("5c0d3e4f-6071-8901-cdef-012345678901");
 

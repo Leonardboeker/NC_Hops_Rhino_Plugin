@@ -20,7 +20,7 @@ namespace WallabyHop.Components.Export
             "HopAnalyzer", "HopAnalyzer",
             "Validates the final .hop file content for structural correctness.\n\n" +
             "Checks: SP/EP pairing, moves outside SP/EP blocks, duplicate tool calls, " +
-            "and negative Z values (Bohrung cutZ, SP zEintauch below machine table). " +
+            "and negative Z values (drill cutZ, SP plunge Z below machine table). " +
             "Wire in HopContent from HopExport so the check runs on the fully assembled output.",
             "Wallaby Hop", "Export") { }
 
@@ -197,7 +197,7 @@ namespace WallabyHop.Components.Export
                 }
                 else if (s.StartsWith("Bohrung ("))
                 {
-                    // Z safety: Bohrung (x, y, surfaceZ, cutZ, ...) — params index 2 and 3
+                    // Z safety: Bohrung (drill) (x, y, surfaceZ, cutZ, ...) — params index 2 and 3
                     // drillDepth = surfaceZ - cutZ; warn if drillDepth > DZ + 5 mm
                     drillCount++;
                     int bOpen = s.IndexOf('(');
@@ -212,7 +212,7 @@ namespace WallabyHop.Components.Export
                             double drillDepth = surfZ - cutZ;
                             deepestZ = Math.Min(deepestZ, cutZ);
                             if (drillDepth > headerDZ + SpoilboardAllowance)
-                                zWarningMessages.Add("L" + lineNum + ": Bohrung depth=" + drillDepth.ToString("F1", CultureInfo.InvariantCulture)
+                                zWarningMessages.Add("L" + lineNum + ": Drill depth=" + drillDepth.ToString("F1", CultureInfo.InvariantCulture)
                                     + " mm exceeds plate DZ=" + headerDZ.ToString("F1", CultureInfo.InvariantCulture)
                                     + " mm + 5 mm spoilboard allowance");
                         }
@@ -271,7 +271,7 @@ namespace WallabyHop.Components.Export
 
             var stats = new List<string>
             {
-                "Drills (Bohrung):    " + drillCount,
+                "Drills:              " + drillCount,
                 "Contour blocks (SP): " + spCount,
                 "Macro calls (CALL):  " + callCount,
                 "Tool changes:        " + toolChangeCount,

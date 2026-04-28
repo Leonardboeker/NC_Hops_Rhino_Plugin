@@ -26,7 +26,7 @@ namespace WallabyHop.Components.Operations
             "Generates fixing clamp positions (Fixchip_K) for the DYNESTIC CNC.\n\n" +
             "Fixchips hold the workpiece to the nesting board during cutting.\n" +
             "Each input point defines one clamp position (SPX, SPY, SPZ).",
-            "Wallaby Hop", "Beschläge") { }
+            "Wallaby Hop", "Hardware") { }
 
         public override Guid ComponentGuid => new Guid("7e2f5061-8293-0123-ef01-234567890123");
 
