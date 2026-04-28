@@ -1,0 +1,21 @@
+# Yak package manifest for Rhino/Grasshopper plugin distribution
+# https://developer.rhino3d.com/guides/yak/yak-package-manifest/
+---
+name: WallabyHop
+version: 0.1.0
+authors:
+  - Leonard Elias Böker
+description: >
+  Grasshopper plugin for generating NC-Hops .hop files for the HOLZ-HER
+  DYNESTIC CNC. Parametric operations, nesting, cabinet generation, and
+  .hop export. Components for drilling, sawing, milling, contouring,
+  pocketing, engraving, plus Blum hinge drilling and cabinet panel
+  generation.
+url: https://github.com/Leonardboeker/NC_Hops_Rhino_Plugin
+keywords:
+  - grasshopper
+  - cnc
+  - holzher
+  - nesting
+  - cabinetmaking
+  - nc-hops
