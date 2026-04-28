@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     public class HopContourComponent : GH_Component
@@ -316,29 +318,31 @@ namespace WallabyHop.Components.Operations
             }
 
             // ---------------------------------------------------------------
-            // 8. BUILD NC OUTPUT
+            // 8. BUILD NC OUTPUT — convert Rhino segments to ContourSegments,
+            //    then delegate to pure ContourLogic
             // ---------------------------------------------------------------
-            List<string> lines = new List<string>();
-            lines.Add(toolType + " (" + toolNr.ToString()
-                + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
-                + ",_VA,_SD,0,'')");
-
             int totalSegments = 0;
+            var pureP = new List<IReadOnlyList<ContourLogic.ContourSegment>>();
             foreach (List<Curve> pieceSegs in allPieces)
             {
                 totalSegments += pieceSegs.Count;
-                if (passes > 1)
-                {
-                    double firstZ = surfaceZ - (depth / passes);
-                    BuildContourBlock(lines, pieceSegs, firstZ, tol, passes, leadIn, leadOut);
-                }
-                else
-                {
-                    BuildContourBlock(lines, pieceSegs, surfaceZ - depth, tol, 1, leadIn, leadOut);
-                }
-                if (overcut > 0)
-                    BuildContourBlock(lines, pieceSegs, surfaceZ - depth - overcut, tol, 1, 0.0, leadOut);
+                pureP.Add(ToContourSegments(pieceSegs));
             }
+
+            var lines = ContourLogic.Generate(new ContourLogic.ContourInput
+            {
+                Pieces = pureP,
+                SurfaceZ = surfaceZ,
+                Depth = depth,
+                Passes = passes,
+                Overcut = overcut,
+                LeadIn = leadIn,
+                LeadOut = leadOut,
+                ToolNr = toolNr,
+                Tolerance = tol,
+                ToolType = toolType,
+                FeedFactor = feedFactor,
+            });
 
             // ---------------------------------------------------------------
             // 9. REMARK + OUTPUT
@@ -354,92 +358,44 @@ namespace WallabyHop.Components.Operations
         }
 
         // ---------------------------------------------------------------
-        // HELPER: Build SP...moves...EP block(s) for one PolyCurve.
-        // Uses Explode() to flatten nested sub-curves, then groups segments
-        // by connectivity -- each connected run becomes one SP/EP block.
+        // HELPER: Convert Rhino Curve segments to pure ContourSegment list.
+        // Arc detection mirrors the legacy CCW determination
+        // (cross product of center→start × center→mid).
         // ---------------------------------------------------------------
-        private void BuildContourBlock(List<string> lines, List<Curve> flat,
-            double zPlunge, double tol, int nPasses = 1, double leadIn = 0.0, double leadOut = 0.0)
+        private static IReadOnlyList<ContourLogic.ContourSegment> ToContourSegments(List<Curve> flat)
         {
-            if (flat == null || flat.Count == 0) return;
+            var result = new List<ContourLogic.ContourSegment>();
+            if (flat == null) return result;
 
-            int gStart = 0;
-            while (gStart < flat.Count)
+            foreach (Curve seg in flat)
             {
-                int gEnd = gStart;
-                while (gEnd + 1 < flat.Count &&
-                       flat[gEnd].PointAtEnd.DistanceTo(
-                           flat[gEnd + 1].PointAtStart) <= tol * 10)
-                    gEnd++;
-
-                Point3d startPt = flat[gStart].PointAtStart;
-                string spTail = nPasses > 1
-                    ? ",2,0,_ANF,0,0,0,0,1,0," + nPasses + ",0,0,0,0,0,0,0,0,0,0)"
-                    : ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)";
-
-                // Lead-in: approach from outside along reversed entry tangent
-                Point3d spPt = startPt;
-                if (leadIn > 0.0)
+                if (seg == null) continue;
+                ArcCurve arcSeg = seg as ArcCurve;
+                if (arcSeg != null)
                 {
-                    Vector3d tangent = flat[gStart].TangentAtStart;
-                    tangent.Unitize();
-                    spPt = startPt - tangent * leadIn;
+                    Arc arc = arcSeg.Arc;
+                    Point3d sp = arc.StartPoint;
+                    Point3d ep = arc.EndPoint;
+                    Point3d cp = arc.Center;
+                    Point3d mid = arc.PointAt(arc.Angle * 0.5);
+                    Vector3d toStart = arc.StartPoint - cp;
+                    Vector3d toMid = mid - cp;
+                    bool isCCW = (toStart.X * toMid.Y - toStart.Y * toMid.X) > 0;
+                    Vector3d ts = arcSeg.TangentAtStart; ts.Unitize();
+                    Vector3d te = arcSeg.TangentAtEnd; te.Unitize();
+                    result.Add(ContourLogic.ContourSegment.Arc(
+                        sp.X, sp.Y, ep.X, ep.Y, cp.X, cp.Y, isCCW,
+                        ts.X, ts.Y, te.X, te.Y));
                 }
-
-                lines.Add("SP (" + Fmt(spPt.X) + ","
-                    + Fmt(spPt.Y) + ","
-                    + Fmt(zPlunge)
-                    + spTail);
-
-                if (leadIn > 0.0)
-                    lines.Add("G01 (" + Fmt(startPt.X) + "," + Fmt(startPt.Y) + ",0,0,0,2)");
-
-                for (int i = gStart; i <= gEnd; i++)
+                else
                 {
-                    Curve seg = flat[i];
-                    ArcCurve arcSeg = seg as ArcCurve;
-                    if (arcSeg != null)
-                    {
-                        Arc arc    = arcSeg.Arc;
-                        Point3d ep = arc.EndPoint;
-                        Point3d cp = arc.Center;
-                        // Determine CCW by cross product of (center→start) × (center→mid)
-                        Point3d   mid      = arc.PointAt(arc.Angle * 0.5);
-                        Vector3d  toStart  = arc.StartPoint - cp;
-                        Vector3d  toMid    = mid - cp;
-                        bool isCCW = (toStart.X * toMid.Y - toStart.Y * toMid.X) > 0;
-                        string cmd = isCCW ? "G03M" : "G02M";
-                        lines.Add(cmd + " ("
-                            + Fmt(ep.X) + ","
-                            + Fmt(ep.Y) + ",0,"
-                            + Fmt(cp.X) + ","
-                            + Fmt(cp.Y) + ",0,0,2,0)");
-                        continue;
-                    }
-                    Point3d fep = seg.PointAtEnd;
-                    lines.Add("G01 ("
-                        + Fmt(fep.X) + ","
-                        + Fmt(fep.Y) + ",0,0,0,2)");
+                    Point3d sp = seg.PointAtStart;
+                    Point3d ep = seg.PointAtEnd;
+                    result.Add(ContourLogic.ContourSegment.Line(sp.X, sp.Y, ep.X, ep.Y));
                 }
-
-                // Lead-out: extend past end point along exit tangent
-                if (leadOut > 0.0)
-                {
-                    Vector3d exitTangent = flat[gEnd].TangentAtEnd;
-                    exitTangent.Unitize();
-                    Point3d departurePt = flat[gEnd].PointAtEnd + exitTangent * leadOut;
-                    lines.Add("G01 (" + Fmt(departurePt.X) + "," + Fmt(departurePt.Y) + ",0,0,0,2)");
-                }
-
-                lines.Add("EP (0,_ANF,0)");
-                gStart = gEnd + 1;
             }
+            return result;
         }
-
-        // Rounds to 4 decimal places (0.0001 mm) — prevents floating-point
-        // noise like 3.55e-15 from appearing as scientific notation in .hop files.
-        private static string Fmt(double v) =>
-            Math.Round(v, 4).ToString(CultureInfo.InvariantCulture);
 
         // ---------------------------------------------------------------
         // PREVIEW OVERRIDES
