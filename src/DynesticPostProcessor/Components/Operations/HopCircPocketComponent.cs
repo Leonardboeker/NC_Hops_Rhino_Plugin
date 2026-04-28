@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     public class HopCircPocketComponent : GH_Component
@@ -127,25 +129,20 @@ namespace WallabyHop.Components.Operations
             _approachLines.Add(new Line(new Point3d(center.X, center.Y, safeZ), center));
 
             // ---------------------------------------------------------------
-            // 4. BUILD TOOL CALL + MACRO
+            // 4. DELEGATE TO PURE PocketLogic
             // ---------------------------------------------------------------
-            List<string> lines = new List<string>();
-            lines.Add(toolType + " (" + toolNr.ToString()
-                + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
-                + ",_VA,_SD,0,'')");
-
-            // surfaceZ: Z of the input center point
-            double surfaceZ    = center.Z;
-            double cutZ        = surfaceZ - Math.Abs(depth);
-            double stepdownVal = (stepdown > 0) ? stepdown : 0;
-
-            lines.Add("CALL _Kreistasche_V5(VAL "
-                + "X_Mitte:=" + center.X.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y_Mitte:=" + center.Y.ToString(CultureInfo.InvariantCulture) + ","
-                + "Radius:=" + radius.ToString(CultureInfo.InvariantCulture) + ","
-                + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                + "Zustellung:=" + stepdownVal.ToString(CultureInfo.InvariantCulture) + ","
-                + "AB:=2,ABF:=_ANF,Interpol:=0,umkehren:=0,esxy:=0,esmd:=0,laser:=0)");
+            var lines = PocketLogic.GenerateCirc(new PocketLogic.CircPocketInput
+            {
+                CenterX = center.X,
+                CenterY = center.Y,
+                SurfaceZ = center.Z,
+                Radius = radius,
+                Depth = depth,
+                Stepdown = stepdown,
+                ToolNr = toolNr,
+                ToolType = toolType,
+                FeedFactor = feedFactor,
+            });
 
             // ---------------------------------------------------------------
             // 5. OUTPUT

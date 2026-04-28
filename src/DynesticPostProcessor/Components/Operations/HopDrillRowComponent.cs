@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     /// <summary>
@@ -177,50 +179,27 @@ namespace WallabyHop.Components.Operations
                 new Point3d(startPoint.X, startPoint.Y, surfaceZ + 20.0),
                 new Point3d(startPoint.X, startPoint.Y, surfaceZ)));
 
-            // NC macro
-            List<string> lines = new List<string>();
-            lines.Add("WZB (" + toolNr + ",_VE,_V*1,_VA,_SD,0,'')");
-
-            string macro;
-            int spiegelVal = mirror ? 1 : 0;
-
-            if (isXRow)
+            // NC macro — delegate to pure logic
+            var result = DrillRowLogic.Generate(new DrillRowLogic.DrillRowInput
             {
-                macro = "CALL _Bohgx_V5(VAL "
-                    + "SPY:=" + NcFmt.F(startPoint.Y) + ","
-                    + "BIX:=" + NcFmt.F(spacings[0]) + ","
-                    + "BIIX:=" + NcFmt.F(spacings[1]) + ","
-                    + "BIIIX:=" + NcFmt.F(spacings[2]) + ","
-                    + "BIIIIX:=" + NcFmt.F(spacings[3]) + ","
-                    + "SPIEGELN:=" + spiegelVal + ","
-                    + "T:=" + NcFmt.F(cutZ) + ","
-                    + "D:=" + NcFmt.F(diameter) + ","
-                    + "TLF:=10,INKREMENT:=1,ESXY:=0,ESD:=1,"
-                    + "USE2:=1,USE3:=1,USE4:=1)";
-            }
-            else
-            {
-                macro = "CALL _Bohgy_V5(VAL "
-                    + "SPX:=" + NcFmt.F(startPoint.X) + ","
-                    + "BIY:=" + NcFmt.F(spacings[0]) + ","
-                    + "BIIY:=" + NcFmt.F(spacings[1]) + ","
-                    + "BIIIY:=" + NcFmt.F(spacings[2]) + ","
-                    + "BIIIIY:=" + NcFmt.F(spacings[3]) + ","
-                    + "SPIEGELN:=" + spiegelVal + ","
-                    + "T:=" + NcFmt.F(cutZ) + ","
-                    + "D:=" + NcFmt.F(diameter) + ","
-                    + "TLF:=10,INKREMENT:=1,ESXY:=0,ESD:=1,"
-                    + "USE2:=1,USE3:=1,USE4:=1)";
-            }
-            lines.Add(macro);
+                IsXRow = isXRow,
+                StartX = startPoint.X,
+                StartY = startPoint.Y,
+                StartZ = startPoint.Z,
+                Spacings = spacings,
+                Depth = depth,
+                Diameter = diameter,
+                Mirror = mirror,
+                ToolNr = toolNr,
+            });
 
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                 (isXRow ? "X-row" : "Y-row")
-                + "  " + holePositions.Count + " holes"
+                + "  " + result.HoleCount + " holes"
                 + "  D=" + NcFmt.F(diameter)
                 + "  T=" + NcFmt.F(cutZ));
 
-            DA.SetDataList(0, lines);
+            DA.SetDataList(0, new List<string>(result.Lines));
         }
 
         public override BoundingBox ClippingBox

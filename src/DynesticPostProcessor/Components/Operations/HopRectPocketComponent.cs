@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     public class HopRectPocketComponent : GH_Component
@@ -172,34 +174,20 @@ namespace WallabyHop.Components.Operations
             _approachLines.Add(new Line(new Point3d(startPt.X, startPt.Y, safeZ), startPt));
 
             // ---------------------------------------------------------------
-            // 5. BUILD TOOL CALL (first line)
+            // 5-6. DELEGATE TO PURE PocketLogic
             // ---------------------------------------------------------------
-            List<string> lines = new List<string>();
-            string toolCall = toolType + " (" + toolNr.ToString()
-                + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
-                + ",_VA,_SD,0,'')";
-            lines.Add(toolCall);
-
-            // ---------------------------------------------------------------
-            // 6. BUILD CALL MACRO
-            // ---------------------------------------------------------------
-            double surfaceZ   = bb.Min.Z;
-            double cutZ       = surfaceZ - Math.Abs(depth);
-            double stepdownVal = (stepdown > 0) ? stepdown : 0;
-
-            lines.Add("CALL _Rechteck_V7(VAL "
-                + "X_MITTE:=" + Fmt(cx) + ","
-                + "Y_MITTE:=" + Fmt(cy) + ","
-                + "LAENGE:=" + Fmt(width) + ","
-                + "BREITE:=" + Fmt(height) + ","
-                + "RADIUS:=" + Fmt(cornerRadius) + ","
-                + "WINKEL:=" + Fmt(angle) + ","
-                + "TIEFE:=" + Fmt(cutZ) + ","
-                + "ZUTIEFE:=" + Fmt(stepdownVal) + ","
-                + "RADIUSKORREKTUR:=2,"
-                + "AB:=2,AUFMASS:=0,ANF:=_ANF,ABF:=_ANF,"
-                + "UMKEHREN:=0,RAMPE:=0,RAMPENLAENGE:=50,QUADRANT:=1,"
-                + "INTERPOL:=1,ESXY:=0,ESMD:=0,LASER:=0)");
+            var lines = PocketLogic.GenerateRect(new PocketLogic.RectPocketInput
+            {
+                CenterX = cx, CenterY = cy, SurfaceZ = bb.Min.Z,
+                Width = width, Height = height,
+                CornerRadius = cornerRadius,
+                Angle = angle,
+                Depth = depth,
+                Stepdown = stepdown,
+                ToolNr = toolNr,
+                ToolType = toolType,
+                FeedFactor = feedFactor,
+            });
 
             // ---------------------------------------------------------------
             // 7. OUTPUT
@@ -212,9 +200,6 @@ namespace WallabyHop.Components.Operations
 
             DA.SetDataList(0, lines);
         }
-
-        private static string Fmt(double v) =>
-            Math.Round(v, 4).ToString(CultureInfo.InvariantCulture);
 
         // ---------------------------------------------------------------
         // PREVIEW OVERRIDES
