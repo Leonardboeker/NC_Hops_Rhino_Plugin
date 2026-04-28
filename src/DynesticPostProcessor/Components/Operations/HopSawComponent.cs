@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     public class HopSawComponent : GH_Component
@@ -186,77 +188,69 @@ namespace WallabyHop.Components.Operations
             double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
 
             // ---------------------------------------------------------------
-            // PER-CUT LOOP
+            // BUILD PURE INPUT (drop null/zero-length up front)
             // ---------------------------------------------------------------
-            List<string> allLines = new List<string>();
             string sideLabel = side == 0 ? "Center" : (side < 0 ? "Left" : "Right");
 
+            var segments = new List<SawLogic.LineSegment>();
+            var componentIndex = new List<int>(); // pure-segment index → original component index
             for (int i = 0; i < dirCurves.Count; i++)
             {
-                Curve  dirCurve   = dirCurves[i];
-                double bladeAngle = bladeAngles[i % bladeAngles.Count];
-
+                Curve dirCurve = dirCurves[i];
                 if (dirCurve == null)
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Null curve at index " + i + " — skipped");
                     continue;
                 }
+                Point3d s = dirCurve.PointAtStart;
+                Point3d e = dirCurve.PointAtEnd;
+                segments.Add(new SawLogic.LineSegment(
+                    new DrillLogic.Point2dz(s.X, s.Y, s.Z),
+                    new DrillLogic.Point2dz(e.X, e.Y, e.Z)));
+                componentIndex.Add(i);
+            }
 
-                // ---------------------------------------------------------------
-                // EXTRACT TRAVEL DIRECTION
-                // ---------------------------------------------------------------
-                Point3d lineStart = dirCurve.PointAtStart;
-                Point3d lineEnd   = dirCurve.PointAtEnd;
+            var pureInput = new SawLogic.SawInput
+            {
+                Segments = segments,
+                BladeAngles = bladeAngles,
+                Length = length,
+                SawKerf = sawKerf,
+                Depth = depth,
+                Side = side,
+                Extend = extend,
+                ToolNr = toolNr,
+            };
+            var sawResult = SawLogic.Generate(pureInput);
 
-                Vector3d travelDir = lineEnd - lineStart;
-                if (travelDir.Length < 0.001)
+            // ---------------------------------------------------------------
+            // PREVIEW VOLUMES (built from the cut endpoints SawLogic computed)
+            // ---------------------------------------------------------------
+            for (int s = 0; s < sawResult.Segments.Count; s++)
+            {
+                var seg = sawResult.Segments[s];
+                int origIdx = componentIndex[s];
+                if (seg.Skipped)
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Zero-length curve at index " + i + " — skipped");
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, seg.SkipReason + " — skipped");
                     continue;
                 }
+
+                Curve dirCurve = dirCurves[origIdx];
+                Vector3d travelDir = dirCurve.PointAtEnd - dirCurve.PointAtStart;
                 travelDir.Unitize();
-
-                Point3d origin = new Point3d(
-                    (lineStart.X + lineEnd.X) / 2.0,
-                    (lineStart.Y + lineEnd.Y) / 2.0,
-                    (lineStart.Z + lineEnd.Z) / 2.0);
-
                 Vector3d travelPerp = Vector3d.CrossProduct(travelDir, Vector3d.ZAxis);
                 travelPerp.Unitize();
 
-                // If length is at default (600.0), use the actual line length
-                double cutLength = length;
-                if (Math.Abs(length - 600.0) < 0.001)
-                {
-                    double lineLen = dirCurve.GetLength();
-                    if (lineLen > 1.0) cutLength = lineLen;
-                }
-
-                // ---------------------------------------------------------------
-                // SIDE OFFSET
-                // ---------------------------------------------------------------
-                double   sideShift = side * (sawKerf / 2.0);
-                Vector3d sideVec   = travelPerp * sideShift;
-
-                double  halfLen = cutLength / 2.0;
-                Point3d p1 = origin - travelDir * halfLen + sideVec;
-                Point3d p2 = origin + travelDir * halfLen + sideVec;
-
-                Point3d cutP1 = extend > 0.001 ? p1 - travelDir * extend : p1;
-                Point3d cutP2 = extend > 0.001 ? p2 + travelDir * extend : p2;
-
-                // ---------------------------------------------------------------
-                // PREVIEW VOLUME
-                // ---------------------------------------------------------------
-                double topZ       = origin.Z;
-                double botZ       = topZ - Math.Abs(depth);
-                double tiltRad    = Math.Abs(bladeAngle) * Math.PI / 180.0;
+                double topZ = (dirCurve.PointAtStart.Z + dirCurve.PointAtEnd.Z) / 2.0;
+                double botZ = topZ - Math.Abs(depth);
+                double tiltRad = Math.Abs(seg.BladeAngle) * Math.PI / 180.0;
                 double tiltOffset = Math.Abs(depth) * Math.Tan(tiltRad);
-                double tiltSign   = bladeAngle >= 0 ? 1.0 : -1.0;
-                double halfTop    = sawKerf / 2.0;
+                double tiltSign = seg.BladeAngle >= 0 ? 1.0 : -1.0;
+                double halfTop = sawKerf / 2.0;
 
-                Point3d aTop = new Point3d(cutP1.X, cutP1.Y, topZ);
-                Point3d bTop = new Point3d(cutP2.X, cutP2.Y, topZ);
+                Point3d aTop = new Point3d(seg.CutP1X, seg.CutP1Y, topZ);
+                Point3d bTop = new Point3d(seg.CutP2X, seg.CutP2Y, topZ);
                 Point3d t0 = aTop + travelPerp * halfTop;
                 Point3d t1 = bTop + travelPerp * halfTop;
                 Point3d t2 = bTop - travelPerp * halfTop;
@@ -272,25 +266,17 @@ namespace WallabyHop.Components.Operations
 
                 _approachLines.Add(new Line(new Point3d(aTop.X, aTop.Y, topZ + 20.0), aTop));
 
-                // ---------------------------------------------------------------
-                // NC OUTPUT
-                // ---------------------------------------------------------------
-                double cutZ = topZ - Math.Abs(depth);
-
-                allLines.Add(NcSaw.ToolCall(toolNr));
-                allLines.Add(NcSaw.FreeSlotLine(cutP1.X, cutP1.Y, cutP2.X, cutP2.Y, sawKerf, cutZ, bladeAngle));
-
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                    "[" + i + "] bladeAngle=" + bladeAngle.ToString("F1", CultureInfo.InvariantCulture) + "deg"
+                    "[" + origIdx + "] bladeAngle=" + seg.BladeAngle.ToString("F1", CultureInfo.InvariantCulture) + "deg"
                     + "  side=" + sideLabel
-                    + "  len=" + cutLength.ToString("F1", CultureInfo.InvariantCulture)
-                    + "  P1=(" + cutP1.X.ToString("F1", CultureInfo.InvariantCulture)
-                    + "," + cutP1.Y.ToString("F1", CultureInfo.InvariantCulture) + ")"
-                    + "  P2=(" + cutP2.X.ToString("F1", CultureInfo.InvariantCulture)
-                    + "," + cutP2.Y.ToString("F1", CultureInfo.InvariantCulture) + ")");
+                    + "  len=" + seg.CutLength.ToString("F1", CultureInfo.InvariantCulture)
+                    + "  P1=(" + seg.CutP1X.ToString("F1", CultureInfo.InvariantCulture)
+                    + "," + seg.CutP1Y.ToString("F1", CultureInfo.InvariantCulture) + ")"
+                    + "  P2=(" + seg.CutP2X.ToString("F1", CultureInfo.InvariantCulture)
+                    + "," + seg.CutP2Y.ToString("F1", CultureInfo.InvariantCulture) + ")");
             }
 
-            DA.SetDataList(0, allLines);
+            DA.SetDataList(0, new List<string>(sawResult.Lines));
         }
 
         // ---------------------------------------------------------------
