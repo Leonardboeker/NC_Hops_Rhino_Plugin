@@ -8,6 +8,8 @@ using Rhino.Geometry;
 
 using Grasshopper.Kernel;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Operations
 {
     public class HopDrillComponent : GH_Component
@@ -148,47 +150,27 @@ namespace WallabyHop.Components.Operations
             }
 
             // ---------------------------------------------------------------
-            // 4. BUILD TOOL CALL -- first line of output
+            // 4-5. DELEGATE TO PURE LOGIC
             // ---------------------------------------------------------------
-            List<string> lines = new List<string>();
-            lines.Add(NcDrill.ToolCall(toolNr));
-
-            // ---------------------------------------------------------------
-            // 5. MULTI-PASS OR SINGLE-PASS DRILLING
-            // ---------------------------------------------------------------
-            if (stepdown > 0)
+            var pureInput = new DrillLogic.DrillInput
             {
-                int passCount = (int)Math.Ceiling(depth / stepdown);
-                for (int i = 0; i < points.Count; i++)
-                {
-                    Point3d pt = points[i];
-                    for (int p = 0; p < passCount; p++)
-                    {
-                        double passDepth = Math.Min((p + 1) * stepdown, depth);
-                        double cutZ = surfaceZ - passDepth;
-                        lines.Add(NcDrill.DrillLine(pt.X, pt.Y, surfaceZ, cutZ, diameter));
-                    }
-                }
-            }
-            else
-            {
-                double cutZ = surfaceZ - Math.Abs(depth);
-                for (int i = 0; i < points.Count; i++)
-                {
-                    Point3d pt = points[i];
-                    lines.Add(NcDrill.DrillLine(pt.X, pt.Y, surfaceZ, cutZ, diameter));
-                }
-            }
+                Points = points.ConvertAll(p => new DrillLogic.Point2dz(p.X, p.Y, p.Z)),
+                Depth = depth,
+                Diameter = diameter,
+                Stepdown = stepdown,
+                ToolNr = toolNr,
+            };
+            var result = DrillLogic.Generate(pureInput);
 
             // ---------------------------------------------------------------
             // 6. OUTPUT + REMARK
             // ---------------------------------------------------------------
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                points.Count.ToString() + " drill points, surfaceZ=" + surfaceZ.ToString(CultureInfo.InvariantCulture)
-                + ", cutZ=" + (surfaceZ - Math.Abs(depth)).ToString(CultureInfo.InvariantCulture)
+                points.Count.ToString() + " drill points, surfaceZ=" + result.SurfaceZ.ToString(CultureInfo.InvariantCulture)
+                + ", cutZ=" + result.CutZ.ToString(CultureInfo.InvariantCulture)
                 + ", diameter=" + diameter.ToString(CultureInfo.InvariantCulture));
 
-            DA.SetDataList(0, lines);
+            DA.SetDataList(0, new List<string>(result.Lines));
         }
 
         // ---------------------------------------------------------------

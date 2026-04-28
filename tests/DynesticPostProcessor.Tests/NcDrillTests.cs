@@ -1,47 +1,43 @@
 using NUnit.Framework;
-using System.Collections.Generic;
-using DynesticPostProcessor;
+using WallabyHop;
 
 namespace DynesticPostProcessor.Tests
 {
     [TestFixture]
     public class NcDrillTests
     {
+        // -------------------------------------------------------------
+        // Snapshot baselines — exact NC strings the HOLZHER controller
+        // expects. If any of these change, machining behavior changes.
+        // -------------------------------------------------------------
+
         [Test]
-        public void ToolCall_ReturnsCorrectPrefix()
+        public void ToolCall_Snapshot()
         {
-            string result = NcDrill.ToolCall(3);
-            Assert.That(result, Does.StartWith("WZB"));
+            Assert.That(NcDrill.ToolCall(3),
+                Is.EqualTo("WZB (3,_VE,_V*1,_VA,_SD,0,'')"));
         }
 
         [Test]
-        public void ToolCall_ContainsToolNr()
+        public void DrillLine_Snapshot_Standard()
         {
-            string result = NcDrill.ToolCall(5);
-            Assert.That(result, Does.Contain("5"));
+            Assert.That(NcDrill.DrillLine(100.5, 200.75, 19.0, 9.0, 8.0),
+                Is.EqualTo("Bohrung (100.5,200.75,19,9,8,0,0,0,0,0,0,0)"));
         }
 
         [Test]
-        public void BohrungLine_UsesInvariantCulture()
+        public void DrillLine_Snapshot_Origin()
         {
-            string result = NcDrill.BohrungLine(100.5, 200.75, 19.0, 9.0, 8.0);
-            Assert.That(result, Does.Contain("100.5"));
-            Assert.That(result, Does.Contain("200.75"));
-            Assert.That(result, Does.Not.Contain("100,5")); // no comma decimal
+            Assert.That(NcDrill.DrillLine(0, 0, 0, -10, 8),
+                Is.EqualTo("Bohrung (0,0,0,-10,8,0,0,0,0,0,0,0)"));
         }
 
         [Test]
-        public void BohrungLine_StartsWithBohrung()
+        public void DrillLine_UsesInvariantCulture_NoCommaDecimal()
         {
-            string result = NcDrill.BohrungLine(0, 0, 0, -10, 8);
-            Assert.That(result, Does.StartWith("Bohrung ("));
-        }
-
-        [Test]
-        public void BohrungLine_EndsWithZeroParams()
-        {
-            string result = NcDrill.BohrungLine(10, 20, 19, 9, 8);
-            Assert.That(result, Does.EndWith(",0,0,0,0,0,0,0)"));
+            string result = NcDrill.DrillLine(100.5, 200.75, 19.0, 9.0, 8.0);
+            Assert.That(result, Does.Not.Contain("100,5"));
+            Assert.That(result, Does.Not.Contain("200,75"));
         }
     }
 }
