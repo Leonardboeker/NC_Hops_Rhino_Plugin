@@ -14,7 +14,7 @@ namespace WallabyHop.Components.Operations
     /// Generates format sawing operations (_saege_x_V7 / _saege_y_V7) for the DYNESTIC CNC.
     /// X-cut = saw travels in X direction, positioned at a fixed Y.
     /// Y-cut = saw travels in Y direction, positioned at a fixed X.
-    /// Supports optional Gehrungswinkel (KW) for miter/bevel cuts.
+    /// Supports optional miter angle (KW) for miter/bevel cuts.
     /// </summary>
     public class HopFormatCutComponent : GH_Component
     {
@@ -31,8 +31,8 @@ namespace WallabyHop.Components.Operations
             "Generates format sawing operations (_saege_x_V7 / _saege_y_V7) for the DYNESTIC CNC.\n\n" +
             "Direction X: saw travels in X, positioned at Y coordinate.\n" +
             "Direction Y: saw travels in Y, positioned at X coordinate.\n" +
-            "KW (Keilwinkel) sets the bevel/miter angle. 0 = straight cut.",
-            "Wallaby Hop", "Sägen") { }
+            "KW (wedge angle) sets the bevel/miter angle. 0 = straight cut.",
+            "Wallaby Hop", "Sawing") { }
 
         public override Guid ComponentGuid => new Guid("3a8b1c2d-4e5f-6789-abcd-ef0123456789");
 
@@ -59,9 +59,9 @@ namespace WallabyHop.Components.Operations
                 GH_ParamAccess.item, 19.0);
             pManager[2].Optional = true;
 
-            // 3 - KW (Keilwinkel / bevel angle)
+            // 3 - KW (wedge / bevel angle)
             pManager.AddNumberParameter("KW", "kw",
-                "Bevel/miter angle in degrees (Keilwinkel). 0 = straight cut. Positive = left bevel, negative = right bevel. Default 0.",
+                "Bevel/miter angle in degrees (wedge angle). 0 = straight cut. Positive = left bevel, negative = right bevel. Default 0.",
                 GH_ParamAccess.item, 0.0);
             pManager[3].Optional = true;
 

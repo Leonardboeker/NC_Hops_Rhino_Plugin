@@ -216,25 +216,25 @@ namespace WallabyHop.Components.Korpus
             double innerT = T;              // depth stays same for butt-joint
 
             // 4. Create 5 KorpusPanel objects (NO front panel -- open front)
-            var boden       = new KorpusPanel("Bottom",    innerB, T, MS);
-            var deckel      = new KorpusPanel("Top",       innerB, T, MS);
-            var linkeSeite  = new KorpusPanel("LeftSide",  T,      H, MS);
-            var rechteSeite = new KorpusPanel("RightSide", T,      H, MS);
-            var rueckwand   = new KorpusPanel("BackPanel", innerB, innerH, MS);
+            var bottom       = new KorpusPanel("Bottom",    innerB, T, MS);
+            var topPanel     = new KorpusPanel("Top",       innerB, T, MS);
+            var leftSide  = new KorpusPanel("LeftSide",  T,      H, MS);
+            var rightSide = new KorpusPanel("RightSide", T,      H, MS);
+            var backPanel   = new KorpusPanel("BackPanel", innerB, innerH, MS);
 
             // 5. Compute assembled transforms (flat XY -> 3D position)
             // Korpus front-bottom-left corner at world origin (0,0,0).
-            // Side panels run full height (butt joint), Boden/Deckel sit between sides.
+            // Side panels run full height (butt joint), Bottom/Top sit between sides.
 
-            // Boden: horizontal at bottom, shifted right by MS (sits between sides)
-            boden.AssembledOrigin = new Point3d(MS, 0, 0);
-            boden.AssembledTransform = Transform.Translation(MS, 0, 0);
+            // Bottom: horizontal at bottom, shifted right by MS (sits between sides)
+            bottom.AssembledOrigin = new Point3d(MS, 0, 0);
+            bottom.AssembledTransform = Transform.Translation(MS, 0, 0);
 
-            // Deckel: horizontal at top, shifted right by MS, elevated to H - MS
-            deckel.AssembledOrigin = new Point3d(MS, 0, H - MS);
-            deckel.AssembledTransform = Transform.Translation(MS, 0, H - MS);
+            // Top: horizontal at top, shifted right by MS, elevated to H - MS
+            topPanel.AssembledOrigin = new Point3d(MS, 0, H - MS);
+            topPanel.AssembledTransform = Transform.Translation(MS, 0, H - MS);
 
-            // LinkeSeite: stands vertically at X=0 in YZ plane
+            // LeftSide: stands vertically at X=0 in YZ plane
             // Flat: (0,0,0)-(T,0,0)-(T,H,0)-(0,H,0)
             // Assembled: (0,0,0)-(0,T,0)-(0,T,H)-(0,0,H)
             var linkeSource = Plane.WorldXY;
@@ -242,16 +242,16 @@ namespace WallabyHop.Components.Korpus
                 new Point3d(0, 0, 0),
                 new Vector3d(0, 1, 0),
                 new Vector3d(0, 0, 1));
-            linkeSeite.AssembledOrigin = new Point3d(0, 0, 0);
-            linkeSeite.AssembledTransform = Transform.PlaneToPlane(linkeSource, linkeTarget);
+            leftSide.AssembledOrigin = new Point3d(0, 0, 0);
+            leftSide.AssembledTransform = Transform.PlaneToPlane(linkeSource, linkeTarget);
 
-            // RechteSeite: stands vertically at X = B - MS
+            // RightSide: stands vertically at X = B - MS
             var rechteTarget = new Plane(
                 new Point3d(B - MS, 0, 0),
                 new Vector3d(0, 1, 0),
                 new Vector3d(0, 0, 1));
-            rechteSeite.AssembledOrigin = new Point3d(B - MS, 0, 0);
-            rechteSeite.AssembledTransform = Transform.PlaneToPlane(linkeSource, rechteTarget);
+            rightSide.AssembledOrigin = new Point3d(B - MS, 0, 0);
+            rightSide.AssembledTransform = Transform.PlaneToPlane(linkeSource, rechteTarget);
 
             // Rueckwand: stands vertically at back (Y = T - MS) in XZ plane
             // Flat: (0,0,0)-(innerB,0,0)-(innerB,innerH,0)-(0,innerH,0)
@@ -260,8 +260,8 @@ namespace WallabyHop.Components.Korpus
                 new Point3d(MS, T - MS, MS),
                 new Vector3d(1, 0, 0),
                 new Vector3d(0, 0, 1));
-            rueckwand.AssembledOrigin = new Point3d(MS, T - MS, MS);
-            rueckwand.AssembledTransform = Transform.PlaneToPlane(linkeSource, rueckTarget);
+            backPanel.AssembledOrigin = new Point3d(MS, T - MS, MS);
+            backPanel.AssembledTransform = Transform.PlaneToPlane(linkeSource, rueckTarget);
 
             // ---------------------------------------------------------------
             // PROCESS OPTION INPUTS
@@ -275,31 +275,31 @@ namespace WallabyHop.Components.Korpus
             {
                 int backType      = Convert.ToInt32(backDict["type"]);
                 double backThick  = Convert.ToDouble(backDict["thickness"]);
-                double setback    = Convert.ToDouble(backDict["setback"]);        // Eingelegt: dist from back edge
-                double cutDepth   = Convert.ToDouble(backDict["cutDepth"]);       // Eingefälzt/Eingenutert: rabbet/groove depth
+                double setback    = Convert.ToDouble(backDict["setback"]);        // Inset: dist from back edge
+                double cutDepth   = Convert.ToDouble(backDict["cutDepth"]);       // Rabbeted/Grooved: rabbet/groove depth
                 double falzWidth  = Convert.ToDouble(backDict["falzWidth"]);      // = backThick + 0.5
-                double reststegD  = Convert.ToDouble(backDict["reststegDist"]);   // Eingenutert: dist from back edge to groove rear
+                double setbackD  = Convert.ToDouble(backDict["setbackDist"]);   // Grooved: dist from back edge to groove rear
 
-                if (backType == 0) // Eingelegt: back panel sits inside, positioned by setback from back
+                if (backType == 0) // Inset: back panel sits inside, positioned by setback from back
                 {
-                    rueckwand = new KorpusPanel("BackPanel", innerB, innerH, backThick);
-                    rueckwand.AssembledTransform = Transform.PlaneToPlane(Plane.WorldXY,
+                    backPanel = new KorpusPanel("BackPanel", innerB, innerH, backThick);
+                    backPanel.AssembledTransform = Transform.PlaneToPlane(Plane.WorldXY,
                         new Plane(new Point3d(MS, T - backThick - setback, MS),
                                   new Vector3d(1, 0, 0), new Vector3d(0, 0, 1)));
                 }
-                else if (backType == 1) // Eingefälzt: Falznut rabbet in all 4 outer panels
+                else if (backType == 1) // Rabbeted: rabbet groove in all 4 outer panels
                 {
                     // Back panel (innerB x innerH) slides into the Falz; front face at T - falzWidth
-                    rueckwand = new KorpusPanel("BackPanel", innerB, innerH, backThick);
-                    rueckwand.AssembledTransform = Transform.PlaneToPlane(Plane.WorldXY,
+                    backPanel = new KorpusPanel("BackPanel", innerB, innerH, backThick);
+                    backPanel.AssembledTransform = Transform.PlaneToPlane(Plane.WorldXY,
                         new Plane(new Point3d(MS, T - falzWidth, MS),
                                   new Vector3d(1, 0, 0), new Vector3d(0, 0, 1)));
                 }
-                else // Eingenutert: Nut groove in outer panels, back sits at reststegDist from back
+                else // Grooved: Nut groove in outer panels, back sits at setbackDist from back
                 {
-                    rueckwand = new KorpusPanel("BackPanel", innerB, innerH, backThick);
-                    double backY = T - reststegD - backThick;
-                    rueckwand.AssembledTransform = Transform.PlaneToPlane(Plane.WorldXY,
+                    backPanel = new KorpusPanel("BackPanel", innerB, innerH, backThick);
+                    double backY = T - setbackD - backThick;
+                    backPanel.AssembledTransform = Transform.PlaneToPlane(Plane.WorldXY,
                         new Plane(new Point3d(MS, Math.Max(0, backY), MS),
                                   new Vector3d(1, 0, 0), new Vector3d(0, 0, 1)));
                 }
@@ -315,9 +315,9 @@ namespace WallabyHop.Components.Korpus
                 double cutDepth  = Convert.ToDouble(backDict["cutDepth"]);
                 double falzWidth = Convert.ToDouble(backDict["falzWidth"]);
                 double nutWidth  = Convert.ToDouble(backDict["nutWidth"]);
-                double reststegD = Convert.ToDouble(backDict["reststegDist"]);
+                double setbackD = Convert.ToDouble(backDict["setbackDist"]);
 
-                if (backType == 1) // Eingefälzt: L-shaped rabbet at back edge of all 4 panels
+                if (backType == 1) // Rabbeted: L-shaped rabbet at back edge of all 4 panels
                 {
                     // LeftSide (X=0..MS): inner face at X=MS, Falz at Y=T-falzWidth..T
                     AddRecessBox(new BoundingBox(
@@ -327,19 +327,19 @@ namespace WallabyHop.Components.Korpus
                     AddRecessBox(new BoundingBox(
                         new Point3d(B - MS, T - falzWidth, 0),
                         new Point3d(B - MS + cutDepth, T, H)), extraDrillBreps);
-                    // Boden (Z=0..MS): inner face at Z=MS
+                    // Bottom(Z=0..MS): inner face at Z=MS
                     AddRecessBox(new BoundingBox(
                         new Point3d(MS, T - falzWidth, MS - cutDepth),
                         new Point3d(B - MS, T, MS)), extraDrillBreps);
-                    // Deckel (Z=H-MS..H): inner face at Z=H-MS
+                    // Top(Z=H-MS..H): inner face at Z=H-MS
                     AddRecessBox(new BoundingBox(
                         new Point3d(MS, T - falzWidth, H - MS),
                         new Point3d(B - MS, T, H - MS + cutDepth)), extraDrillBreps);
                 }
-                else if (backType == 2) // Eingenutert: groove at distance reststegDist from back
+                else if (backType == 2) // Grooved: groove at distance setbackDist from back
                 {
-                    double nutY1 = T - reststegD - nutWidth;
-                    double nutY2 = T - reststegD;
+                    double nutY1 = T - setbackD - nutWidth;
+                    double nutY2 = T - setbackD;
                     // LeftSide
                     AddRecessBox(new BoundingBox(
                         new Point3d(MS - cutDepth, Math.Max(0, nutY1), 0),
@@ -348,11 +348,11 @@ namespace WallabyHop.Components.Korpus
                     AddRecessBox(new BoundingBox(
                         new Point3d(B - MS, Math.Max(0, nutY1), 0),
                         new Point3d(B - MS + cutDepth, nutY2, H)), extraDrillBreps);
-                    // Boden
+                    // Bottom
                     AddRecessBox(new BoundingBox(
                         new Point3d(MS, Math.Max(0, nutY1), MS - cutDepth),
                         new Point3d(B - MS, nutY2, MS)), extraDrillBreps);
-                    // Deckel
+                    // Top
                     AddRecessBox(new BoundingBox(
                         new Point3d(MS, Math.Max(0, nutY1), H - MS),
                         new Point3d(B - MS, nutY2, H - MS + cutDepth)), extraDrillBreps);
@@ -384,28 +384,28 @@ namespace WallabyHop.Components.Korpus
                     // Side panels: face drilling at joint zones (Y = MS/2 for Boden, Y = H-MS/2 for Deckel)
                     foreach (double xp in xPositions)
                     {
-                        linkeSeite.AddDrillGroup(xp, MS / 2.0,      drillDia, drillDepth, drillToolNr);
-                        linkeSeite.AddDrillGroup(xp, H - MS / 2.0,  drillDia, drillDepth, drillToolNr);
-                        rechteSeite.AddDrillGroup(xp, MS / 2.0,     drillDia, drillDepth, drillToolNr);
-                        rechteSeite.AddDrillGroup(xp, H - MS / 2.0, drillDia, drillDepth, drillToolNr);
+                        leftSide.AddDrillGroup(xp, MS / 2.0,      drillDia, drillDepth, drillToolNr);
+                        leftSide.AddDrillGroup(xp, H - MS / 2.0,  drillDia, drillDepth, drillToolNr);
+                        rightSide.AddDrillGroup(xp, MS / 2.0,     drillDia, drillDepth, drillToolNr);
+                        rightSide.AddDrillGroup(xp, H - MS / 2.0, drillDia, drillDepth, drillToolNr);
                     }
 
-                    // Boden/Deckel: edge drillings from left/right sides (horizontal, visual preview only)
+                    // Bottom/Top: edge drillings from left/right sides (horizontal, visual preview only)
                     // In world space: Boden assembled at Z=0..MS, center Z=MS/2
                     //                 Deckel assembled at Z=H-MS..H, center Z=H-MS/2
                     double edgeR = drillDia / 2.0;
                     foreach (double xp in xPositions)
                     {
-                        // Boden left edge (X=MS, going +X)
+                        // Bottomleft edge (X=MS, going +X)
                         BuildEdgeCylinder(new Point3d(MS, xp, MS / 2.0),
                             new Vector3d(1, 0, 0), edgeR, drillDepth, extraDrillBreps);
-                        // Boden right edge (X=B-MS, going -X)
+                        // Bottomright edge (X=B-MS, going -X)
                         BuildEdgeCylinder(new Point3d(B - MS, xp, MS / 2.0),
                             new Vector3d(-1, 0, 0), edgeR, drillDepth, extraDrillBreps);
-                        // Deckel left edge
+                        // Topleft edge
                         BuildEdgeCylinder(new Point3d(MS, xp, H - MS / 2.0),
                             new Vector3d(1, 0, 0), edgeR, drillDepth, extraDrillBreps);
-                        // Deckel right edge
+                        // Topright edge
                         BuildEdgeCylinder(new Point3d(B - MS, xp, H - MS / 2.0),
                             new Vector3d(-1, 0, 0), edgeR, drillDepth, extraDrillBreps);
                     }
@@ -419,12 +419,12 @@ namespace WallabyHop.Components.Korpus
             {
                 int bt = Convert.ToInt32(backDict["type"]);
                 double bThick = Convert.ToDouble(backDict["thickness"]);
-                if (bt == 0) // Eingelegt: back panel front face at T - bThick - setback
+                if (bt == 0) // Inset: back panel front face at T - bThick - setback
                     effectiveDepth = T - bThick - Convert.ToDouble(backDict["setback"]);
-                else if (bt == 1) // Eingefälzt: front face at T - falzWidth
+                else if (bt == 1) // Rabbeted: front face at T - falzWidth
                     effectiveDepth = T - Convert.ToDouble(backDict["falzWidth"]);
-                else // Eingenutert: front face at T - reststegDist - thickness
-                    effectiveDepth = T - Convert.ToDouble(backDict["reststegDist"]) - bThick;
+                else // Grooved: front face at T - setbackDist - thickness
+                    effectiveDepth = T - Convert.ToDouble(backDict["setbackDist"]) - bThick;
                 effectiveDepth = Math.Max(MS + 10, effectiveDepth); // minimum sanity
             }
 
@@ -463,10 +463,10 @@ namespace WallabyHop.Components.Korpus
 
                     foreach (double yp in hPos)
                     {
-                        linkeSeite.AddDrillGroup(s32edge,  yp, s32dia, s32depth, drillToolNr);
-                        linkeSeite.AddDrillGroup(backColX, yp, s32dia, s32depth, drillToolNr);
-                        rechteSeite.AddDrillGroup(s32edge,  yp, s32dia, s32depth, drillToolNr);
-                        rechteSeite.AddDrillGroup(backColX, yp, s32dia, s32depth, drillToolNr);
+                        leftSide.AddDrillGroup(s32edge,  yp, s32dia, s32depth, drillToolNr);
+                        leftSide.AddDrillGroup(backColX, yp, s32dia, s32depth, drillToolNr);
+                        rightSide.AddDrillGroup(s32edge,  yp, s32dia, s32depth, drillToolNr);
+                        rightSide.AddDrillGroup(backColX, yp, s32dia, s32depth, drillToolNr);
                     }
                 }
             }
@@ -496,10 +496,10 @@ namespace WallabyHop.Components.Korpus
                 foreach (var (refX, refY) in footCenters)
                 {
                     // 4 holes at ±halfGrid from center
-                    boden.AddDrillGroup(refX - halfGrid, refY - halfGrid, footDia, footDepth, drillToolNr);
-                    boden.AddDrillGroup(refX + halfGrid, refY - halfGrid, footDia, footDepth, drillToolNr);
-                    boden.AddDrillGroup(refX - halfGrid, refY + halfGrid, footDia, footDepth, drillToolNr);
-                    boden.AddDrillGroup(refX + halfGrid, refY + halfGrid, footDia, footDepth, drillToolNr);
+                    bottom.AddDrillGroup(refX - halfGrid, refY - halfGrid, footDia, footDepth, drillToolNr);
+                    bottom.AddDrillGroup(refX + halfGrid, refY - halfGrid, footDia, footDepth, drillToolNr);
+                    bottom.AddDrillGroup(refX - halfGrid, refY + halfGrid, footDia, footDepth, drillToolNr);
+                    bottom.AddDrillGroup(refX + halfGrid, refY + halfGrid, footDia, footDepth, drillToolNr);
                 }
             }
 
@@ -599,7 +599,7 @@ namespace WallabyHop.Components.Korpus
             // ---------------------------------------------------------------
             // 6. Build KorpusData dictionary
             // ---------------------------------------------------------------
-            var allPanels = new List<KorpusPanel> { boden, deckel, linkeSeite, rechteSeite, rueckwand };
+            var allPanels = new List<KorpusPanel> { bottom, topPanel, leftSide, rightSide, backPanel };
             allPanels.AddRange(extraPanels);
 
             // ---------------------------------------------------------------
@@ -615,57 +615,57 @@ namespace WallabyHop.Components.Korpus
                     double falzWidth  = Convert.ToDouble(backDict["falzWidth"]);
                     double nutWidth   = Convert.ToDouble(backDict["nutWidth"]);
                     double cutDepth   = Convert.ToDouble(backDict["cutDepth"]);
-                    double reststegD  = Convert.ToDouble(backDict["reststegDist"]);
+                    double setbackD  = Convert.ToDouble(backDict["setbackDist"]);
 
                     // LeftSide/RightSide: flat Width = T (depth). Back edge at X = Width.
-                    // Boden/Deckel: flat Height = T (depth). Back edge at Y = Height.
+                    // Bottom/Top: flat Height = T (depth). Back edge at Y = Height.
 
-                    if (backType == 1) // Eingefälzt: Falznut at back edge
+                    if (backType == 1) // Rabbeted: rabbet groove at back edge
                     {
-                        double sideCenterX  = linkeSeite.Width - falzWidth / 2.0;
-                        double horizCenterY = boden.Height     - falzWidth / 2.0;
+                        double sideCenterX  = leftSide.Width - falzWidth / 2.0;
+                        double horizCenterY = bottom.Height     - falzWidth / 2.0;
 
-                        linkeSeite.AddNutFrei(sideCenterX, 0, sideCenterX, linkeSeite.Height,
+                        leftSide.AddNutFrei(sideCenterX, 0, sideCenterX, leftSide.Height,
                             falzWidth, cutDepth, routerToolNr);
-                        rechteSeite.AddNutFrei(sideCenterX, 0, sideCenterX, rechteSeite.Height,
+                        rightSide.AddNutFrei(sideCenterX, 0, sideCenterX, rightSide.Height,
                             falzWidth, cutDepth, routerToolNr);
-                        boden.AddNutFrei(0, horizCenterY, boden.Width, horizCenterY,
+                        bottom.AddNutFrei(0, horizCenterY, bottom.Width, horizCenterY,
                             falzWidth, cutDepth, routerToolNr);
-                        deckel.AddNutFrei(0, horizCenterY, deckel.Width, horizCenterY,
+                        topPanel.AddNutFrei(0, horizCenterY, topPanel.Width, horizCenterY,
                             falzWidth, cutDepth, routerToolNr);
 
                         AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                            "Router: Falznut generated in 4 panels, Falzbreite="
-                            + falzWidth.ToString("F1") + "mm, Tiefe=" + cutDepth + "mm");
+                            "Router: rabbet generated in 4 panels, rabbetWidth="
+                            + falzWidth.ToString("F1") + "mm, depth=" + cutDepth + "mm");
                     }
-                    else if (backType == 2) // Eingenutert: Nut at reststegDist from back edge
+                    else if (backType == 2) // Grooved: groove at setback distance from back edge
                     {
-                        // Groove rear at (Width - reststegD), front at (Width - reststegD - nutWidth)
-                        double sideCenterX  = linkeSeite.Width - reststegD - nutWidth / 2.0;
-                        double horizCenterY = boden.Height     - reststegD - nutWidth / 2.0;
+                        // Groove rear at (Width - setbackD), front at (Width - setbackD - nutWidth)
+                        double sideCenterX  = leftSide.Width - setbackD - nutWidth / 2.0;
+                        double horizCenterY = bottom.Height     - setbackD - nutWidth / 2.0;
 
-                        linkeSeite.AddNutFrei(sideCenterX, 0, sideCenterX, linkeSeite.Height,
+                        leftSide.AddNutFrei(sideCenterX, 0, sideCenterX, leftSide.Height,
                             nutWidth, cutDepth, routerToolNr);
-                        rechteSeite.AddNutFrei(sideCenterX, 0, sideCenterX, rechteSeite.Height,
+                        rightSide.AddNutFrei(sideCenterX, 0, sideCenterX, rightSide.Height,
                             nutWidth, cutDepth, routerToolNr);
-                        boden.AddNutFrei(0, horizCenterY, boden.Width, horizCenterY,
+                        bottom.AddNutFrei(0, horizCenterY, bottom.Width, horizCenterY,
                             nutWidth, cutDepth, routerToolNr);
-                        deckel.AddNutFrei(0, horizCenterY, deckel.Width, horizCenterY,
+                        topPanel.AddNutFrei(0, horizCenterY, topPanel.Width, horizCenterY,
                             nutWidth, cutDepth, routerToolNr);
 
                         AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                            "Router: Nut generated in 4 panels, Nutbreite="
-                            + nutWidth.ToString("F1") + "mm, Tiefe=" + cutDepth
-                            + "mm, Reststeg=" + reststegD + "mm");
+                            "Router: groove generated in 4 panels, grooveWidth="
+                            + nutWidth.ToString("F1") + "mm, depth=" + cutDepth
+                            + "mm, setback=" + setbackD + "mm");
                     }
                 }
 
-                // -- Formatierung: outer contour cut for every panel --
+                // -- Formatting cut: outer contour cut for every panel --
                 foreach (var panel in allPanels)
                     panel.AddFormattingContour(routerToolNr);
 
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                    "Router: Formatierung contour added to " + allPanels.Count + " panels");
+                    "Router: formatting contour added to " + allPanels.Count + " panels");
             }
 
             var korpusDict = new Dictionary<string, object>();
@@ -740,7 +740,7 @@ namespace WallabyHop.Components.Korpus
 
                         // Flat Z=0 = machined face of the panel (inner face for vertical panels,
                         // bottom face for horizontal panels).
-                        // For horizontal panels (Boden/Deckel): Z=0 maps to bottom/top face,
+                        // For horizontal panels (Bottom/Top): Z=0 maps to bottom/top face,
                         //   normal points up/down = drill goes into material correctly.
                         // For vertical panels (LeftSide/RightSide): Z=0 maps to OUTER face after
                         //   PlaneToPlane, but machining is from the INNER face.

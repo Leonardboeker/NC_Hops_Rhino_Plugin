@@ -23,7 +23,7 @@ namespace WallabyHop.Components.Operations
         public HopCircPocketComponent() : base(
             "HopCircPocket", "HopCircPocket",
             "Generates circular pocket operations (Kreistasche_V5 macro) for the DYNESTIC CNC. Creates a cylindrical pocket at the specified center point, radius, and depth.",
-            "Wallaby Hop", "Fräsen") { }
+            "Wallaby Hop", "Milling") { }
 
         public override Guid ComponentGuid => new Guid("795d39f9-23ad-4499-966e-583a3e17439e");
 
@@ -36,7 +36,7 @@ namespace WallabyHop.Components.Operations
             pManager.AddPointParameter("Center", "center", "Center point of the circular pocket. Z coordinate defines the plate surface height.", GH_ParamAccess.item);
             pManager.AddNumberParameter("Radius", "radius", "Pocket radius in mm. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddNumberParameter("Depth", "depth", "Pocket depth in mm, measured downward from center Z. Default 1.0.", GH_ParamAccess.item, 1.0);
-            pManager.AddNumberParameter("Stepdown", "stepdown", "Depth per pass in mm (Zustellung). 0 = single pass. Default 0.", GH_ParamAccess.item, 0.0);
+            pManager.AddNumberParameter("Stepdown", "stepdown", "Depth per pass in mm (stepdown). 0 = single pass. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddIntegerParameter("ToolNr", "toolNr", "Tool magazine position number. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddColourParameter("Colour", "colour", "Preview colour for the pocket cylinder in the Rhino viewport.", GH_ParamAccess.item, Color.Cyan);
 
@@ -135,16 +135,16 @@ namespace WallabyHop.Components.Operations
                 + ",_VA,_SD,0,'')");
 
             // surfaceZ: Z of the input center point
-            double surfaceZ   = center.Z;
-            double cutZ       = surfaceZ - Math.Abs(depth);
-            double zustellung = (stepdown > 0) ? stepdown : 0;
+            double surfaceZ    = center.Z;
+            double cutZ        = surfaceZ - Math.Abs(depth);
+            double stepdownVal = (stepdown > 0) ? stepdown : 0;
 
             lines.Add("CALL _Kreistasche_V5(VAL "
                 + "X_Mitte:=" + center.X.ToString(CultureInfo.InvariantCulture) + ","
                 + "Y_Mitte:=" + center.Y.ToString(CultureInfo.InvariantCulture) + ","
                 + "Radius:=" + radius.ToString(CultureInfo.InvariantCulture) + ","
                 + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                + "Zustellung:=" + zustellung.ToString(CultureInfo.InvariantCulture) + ","
+                + "Zustellung:=" + stepdownVal.ToString(CultureInfo.InvariantCulture) + ","
                 + "AB:=2,ABF:=_ANF,Interpol:=0,umkehren:=0,esxy:=0,esmd:=0,laser:=0)");
 
             // ---------------------------------------------------------------

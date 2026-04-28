@@ -10,7 +10,7 @@ namespace WallabyHop.Components.Korpus
     {
         public HopFeetComponent()
             : base("HopFeet", "HopFeet",
-                "Cabinet levelling feet via Befestigungsplatte (92x79mm, 64x64mm hole grid). Generates 4 drill holes per foot corner. Wire into HopKorpus 'feet' input.",
+                "Cabinet levelling feet via mounting plate (92x79mm, 64x64mm hole grid). Generates 4 drill holes per foot corner. Wire into HopKorpus 'feet' input.",
                 "Wallaby Hop", "Cabinet")
         {
         }
@@ -30,7 +30,7 @@ namespace WallabyHop.Components.Korpus
             pManager[1].Optional = true;
 
             // Index 2
-            pManager.AddNumberParameter("SockelHeight", "sockel",
+            pManager.AddNumberParameter("PlinthHeight", "plinth",
                 "Plinth height in mm (informational label only). Default 100.",
                 GH_ParamAccess.item, 100.0);
             pManager[2].Optional = true;
@@ -47,17 +47,17 @@ namespace WallabyHop.Components.Korpus
         {
             int variant = 1;
             double offset = 50.0;
-            double sockel = 100.0;
+            double plinth = 100.0;
             DA.GetData(0, ref variant);
             DA.GetData(1, ref offset);
-            DA.GetData(2, ref sockel);
+            DA.GetData(2, ref plinth);
 
             if (variant < 0 || variant > 1)
             { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Variant must be 0 or 1"); return; }
             if (offset <= 32)
             { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "FootOffset must be > 32mm (half the 64mm grid)"); return; }
 
-            // Befestigungsplatte: 4 holes at ±32mm from foot centre
+            // Mounting plate: 4 holes at ±32mm from foot centre
             double drillDia   = variant == 0 ? 4.0  : 10.0;
             double drillDepth = variant == 0 ? 10.0 : 12.0;
 
@@ -67,13 +67,13 @@ namespace WallabyHop.Components.Korpus
             dict["drillDiameter"] = drillDia;
             dict["drillDepth"]   = drillDepth;
             dict["footOffset"]   = offset;
-            dict["footGrid"]     = 64.0;   // Befestigungsplatte hole grid = 64x64mm
-            dict["sockelHeight"] = sockel;
+            dict["footGrid"]     = 64.0;   // Mounting plate hole grid = 64x64mm
+            dict["sockelHeight"] = plinth;
 
             DA.SetData(0, new GH_ObjectWrapper(dict));
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                 "HopFeet: " + (variant == 0 ? "Screw" : "Press-fit")
-                + " Ø" + drillDia + "mm/" + drillDepth + "mm, offset=" + offset + "mm, sockel=" + sockel + "mm");
+                + " Ø" + drillDia + "mm/" + drillDepth + "mm, offset=" + offset + "mm, plinth=" + plinth + "mm");
         }
 
         protected override Bitmap Icon => IconHelper.Load("HopFeet");
@@ -87,10 +87,10 @@ namespace WallabyHop.Components.Korpus
             AutoWire.Apply(this, doc, new[]
             {
                 AutoWire.Spec.ValueList(
-                    ("Zum Schrauben (\u00d84mm, 10mm)", "0"),
-                    ("Zum Einpressen (\u00d810mm, 12mm)", "1")),  // Variant
+                    ("Screw (\u00d84mm, 10mm)", "0"),
+                    ("Press-fit (\u00d810mm, 12mm)", "1")),  // Variant
                 AutoWire.Spec.Float("33<50<100"),  // FootOffset
-                AutoWire.Spec.Float("50<100<300"), // SockelHeight
+                AutoWire.Spec.Float("50<100<300"), // PlinthHeight
             });
         }
     }

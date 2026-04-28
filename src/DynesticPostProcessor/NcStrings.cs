@@ -11,7 +11,7 @@ namespace WallabyHop
             return "WZB (" + toolNr.ToString() + ",_VE,_V*1,_VA,_SD,0,'')";
         }
 
-        internal static string BohrungLine(double x, double y, double surfaceZ, double cutZ, double diameter)
+        internal static string DrillLine(double x, double y, double surfaceZ, double cutZ, double diameter)
         {
             return "Bohrung ("
                 + x.ToString(CultureInfo.InvariantCulture) + ","
@@ -30,17 +30,17 @@ namespace WallabyHop
             return "WZS (" + toolNr.ToString() + ",_VE,_V*0.3,_VA,_SD,0,'')";
         }
 
-        internal static string NutenFreiLine(double x1, double y1, double x2, double y2,
-            double nb, double tiefe, double lage)
+        internal static string FreeSlotLine(double x1, double y1, double x2, double y2,
+            double slotWidth, double depth, double bladeAngle)
         {
             return "CALL _nuten_frei_v5(VAL "
                 + "X1:=" + x1.ToString(CultureInfo.InvariantCulture) + ","
                 + "Y1:=" + y1.ToString(CultureInfo.InvariantCulture) + ","
                 + "X2:=" + x2.ToString(CultureInfo.InvariantCulture) + ","
                 + "Y2:=" + y2.ToString(CultureInfo.InvariantCulture) + ","
-                + "NB:=" + nb.ToString(CultureInfo.InvariantCulture) + ","
-                + "Tiefe:=" + tiefe.ToString(CultureInfo.InvariantCulture) + ","
-                + "LAGE:=" + lage.ToString(CultureInfo.InvariantCulture)
+                + "NB:=" + slotWidth.ToString(CultureInfo.InvariantCulture) + ","
+                + "Tiefe:=" + depth.ToString(CultureInfo.InvariantCulture) + ","
+                + "LAGE:=" + bladeAngle.ToString(CultureInfo.InvariantCulture)
                 + ",RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)";
         }
     }

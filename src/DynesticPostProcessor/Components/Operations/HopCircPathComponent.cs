@@ -23,7 +23,7 @@ namespace WallabyHop.Components.Operations
         public HopCircPathComponent() : base(
             "HopCircPath", "HopCircPath",
             "Generates circular profile path operations (Kreisbahn_V5 macro) for the DYNESTIC CNC. Cuts along a circular path with optional radius correction and arc angle.",
-            "Wallaby Hop", "Fräsen") { }
+            "Wallaby Hop", "Milling") { }
 
         public override Guid ComponentGuid => new Guid("7beb0809-a67e-485b-913f-ebae9bd50294");
 
@@ -37,7 +37,7 @@ namespace WallabyHop.Components.Operations
             pManager.AddNumberParameter("Radius", "radius", "Path radius in mm. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddIntegerParameter("RadiusCorr", "radiusCorr", "Radius correction mode: 1 = inside (tool inside path), -1 = outside, 0 = center (tool center on path). Default 0.", GH_ParamAccess.item, 0);
             pManager.AddNumberParameter("Depth", "depth", "Cut depth in mm, measured downward from center Z. Default 1.0.", GH_ParamAccess.item, 1.0);
-            pManager.AddNumberParameter("Stepdown", "stepdown", "Depth per pass in mm (ZuTiefe). 0 = single pass. Default 0.", GH_ParamAccess.item, 0.0);
+            pManager.AddNumberParameter("Stepdown", "stepdown", "Depth per pass in mm (stepdown depth). 0 = single pass. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddNumberParameter("Angle", "angle", "Arc angle in degrees. 360 = full circle. Default 360.", GH_ParamAccess.item, 360.0);
             pManager.AddIntegerParameter("ToolNr", "toolNr", "Tool magazine position number. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddColourParameter("Colour", "colour", "Preview colour for the path cylinder in the Rhino viewport.", GH_ParamAccess.item, Color.LimeGreen);
@@ -158,13 +158,13 @@ namespace WallabyHop.Components.Operations
             // surfaceZ: Z of the input center point
             double surfaceZ  = center.Z;
             double cutZ      = surfaceZ - Math.Abs(depth);
-            double zuTiefe   = (stepdown > 0) ? stepdown : 0;
+            double stepdownVal = (stepdown > 0) ? stepdown : 0;
 
             lines.Add("CALL _Kreisbahn_V5(VAL "
                 + "X_Mitte:=" + center.X.ToString(CultureInfo.InvariantCulture) + ","
                 + "Y_Mitte:=" + center.Y.ToString(CultureInfo.InvariantCulture) + ","
                 + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                + "ZuTiefe:=" + zuTiefe.ToString(CultureInfo.InvariantCulture) + ","
+                + "ZuTiefe:=" + stepdownVal.ToString(CultureInfo.InvariantCulture) + ","
                 + "Radius:=" + radius.ToString(CultureInfo.InvariantCulture) + ","
                 + "Radiuskorrektur:=" + radiusCorr.ToString() + ","
                 + "AB:=1,Aufmass:=0,Bearb_umkehren:=1,"

@@ -1,52 +1,52 @@
 # Plugin Backlog
 
-Verbesserungen und offene Punkte.
+Improvements and open items.
 
 ---
 
-## Offen — muss auf der Maschine verifiziert werden
+## Open — needs verification on the machine
 
-### `LAGE`-Parameter in HopSaw unverified
-- `LAGE:=bladeAngle` in `_nuten_frei_v5` ist eine Annahme — nicht auf der Maschine getestet
-- Solange das nicht verifiziert ist, kann HopSaw falsche Schnitte ausgeben
-- **Aktion:** Testschnitt auf der DYNESTIC fahren. Wenn `LAGE` nicht die Blade-Tilt-Achse ist, richtigen Parameter aus dem CAMPUS-Controller raussuchen.
+### `LAGE` parameter in HopSaw unverified
+- `LAGE:=bladeAngle` in `_nuten_frei_v5` is an assumption — not tested on the machine
+- Until this is verified, HopSaw may produce wrong cuts
+- **Action:** run a test cut on the DYNESTIC. If `LAGE` is not the blade-tilt axis, find the correct parameter from the CAMPUS controller.
 
-### `HopDrill` Stepdown — Maschinentest ausstehend
-- Loop-Reihenfolge wurde gefixt (äußere Schleife = Punkt, innere = Pass) ✅
-- Ob das auf der CAMPUS-Steuerung einen Unterschied macht: noch nicht getestet
-- **Aktion:** Testbohrung mit Stepdown fahren und Abfahrtreihenfolge prüfen.
+### `HopDrill` Stepdown — machine test pending
+- Loop order has been fixed (outer loop = point, inner = pass) ✅
+- Whether this makes a difference on the CAMPUS controller: not yet tested
+- **Action:** run a test drill with stepdown and check the travel order.
 
-### `HopExport` Header-Dimensionen — Maschinentest ausstehend
-- Header schreibt jetzt korrekte DX/DY/DZ-Werte ✅
-- Unklar ob CAMPUS den Header oder den VARS-Block liest
-- **Aktion:** Auf der Maschine prüfen ob die Werte im Header relevant sind.
-
----
-
-## Fehlende Komponenten
-
-### `HopAngledDrill` (Schrägbohrung)
-- Entfernt aus Phase 8.7 — erst CAMPUS-Controller prüfen ob das Macro existiert
-- **Aktion:** Macro-Name + Parameter aus CAMPUS raussuchen, dann implementieren.
+### `HopExport` header dimensions — machine test pending
+- Header now writes correct DX/DY/DZ values ✅
+- Unclear whether CAMPUS reads the header or the VARS block
+- **Action:** verify on the machine whether the header values are relevant.
 
 ---
 
-## Erledigt in Phase 8.7 (2026-04-06)
+## Missing components
 
-- ✅ `HopDrill` Stepdown-Loop-Reihenfolge gefixt (Punkt → Passes, nicht umgekehrt)
-- ✅ `HopExport` Header-Dimensionen: DX/DY/DZ aus Inputs statt hardcoded 0
-- ✅ `HopExport` Operation-Sortierung: WZB → WZF → WZS automatisch
-- ✅ `HopExport` Export-Trigger: Rising-Edge (false→true), kein manuelles Zurücksetzen nötig
-- ✅ `HopSaw` Length aus dirLine: wenn Length=Default (600), wird Linienlänge verwendet
-- ✅ `PreviewHelper` statische Klasse: DrawMeshes / DrawWires / GetClippingBox
-- ✅ Alle 7 Op-Komponenten auf PreviewHelper umgestellt (kein duplizierter Preview-Code mehr)
-- ✅ `NcStrings.cs`: NcDrill / NcSaw / NcExport interne Helper ohne Rhino-Dependency
-- ✅ NUnit 3 Testprojekt: 17 Tests, alle grün
-- ✅ HopEdgeBanding: bewusst gestrichen
+### `HopAngledDrill` (angled drill)
+- Removed from Phase 8.7 — first check the CAMPUS controller for whether the macro exists
+- **Action:** find the macro name + parameters in CAMPUS, then implement.
 
 ---
 
-## Notizen
+## Done in Phase 8.7 (2026-04-06)
 
-- `MACHINE_NOTES.md` für maschinenspezifische Erkenntnisse nutzen (z.B. verifizierter `LAGE`-Wert)
-- Alle NC-Format-Fragen zuerst in `Datein/Muster_DXF_Import.hop` nachschauen — das ist die Ground Truth
+- ✅ `HopDrill` stepdown loop order fixed (point → passes, not the other way around)
+- ✅ `HopExport` header dimensions: DX/DY/DZ from inputs instead of hardcoded 0
+- ✅ `HopExport` operation sorting: WZB → WZF → WZS automatic
+- ✅ `HopExport` export trigger: rising edge (false→true), no manual reset needed
+- ✅ `HopSaw` length from dirLine: when Length=Default (600), the line length is used
+- ✅ `PreviewHelper` static class: DrawMeshes / DrawWires / GetClippingBox
+- ✅ All 7 op components migrated to PreviewHelper (no more duplicated preview code)
+- ✅ `NcStrings.cs`: NcDrill / NcSaw / NcExport internal helpers without Rhino dependency
+- ✅ NUnit 3 test project: 17 tests, all green
+- ✅ HopEdgeBanding: deliberately dropped
+
+---
+
+## Notes
+
+- Use `MACHINE_NOTES.md` for machine-specific findings (e.g. verified `LAGE` value)
+- For all NC-format questions, check `Datein/Muster_DXF_Import.hop` first — that is the ground truth

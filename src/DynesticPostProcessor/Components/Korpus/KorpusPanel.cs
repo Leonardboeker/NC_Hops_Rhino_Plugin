@@ -43,7 +43,7 @@ namespace WallabyHop.Components.Korpus
         /// <summary>
         /// Creates a new KorpusPanel with a flat rectangular Brep at the origin.
         /// </summary>
-        /// <param name="name">Panel name (e.g. "Boden", "Deckel")</param>
+        /// <param name="name">Panel name (e.g. "Bottom", "Top")</param>
         /// <param name="width">Panel width in mm</param>
         /// <param name="height">Panel height in mm</param>
         /// <param name="thickness">Material thickness in mm</param>

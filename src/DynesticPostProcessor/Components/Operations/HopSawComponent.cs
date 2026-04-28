@@ -28,7 +28,7 @@ namespace WallabyHop.Components.Operations
             "These are two independent parameters: direction is where the saw goes, blade angle is how the blade is tilted.\n\n" +
             "Side: kerf placement Left / Center / Right of the direction line.\n" +
             "Extend: runs the blade past both endpoints so the kerf fully exits the panel edge.",
-            "Wallaby Hop", "Sägen") { }
+            "Wallaby Hop", "Sawing") { }
 
         public override Guid ComponentGuid => new Guid("c8d2f1a3-4b7e-4c9d-a1f5-2e3b6d8c0f14");
 
@@ -50,7 +50,7 @@ namespace WallabyHop.Components.Operations
             pManager.AddNumberParameter("BladeAngle", "bladeAngle",
                 "Physical tilt angle of the saw blade in degrees.\n" +
                 "  0   = blade vertical (straight cut, no miter)\n" +
-                " 45   = blade tilted 45 deg (Gehrungsschnitt through material thickness)\n" +
+                " 45   = blade tilted 45 deg (miter cut through material thickness)\n" +
                 " 22.5 = 22.5 deg miter\n" +
                 "Range: -90 to +90. Supply a single value (applied to all cuts) or a list matching DirLine count.",
                 GH_ParamAccess.list);
@@ -278,7 +278,7 @@ namespace WallabyHop.Components.Operations
                 double cutZ = topZ - Math.Abs(depth);
 
                 allLines.Add(NcSaw.ToolCall(toolNr));
-                allLines.Add(NcSaw.NutenFreiLine(cutP1.X, cutP1.Y, cutP2.X, cutP2.Y, sawKerf, cutZ, bladeAngle));
+                allLines.Add(NcSaw.FreeSlotLine(cutP1.X, cutP1.Y, cutP2.X, cutP2.Y, sawKerf, cutZ, bladeAngle));
 
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                     "[" + i + "] bladeAngle=" + bladeAngle.ToString("F1", CultureInfo.InvariantCulture) + "deg"

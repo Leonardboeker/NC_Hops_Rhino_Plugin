@@ -23,7 +23,7 @@ namespace WallabyHop.Components.Operations
         public HopContourComponent() : base(
             "HopContour", "HopContour",
             "Generates 2D contour cutting paths for the DYNESTIC CNC. Converts planar curves into SP/G01/G03M macro sequences with optional kerf compensation and multi-pass stepdown.",
-            "Wallaby Hop", "Fräsen") { }
+            "Wallaby Hop", "Milling") { }
 
         public override Guid ComponentGuid => new Guid("e2902790-ccf6-4880-b284-80e0110f1e71");
 
@@ -40,8 +40,8 @@ namespace WallabyHop.Components.Operations
             pManager.AddIntegerParameter("ToolNr", "toolNr", "Tool magazine position number. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddNumberParameter("ToolDiameter", "toolDiameter", "Tool diameter in mm, used for kerf compensation offset when side != 0. Default 8.0.", GH_ParamAccess.item, 8.0);
             pManager.AddIntegerParameter("Side", "side", "Kerf compensation side relative to direction of travel.\n+1 = Left  (tool offset to the LEFT -- inward for CCW curves)\n 0 = Center (no offset)\n-1 = Right (tool offset to the RIGHT -- outward for CCW curves)\nConnect a ValueList for a dropdown.", GH_ParamAccess.item, 0);
-            pManager.AddIntegerParameter("Passes", "passes", "Number of passes (Zustellungen) for multi-pass cutting. 1 = single pass at full depth. Default 1.", GH_ParamAccess.item, 1);
-            pManager.AddNumberParameter("Overcut", "overcut", "Extra depth in mm added as a final pass after all Zustellungen (e.g. 0.2 to ensure full cut-through). Default 0.", GH_ParamAccess.item, 0.0);
+            pManager.AddIntegerParameter("Passes", "passes", "Number of passes for multi-pass cutting. 1 = single pass at full depth. Default 1.", GH_ParamAccess.item, 1);
+            pManager.AddNumberParameter("Overcut", "overcut", "Extra depth in mm added as a final pass after all stepdown passes (e.g. 0.2 to ensure full cut-through). Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddNumberParameter("LeadOut", "leadOut", "Lead-out length in mm. Extends the path past the end point for a clean exit. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddBooleanParameter("AutoFlip", "autoFlip", "When true, automatically reverse curve direction so the kerf offset goes to the correct (outer) side. Only applies to closed curves with side != 0. Default false.", GH_ParamAccess.item, false);
             pManager.AddIntegerParameter("CornerStyle", "cornerStyle", "Offset corner style for kerf compensation.\n0 = Sharp (default)\n1 = Round\n2 = Smooth\nConnect a ValueList for dropdown.", GH_ParamAccess.item, 0);
@@ -359,7 +359,7 @@ namespace WallabyHop.Components.Operations
         // by connectivity -- each connected run becomes one SP/EP block.
         // ---------------------------------------------------------------
         private void BuildContourBlock(List<string> lines, List<Curve> flat,
-            double zEintauch, double tol, int nPasses = 1, double leadIn = 0.0, double leadOut = 0.0)
+            double zPlunge, double tol, int nPasses = 1, double leadIn = 0.0, double leadOut = 0.0)
         {
             if (flat == null || flat.Count == 0) return;
 
@@ -388,7 +388,7 @@ namespace WallabyHop.Components.Operations
 
                 lines.Add("SP (" + Fmt(spPt.X) + ","
                     + Fmt(spPt.Y) + ","
-                    + Fmt(zEintauch)
+                    + Fmt(zPlunge)
                     + spTail);
 
                 if (leadIn > 0.0)

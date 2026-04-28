@@ -129,11 +129,11 @@ namespace WallabyHop.Components.Korpus
             WallabyHop.AutoWire.Apply(this, doc, new[]
             {
                 WallabyHop.AutoWire.Spec.ValueList(
-                    ("Holzd\u00fcbel 8\u00d730", "0"),
-                    ("Holzd\u00fcbel 8\u00d740", "1"),
+                    ("Wood dowel 8\u00d730", "0"),
+                    ("Wood dowel 8\u00d740", "1"),
                     ("Cabineo 8", "2"),
                     ("Clamex P-14", "3"),
-                    ("Nesting-D\u00fcbel", "4")),       // Type
+                    ("Nesting dowel", "4")),       // Type
                 WallabyHop.AutoWire.Spec.Toggle(),           // AutoCount
                 WallabyHop.AutoWire.Spec.Int("1<2<6"),       // Count
             });

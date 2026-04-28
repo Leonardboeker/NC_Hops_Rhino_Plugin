@@ -9,131 +9,131 @@
 
 | Field | Value |
 |-------|-------|
-| **Hersteller** | HOLZ-HER GmbH (Weinig Group) |
-| **Modell** | DYNESTIC **7535** |
-| **Typ** | 5-Achs Nesting-CNC (Flachbett-Gantry) |
-| **Achsen** | 5-Achs (A ±180°, C ±360°) — mechanisch vorhanden |
-| **Primäranwendung** | Plattenzuschnitt, Fräsen, Bohren (Holzwerkstoffe: MDF, Sperrholz, Spanplatte) |
+| **Manufacturer** | HOLZ-HER GmbH (Weinig Group) |
+| **Model** | DYNESTIC **7535** |
+| **Type** | 5-axis nesting CNC (flatbed gantry) |
+| **Axes** | 5-axis (A ±180°, C ±360°) — mechanically present |
+| **Primary application** | Panel cutting, milling, drilling (wood materials: MDF, plywood, particle board) |
 
 ---
 
-## CAM-Software (PC-seitig, nicht am Gerät)
+## CAM software (PC side, not on the machine)
 
 | Field | Value |
 |-------|-------|
 | **Software** | HOPS |
 | **Version** | **7.7.12.80** |
-| **Hersteller** | direkt cns-systeme gmbh, Erich-Klink-Straße 11, D-73553 Alfdorf |
+| **Manufacturer** | direkt cns-systeme gmbh, Erich-Klink-Straße 11, D-73553 Alfdorf |
 | **Slogan** | "cad/cam powered by innovation" |
-| **Dongle-ID** | [REDACTED] |
+| **Dongle ID** | [REDACTED] |
 
-### Freigeschaltete Funktionen (Dongle)
+### Enabled features (dongle)
 
-| Funktion | Status |
-|----------|--------|
-| MVV_Simu | **Aktiv** |
-| FKM | — (nicht lizenziert) |
+| Feature | Status |
+|---------|--------|
+| MVV_Simu | **Active** |
+| FKM | — (not licensed) |
 | MachineComp | — |
 | NCKontur | — |
 | VSPMillSAxis | — |
 | Mill5Axis | — |
-| **3DMilling** | — **(nicht lizenziert!)** |
-| LeadingOutWithoutSafety | **Aktiv** |
-| APP | **Aktiv** (lizenziert 11.6.2021) |
-| CM | **Aktiv** (lizenziert 31.8.2022) |
+| **3DMilling** | — **(not licensed!)** |
+| LeadingOutWithoutSafety | **Active** |
+| APP | **Active** (licensed 2021-06-11) |
+| CM | **Active** (licensed 2022-08-31) |
 
-> **Wichtig:** 3DMilling, Mill5Axis und VSPMillSAxis sind auf diesem Dongle **nicht** freigeschaltet.
-> Das bedeutet: 3D-Fräspfade können in HOPS nicht erstellt oder simuliert werden.
-> Die Maschine (7535) unterstützt 5-Achs mechanisch — aber die HOPS-Lizenz deckt das nicht ab.
-> → Phase 4 (3D Milling) des Post-Prozessors kann nicht über HOPS verifiziert werden.
+> **Important:** 3DMilling, Mill5Axis and VSPMillSAxis are **not** enabled on this dongle.
+> That means: 3D milling paths cannot be created or simulated in HOPS.
+> The machine (7535) supports 5-axis mechanically — but the HOPS licence does not cover it.
+> → Phase 4 (3D Milling) of the post processor cannot be verified through HOPS.
 
 ---
 
-## Maschinensteuerung (am Gerät)
+## Machine controller (on the device)
 
 | Field | Value |
 |-------|-------|
 | **Software** | HOLZHER CAMPUS |
-| **Interface** | Touch-Display, Windows-basiert |
-| **Dateiformat** | `.hop` (NC-Hops Part Program) |
+| **Interface** | Touch display, Windows-based |
+| **File format** | `.hop` (NC-Hops Part Program) |
 
-### Bestätigte .hop-Dateien (vom Datei-Browser des Controllers, Foto 2)
+### Confirmed .hop files (from the controller's file browser, photo 2)
 
-| Dateiname | Datum |
-|-----------|-------|
-| `05_Tisch_bohren.hop` | 01.12.2025 |
-| `05_diplplatten_gesamt.hop` | 23.01.2025 |
-| `kantenschnitt.hop` | 12.04.2024 |
-| `Tor-Träger (r=f) Boden W2G2402.hop` | 06.10.2024 |
-| `T-Träger (r=f) Boden W2G2402.hop` | 11.02.2024 |
+| File name | Date |
+|-----------|------|
+| `05_Tisch_bohren.hop` | 2025-12-01 |
+| `05_diplplatten_gesamt.hop` | 2025-01-23 |
+| `kantenschnitt.hop` | 2024-04-12 |
+| `Tor-Träger (r=f) Boden W2G2402.hop` | 2024-10-06 |
+| `T-Träger (r=f) Boden W2G2402.hop` | 2024-02-11 |
 
-> Diese Dateien sind auf dem Controller-PC vorhanden und eignen sich als Referenz für Phase 1 (Format-Analyse).
-> Eine dieser Dateien kopieren → Texteditor öffnen → Format dekodieren.
+> These files are present on the controller PC and are suitable as references for Phase 1 (format analysis).
+> Copy one of these files → open in a text editor → decode the format.
 
 ---
 
-## NC-Hops Makro-Syntax (aus HOPS Code-Fenster, Foto 3)
+## NC-Hops macro syntax (from the HOPS code window, photo 3)
 
-Aus dem sichtbaren Code-Panel in HOPS konnten folgende Makros abgelesen werden:
+The following macros could be read from the visible code panel in HOPS:
 
 ```
-PANTEXT(...)                          — Panel-Beschriftung / Label-Header
-HK_MaxLabel_[HnodesLabelPos]_[...]    — Max-Label-Definition (Labeling)
-EN_TransformMatrix()                  — Koordinatensystem-Transformation (Header)
-VCT(ZE_V_VA_3D_ARF:T)               — Werkzeug-/Vektordefinition
-Format: 0,1,2,7,8,11:...             — Formatangabe (Parameterblock)
-Tasche(60,280,319.6,0.5,0.5,AT,MAXDEPTH) — Taschenfräsung (Pocket)
-Bohrug(19,165.5,11)                  — Bohrung (Drilling), x=19, y=165.5, z/depth=11
-Bohrug(19,165.5,11)                  — (wiederholt)
-VCT(D_K_HE_U_MORFL_VF...)           — weitere Werkzeugdefinition
+PANTEXT(...)                          — Panel labelling / label header
+HK_MaxLabel_[HnodesLabelPos]_[...]    — Max-label definition (labelling)
+EN_TransformMatrix()                  — Coordinate-system transform (header)
+VCT(ZE_V_VA_3D_ARF:T)                 — Tool / vector definition
+Format: 0,1,2,7,8,11:...              — Format specification (parameter block)
+Tasche(60,280,319.6,0.5,0.5,AT,MAXDEPTH) — Pocket milling
+Bohrug(19,165.5,11)                   — Drilling, x=19, y=165.5, z/depth=11
+Bohrug(19,165.5,11)                   — (repeated)
+VCT(D_K_HE_U_MORFL_VF...)             — further tool definition
 ```
 
-### Bekannte Makros aus Recherche + Foto-Bestätigung
+### Known macros from research + photo confirmation
 
-| Makro | Operation | Parameter (soweit bekannt) |
-|-------|-----------|---------------------------|
-| `Bohrug(x,y,depth)` | Vertikale Bohrung | x, y, Tiefe |
-| `BOHRUNG(x,y,z,depth,...)` | Vertikale Bohrung (Langform) | 12 Parameter (community-dokumentiert) |
-| `HORZB(x,y,z,d,depth,...)` | Horizontalbohrung | 12 Parameter |
-| `Tasche(x,y,len,...)` | Taschenfrässung | x, y, Länge?, Breite?, Tiefe?, Flags |
-| `PANTEXT(...)` | Panel-Beschriftung | — |
+| Macro | Operation | Parameters (as known) |
+|-------|-----------|------------------------|
+| `Bohrug(x,y,depth)` | Vertical drill | x, y, depth |
+| `BOHRUNG(x,y,z,depth,...)` | Vertical drill (long form) | 12 parameters (community-documented) |
+| `HORZB(x,y,z,d,depth,...)` | Horizontal drill | 12 parameters |
+| `Tasche(x,y,len,...)` | Pocket milling | x, y, length?, width?, depth?, flags |
+| `PANTEXT(...)` | Panel labelling | — |
 | `EN_TransformMatrix()` | Transformation | — |
-| `VCT(...)` | Werkzeug-/Pfaddefinition | Parameter unklar |
+| `VCT(...)` | Tool / path definition | Parameters unclear |
 
-> `Bohrug` ist vermutlich eine Kurzform von `BOHRUNG` — oder ein anderes Macro. Zu klären mit Sample-Datei.
-
----
-
-## Nächste Schritte (Phase 1)
-
-1. **Eine der `.hop`-Dateien vom Controller-PC kopieren** (z.B. `kantenschnitt.hop` oder `05_Tisch_bohren.hop`)
-2. Datei im Texteditor öffnen → prüfen ob ASCII
-3. Vollständige Makro-Liste + Header/Footer dokumentieren
-4. Dann: Phase 2 starten (GHPython Engine)
+> `Bohrug` is presumably a short form of `BOHRUNG` — or a different macro. To be clarified with a sample file.
 
 ---
 
----
+## Next steps (Phase 1)
 
-## Maschinenlieferant / Servicepartner
-
-**SAMSTAG MaschinenTechnik** — Kontakt für technischen Support, Software-Lizenz-Fragen (HOPS-Dongle) und .hop-Format-Fragen.
-*(Quelle: Outlook-Screenshot aus `Datein/` Ordner, 2026-03-24)*
-
----
-
-## Sample-Datei erhalten (2026-03-24)
-
-`Datein/Muster_DXF_Import.hop` — vollständige Musterdatei mit allen relevanten Operationstypen:
-- Außenkontur (SP/G01/G03M/EP)
-- Vertikalbohrungen (Bohrung)
-- Horizontalbohrungen (HorzB)
-- Nut (CALL _nuten_frei_v5)
-- Kreistasche / Kreisbahn / Rechtecktasche (CALL _*_V5)
-
-**Phase 1 Blocker aufgelöst.** Vollständige Analyse in `.planning/research/HOP_FORMAT_DECODED.md`
+1. **Copy one of the `.hop` files from the controller PC** (e.g. `kantenschnitt.hop` or `05_Tisch_bohren.hop`)
+2. Open the file in a text editor → check whether it is ASCII
+3. Document the full macro list + header/footer
+4. Then: start Phase 2 (GHPython engine)
 
 ---
 
-*Erstellt: 2026-03-23 — Quelle: Fotos der Maschine und Software*
-*Aktualisiert: 2026-03-24 — Sample-Datei erhalten, Format vollständig dekodiert*
+---
+
+## Machine supplier / service partner
+
+**SAMSTAG MaschinenTechnik** — contact for technical support, software-licence questions (HOPS dongle) and .hop format questions.
+*(Source: Outlook screenshot from `Datein/` folder, 2026-03-24)*
+
+---
+
+## Sample file received (2026-03-24)
+
+`Datein/Muster_DXF_Import.hop` — full sample file with all relevant operation types:
+- Outer contour (SP/G01/G03M/EP)
+- Vertical drills (Bohrung)
+- Horizontal drills (HorzB)
+- Groove (CALL _nuten_frei_v5)
+- Circular pocket / circular path / rectangular pocket (CALL _*_V5)
+
+**Phase 1 blocker resolved.** Full analysis in `.planning/research/HOP_FORMAT_DECODED.md`
+
+---
+
+*Created: 2026-03-23 — Source: photos of the machine and software*
+*Updated: 2026-03-24 — Sample file received, format fully decoded*

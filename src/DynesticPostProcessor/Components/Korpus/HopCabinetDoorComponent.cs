@@ -10,7 +10,7 @@ namespace WallabyHop.Components.Korpus
     {
         public HopCabinetDoorComponent()
             : base("HopCabinetDoor", "HopCabinetDoor",
-                "Cabinet door with hinge (Topfband) hole layout. Computes door dimensions from overlay type and generates hinge cup holes. Wire into HopKorpus 'door' input.",
+                "Cabinet door with cup hinge hole layout. Computes door dimensions from overlay type and generates hinge cup holes. Wire into HopKorpus 'door' input.",
                 "Wallaby Hop", "Cabinet")
         {
         }
@@ -26,14 +26,14 @@ namespace WallabyHop.Components.Korpus
             pManager[0].Optional = true;
 
             pManager.AddIntegerParameter("Overlay", "overlay",
-                "Door overlay type. 0=FullOverlay (Vollanschlag: door covers full cabinet front, width = innerW + 2*MS - gap), "
-                + "1=HalfOverlay (Halbeinschlag: used for adjacent cabinets, width = innerW/2 + MS/2), "
-                + "2=Inset (Einliegend: door sits inside opening, width = innerW - 2mm gap). Default 0.",
+                "Door overlay type. 0=FullOverlay (door covers full cabinet front, width = innerW + 2*MS - gap), "
+                + "1=HalfOverlay (used for adjacent cabinets, width = innerW/2 + MS/2), "
+                + "2=Inset (door sits inside opening, width = innerW - 2mm gap). Default 0.",
                 GH_ParamAccess.item, 0);
             pManager[1].Optional = true;
 
             pManager.AddIntegerParameter("HingeType", "hinge",
-                "Hinge type. 0=Blum ClipTop, 1=Haefele Duomatic. Both use identical 35mm Topf dimensions. Default 0.",
+                "Hinge type. 0=Blum ClipTop, 1=Haefele Duomatic. Both use identical 35mm cup dimensions. Default 0.",
                 GH_ParamAccess.item, 0);
             pManager[2].Optional = true;
 
@@ -125,7 +125,7 @@ namespace WallabyHop.Components.Korpus
             dict["gap"]           = gap;
 
             // Hinge cup dimensions (same for Blum and Haefele)
-            dict["hinge_cupDia"]      = 35.0;    // Topf diameter
+            dict["hinge_cupDia"]      = 35.0;    // cup diameter
             dict["hinge_cupDepth"]    = 13.5;    // drill depth
             dict["hinge_edgeDist"]    = 22.5;    // cup centre from door short edge
             dict["hinge_s32Pos"]      = 128.0;   // first hinge from top/bottom (4x System-32)
@@ -156,18 +156,18 @@ namespace WallabyHop.Components.Korpus
             base.AddedToDocument(doc);
             WallabyHop.AutoWire.Apply(this, doc, new[]
             {
-                WallabyHop.AutoWire.Spec.ValueList(("1 T\u00fcr", "1"), ("2 T\u00fcren", "2")),        // Count
+                WallabyHop.AutoWire.Spec.ValueList(("1 door", "1"), ("2 doors", "2")),        // Count
                 WallabyHop.AutoWire.Spec.ValueList(
-                    ("Vollanschlag (Full Overlay)", "0"),
-                    ("Halbeinschlag (Half Overlay)", "1"),
-                    ("Einliegend (Inset)", "2")),                                                          // Overlay
+                    ("Full Overlay", "0"),
+                    ("Half Overlay", "1"),
+                    ("Inset", "2")),                                                          // Overlay
                 WallabyHop.AutoWire.Spec.ValueList(
                     ("Blum Clip Top", "0"),
                     ("H\u00e4fele Duomatic", "1")),                                                            // HingeType
                 WallabyHop.AutoWire.Spec.ValueList(
-                    ("Links (Left)", "0"),
-                    ("Rechts (Right)", "1"),
-                    ("Mitte (Center, for 2-door)", "2")),                                                 // HingeSide
+                    ("Left", "0"),
+                    ("Right", "1"),
+                    ("Center (for 2-door)", "2")),                                            // HingeSide
                 WallabyHop.AutoWire.Spec.Float("0<2<5"),                                      // Gap
             });
         }

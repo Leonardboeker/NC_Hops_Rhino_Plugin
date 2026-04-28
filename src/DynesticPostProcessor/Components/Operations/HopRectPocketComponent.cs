@@ -23,7 +23,7 @@ namespace WallabyHop.Components.Operations
         public HopRectPocketComponent() : base(
             "HopRectPocket", "HopRectPocket",
             "Generates rectangular pocket operations (_Rechteck_V7 macro) for the DYNESTIC CNC. Extracts center and dimensions from a rectangle curve's bounding box.",
-            "Wallaby Hop", "Fräsen") { }
+            "Wallaby Hop", "Milling") { }
 
         public override Guid ComponentGuid => new Guid("6e2f23b6-557f-46a1-80a7-41feebc7982d");
 
@@ -37,7 +37,7 @@ namespace WallabyHop.Components.Operations
             pManager.AddNumberParameter("CornerRadius", "cornerRadius", "Fillet radius for pocket corners in mm. 0 = sharp corners. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddNumberParameter("Angle", "angle", "Rotation angle of the pocket in degrees. 0 = axis-aligned. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddNumberParameter("Depth", "depth", "Pocket depth in mm, measured downward from the curve's Z. Default 1.0.", GH_ParamAccess.item, 1.0);
-            pManager.AddNumberParameter("Stepdown", "stepdown", "Depth per pass in mm (Zustellung). 0 = single pass. Default 0.", GH_ParamAccess.item, 0.0);
+            pManager.AddNumberParameter("Stepdown", "stepdown", "Depth per pass in mm (stepdown). 0 = single pass. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddIntegerParameter("ToolNr", "toolNr", "Tool magazine position number. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddColourParameter("Colour", "colour", "Preview colour for the pocket volume in the Rhino viewport.", GH_ParamAccess.item, Color.Cyan);
 
@@ -185,7 +185,7 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             double surfaceZ   = bb.Min.Z;
             double cutZ       = surfaceZ - Math.Abs(depth);
-            double zustellung = (stepdown > 0) ? stepdown : 0;
+            double stepdownVal = (stepdown > 0) ? stepdown : 0;
 
             lines.Add("CALL _Rechteck_V7(VAL "
                 + "X_MITTE:=" + Fmt(cx) + ","
@@ -195,7 +195,7 @@ namespace WallabyHop.Components.Operations
                 + "RADIUS:=" + Fmt(cornerRadius) + ","
                 + "WINKEL:=" + Fmt(angle) + ","
                 + "TIEFE:=" + Fmt(cutZ) + ","
-                + "ZUTIEFE:=" + Fmt(zustellung) + ","
+                + "ZUTIEFE:=" + Fmt(stepdownVal) + ","
                 + "RADIUSKORREKTUR:=2,"
                 + "AB:=2,AUFMASS:=0,ANF:=_ANF,ABF:=_ANF,"
                 + "UMKEHREN:=0,RAMPE:=0,RAMPENLAENGE:=50,QUADRANT:=1,"

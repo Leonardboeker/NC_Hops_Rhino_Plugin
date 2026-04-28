@@ -1,150 +1,150 @@
-# Bark Beetle — Analyse & Vergleich mit dem DYNESTIC Post-Processor Plugin
+# Bark Beetle — analysis & comparison with the DYNESTIC Post-Processor plugin
 
-*Erstellt: 2026-04-10 — Basis: `bark-beetle-reference/` (GitHub master) + `src/DynesticPostProcessor/`*
-
----
-
-## 1. Was Bark Beetle macht
-
-Bark Beetle ist ein **Grasshopper-Plugin für allgemeine 3-Achsen-CAM**, das direkt in Rhino/GH läuft und auf ShopBot-Maschinen (G-Code oder `.sbp`-Format) ausgerichtet ist. Kernprinzip: Der User legt Geometrie auf benannte Layer (`CNC cut`, `CNC pocket`, `CNC drill`, etc.) oder verdrahtet GH-Komponenten direkt — das Plugin erzeugt Toolpath-Kurven, die ein Post-Processor-Knoten dann in Maschinencode überführt.
-
-**Technischer Stack:**
-- Reine Grasshopper-Definitionen (`.gh`-Dateien), keine `.gha`-Bibliothek
-- Post-Processor-Logik ist GH-internes C#-Script-Knoten oder Python-Script-Knoten
-- Layer-basierter Workflow: Python-Scripts (`BarkBeetleLayers.py`, `get_cutout_cnc.py`, etc.) schreiben Rhino-UserText auf Kurven-Objekte, GH liest diese UserText-Keys und startet den Solver neu
-- Ausgabe: G-Code (`.nc`) oder ShopBot-Format (`.sbp`) — beides plain-text Koordinatenfolgen
-- Streaming: automatisches Schreiben bei jeder GH-Änderung in einen konfigurierten Ordner
-
-**Operationen:**
-- Cutout (Kontur mit Innen/Außen-Detektion), Pocket (Raster X/Y), Drill, Engrave, Surface 3D Mill (Isocurven), Trochoidal HSM, Horizontal 3D Mill (Mesh), Automill (Brep-Analyse → automatische 2D+3D-Paths)
-- Toolpath-Tools: Auto-Tab, Tab Maker, Safe Offset Curve, Make Pass Depths
-- Info-Tools: Compile Settings, Feedrate Library, Feedrate Calculator (mit Chip-Thinning), Machining Time, Find Deepest Z
-- Machine-making-Tools: Rack & Pinion, Harmonic Drive, Gear-Generatoren (nicht relevant für CAM-Zwecke)
-
-**Keine kompilierten GH-Komponenten** — alles lebt in der `.gh`-Datei selbst (GH-Script-Knoten, Cluster). Das bedeutet: kein C#-Typ-System, keine Grasshopper-Kategorien/Toolbars, kein `GH_Component`-Subtyp-Pattern.
+*Created: 2026-04-10 — Based on: `bark-beetle-reference/` (GitHub master) + `src/DynesticPostProcessor/`*
 
 ---
 
-## 2. Architektur-Unterschiede
+## 1. What Bark Beetle does
+
+Bark Beetle is a **Grasshopper plugin for general 3-axis CAM** that runs directly inside Rhino/GH and is targeted at ShopBot machines (G-code or `.sbp` format). Core principle: the user places geometry on named layers (`CNC cut`, `CNC pocket`, `CNC drill`, etc.) or wires GH components directly — the plugin produces toolpath curves, which a post-processor node then converts into machine code.
+
+**Technical stack:**
+- Pure Grasshopper definitions (`.gh` files), no `.gha` library
+- Post-processor logic is a GH-internal C# script node or Python script node
+- Layer-based workflow: Python scripts (`BarkBeetleLayers.py`, `get_cutout_cnc.py`, etc.) write Rhino UserText onto curve objects, GH reads these UserText keys and re-runs the solver
+- Output: G-code (`.nc`) or ShopBot format (`.sbp`) — both plain-text coordinate sequences
+- Streaming: automatic writing to a configured folder on every GH change
+
+**Operations:**
+- Cutout (contour with inside/outside detection), Pocket (X/Y raster), Drill, Engrave, Surface 3D Mill (isocurves), Trochoidal HSM, Horizontal 3D Mill (mesh), Automill (Brep analysis → automatic 2D+3D paths)
+- Toolpath tools: Auto-Tab, Tab Maker, Safe Offset Curve, Make Pass Depths
+- Info tools: Compile Settings, Feedrate Library, Feedrate Calculator (with chip thinning), Machining Time, Find Deepest Z
+- Machine-making tools: Rack & Pinion, Harmonic Drive, gear generators (not relevant for CAM purposes)
+
+**No compiled GH components** — everything lives inside the `.gh` file itself (GH script nodes, clusters). That means: no C# type system, no Grasshopper categories/toolbars, no `GH_Component` subclass pattern.
+
+---
+
+## 2. Architectural differences
 
 | Dimension | Bark Beetle | DYNESTIC Plugin |
 |-----------|-------------|-----------------|
-| **Deployment** | `.gh`-Datei (Definition), kein Build-Schritt | Kompiliertes `.gha` (C#, .NET 4.8, VS-Projekt) |
-| **Zielmaschine** | ShopBot (G-Code / `.sbp`) — generisch | HOLZ-HER DYNESTIC 7535, `.hop`-Format (CAMPUS-Controller) |
-| **NC-Format** | Standard G-Code: `G00`/`G01`/`G02`/`G03` + ShopBot-Makros | Proprietäres Makro-Format: `Bohrung(...)`, `SP/G01/G03M/EP`, `CALL _RechteckTasche_V5(...)` — keine Standard-G-Code-Blöcke |
-| **Feed-Rate** | User-seitig: Feedrate Calculator-Komponente gibt `mm/min` aus, der Post-Processor schreibt `F`-Werte direkt in den Code | Machine-seitig: DYNESTIC-Plugin schreibt **keine** Feed-Werte. `_VE`, `_VA`, `_SD` sind Platzhalter, die CAMPUS aus dem Werkzeugmagazin auflöst |
-| **Toolpath-Erzeugung** | Vollständige Geometrie-Algorithmen in GH: Kurven-Offset, Innen/Außen-Detektion, Raster-Pocket, Tabs, Pass-Depth-Generierung, 3D-Mesh-Slicing — alles in Bark Beetle selbst | Koordinaten-Übergabe an Maschinen-Makros: z.B. `_RechteckTasche_V5` übernimmt die Pocket-Strategie intern im Controller. Das Plugin liefert nur Geometrie-Parameter (Mitte, Breite, Tiefe). |
-| **Werkzeug-Typen** | Ein Tool-Typ (Fräser), parametrisiert über Durchmesser + RPM + Feedrate | Drei Tool-Typen mit eigenem Werkzeugaufruf-Syntax: `WZB` (Bohrer), `WZF` (Fräser), `WZS` (Säge) — jeweils eigene Macro-Familien |
-| **Datenfluss** | Kurven → Toolpath-Kurven → Post-Processor → Code | Geometrie/Punkte → `operationLines: List<string>` → `HopExport` → `.hop`-Datei |
-| **Sortierung** | Keine automatische Operationsreihenfolge — User verantwortlich | `NcExport.SortOperationLines()` sortiert Block-weise: WZB → WZF → WZS (Bohrungen vor Fräsen, Fräsen vor Sägen) |
-| **Validierung** | Kein dediziertes Validierungs-Werkzeug | `HopAnalyzerComponent`: prüft SP/EP-Parität, leere Blöcke, Moves außerhalb SP/EP, doppelte Tool-Nummern |
-| **Nesting** | Nicht eingebaut (externe Tools) | `HopPart` + `HopSheet` + `HopSheetExport` + `HopPartExport`: Integration mit OpenNest, Transform-Anwendung auf `operationLines` |
-| **Hochlevel-Parametrik** | Automill: Brep → automatisch gemischte 2D+3D-Paths | `HopKorpus`: Schrankkorpus → 5 Platten mit Joinery, Verbinder, Regal-Pins, Türen, etc. |
-| **AutoWire** | Kein AutoWire-Konzept | `AutoWire.cs`: beim Drop auf Canvas werden Slider/Toggle/ValueList automatisch erzeugt und verdrahtet |
-| **Preview** | Standard-GH-Preview auf Toolpath-Kurven | `PreviewHelper` + komponenteninterne `DrawViewportMeshes`/`DrawViewportWires`: 3D-Volumen-Preview (Zylinder, extrudierte Slots, Säge-Kerf-Box mit Tilt) direkt in Rhino |
+| **Deployment** | `.gh` file (definition), no build step | Compiled `.gha` (C#, .NET 4.8, VS project) |
+| **Target machine** | ShopBot (G-code / `.sbp`) — generic | HOLZ-HER DYNESTIC 7535, `.hop` format (CAMPUS controller) |
+| **NC format** | Standard G-code: `G00`/`G01`/`G02`/`G03` + ShopBot macros | Proprietary macro format: `Bohrung(...)`, `SP/G01/G03M/EP`, `CALL _RechteckTasche_V5(...)` — no standard G-code blocks |
+| **Feed rate** | User-side: a Feedrate Calculator component outputs `mm/min`, the post-processor writes `F` values directly into the code | Machine-side: the DYNESTIC plugin writes **no** feed values. `_VE`, `_VA`, `_SD` are placeholders that CAMPUS resolves from the tool magazine |
+| **Toolpath generation** | Full geometry algorithms in GH: curve offset, inside/outside detection, raster pocket, tabs, pass-depth generation, 3D mesh slicing — all inside Bark Beetle | Coordinate handover to machine macros: e.g. `_RechteckTasche_V5` handles the pocket strategy internally in the controller. The plugin only supplies geometry parameters (centre, width, depth). |
+| **Tool types** | One tool type (cutter), parameterised by diameter + RPM + feedrate | Three tool types with their own tool-call syntax: `WZB` (drill), `WZF` (cutter), `WZS` (saw) — each with its own macro family |
+| **Data flow** | Curves → toolpath curves → post-processor → code | Geometry/points → `operationLines: List<string>` → `HopExport` → `.hop` file |
+| **Sorting** | No automatic operation order — user is responsible | `NcExport.SortOperationLines()` sorts block-wise: WZB → WZF → WZS (drills before milling, milling before sawing) |
+| **Validation** | No dedicated validation tool | `HopAnalyzerComponent`: checks SP/EP parity, empty blocks, moves outside SP/EP, duplicate tool numbers |
+| **Nesting** | Not built in (external tools) | `HopPart` + `HopSheet` + `HopSheetExport` + `HopPartExport`: integration with OpenNest, transform applied to `operationLines` |
+| **High-level parametrics** | Automill: Brep → automatically mixed 2D+3D paths | `HopKorpus`: cabinet body → 5 panels with joinery, connectors, shelf pins, doors, etc. |
+| **AutoWire** | No AutoWire concept | `AutoWire.cs`: when dropped on the canvas, sliders/toggles/value lists are created and wired automatically |
+| **Preview** | Standard GH preview of toolpath curves | `PreviewHelper` + per-component `DrawViewportMeshes`/`DrawViewportWires`: 3D volume preview (cylinders, extruded slots, tilted saw kerf box) directly in Rhino |
 
-**Kernunterschied in der CAM-Philosophie:**
-Bark Beetle generiert die vollständige Schnittgeometrie (Raster, Offset-Kurven, Tabs) selbst und schreibt sie als Koordinatenfolge in den Code. Das DYNESTIC-Plugin delegiert die Schnittgeometrie **an den Maschinen-Controller** — es liefert nur semantische Parameter (`Mitte`, `Breite`, `Tiefe`, `Radius`) und ruft Maschinen-Subroutinen auf. Das ist grundlegend anders und nicht austauschbar.
+**Core difference in CAM philosophy:**
+Bark Beetle generates the full cutting geometry (raster, offset curves, tabs) itself and writes it as a coordinate sequence into the code. The DYNESTIC plugin delegates the cutting geometry **to the machine controller** — it only supplies semantic parameters (`centre`, `width`, `depth`, `radius`) and calls machine subroutines. That is fundamentally different and not interchangeable.
 
 ---
 
-## 3. Adaptierbare Ideen
+## 3. Adaptable ideas
 
-### 3.1 Feedrate Calculator als eigenständige Komponente
-**In Bark Beetle:** `Feedrate Calculator`-Komponente berechnet `feedrate = (chipload * flutes * RPM)` aus Material, Bit-Durchmesser, Flötenanzahl, RPM. Separat: `Feedrate Calculator for Arcs` kompensiert die Geschwindigkeitsdifferenz beim Kreisbogenfahren (innere Kante läuft langsamer als äußere).
+### 3.1 Feedrate Calculator as a standalone component
+**In Bark Beetle:** the `Feedrate Calculator` component computes `feedrate = (chipload * flutes * RPM)` from material, bit diameter, flute count, RPM. Separately: `Feedrate Calculator for Arcs` compensates for the speed difference when travelling on arcs (the inner edge runs slower than the outer one).
 
-**Warum adaptierbar:** Das DYNESTIC-Plugin schreibt aktuell keine Feed-Werte (`_VE`, `_VA` sind Platzhalter). Wenn sich das ändert (z.B. direktes Schreiben von `F`-Werten in SP-Blöcke), wäre eine `HopFeedrate`-Komponente sinnvoll. Pattern: Inputs Material + BitDiameter + Flutes + RPM + MaxStepover → Output `feedrate` als Zahl, die in `HopContour` / `HopEngraving` eingespeist wird.
+**Why adaptable:** the DYNESTIC plugin currently writes no feed values (`_VE`, `_VA` are placeholders). If that changes (e.g. writing `F` values directly into SP blocks), a `HopFeedrate` component would make sense. Pattern: inputs Material + BitDiameter + Flutes + RPM + MaxStepover → output `feedrate` as a number, fed into `HopContour` / `HopEngraving`.
 
-**Konkrete Datei:** `Bark beetle 1.02 - CNC milling - Rhino6.gh` (interner GH-Script-Knoten, kein separater Python-Source vorhanden — Logik muss aus der `.gh`-Datei extrahiert werden).
+**Concrete file:** `Bark beetle 1.02 - CNC milling - Rhino6.gh` (internal GH script node, no separate Python source available — the logic must be extracted from the `.gh` file).
 
 ---
 
 ### 3.2 Machining Time Estimator
-**In Bark Beetle:** `Machining time`-Komponente addiert alle Toolpath-Längen und dividiert durch Feedrate → Gesamtzeit in Sekunden/Minuten.
+**In Bark Beetle:** the `Machining time` component sums all toolpath lengths and divides by feedrate → total time in seconds/minutes.
 
-**Warum adaptierbar:** Das DYNESTIC-Plugin hat keinerlei Zeitschätzung. Eine `HopMachiningTime`-Komponente könnte auf `hopContent` operieren: SP/EP-Blöcke parsen, G01-Distanzen und G02M/G03M-Bogenlängen aufsummieren, gegen eine grobe Feedrate-Schätzung laufen lassen. Wäre ein nützlicher Rückmeldungs-Kanal neben `HopAnalyzer`.
+**Why adaptable:** the DYNESTIC plugin has no time estimation at all. A `HopMachiningTime` component could operate on `hopContent`: parse SP/EP blocks, sum G01 distances and G02M/G03M arc lengths, run them against a rough feedrate estimate. It would be a useful feedback channel alongside `HopAnalyzer`.
 
-**Pattern aus Bark Beetle:** Input `toolpaths (curves) + feedrate` → berechnete Länge → Zeit. Im DYNESTIC-Kontext: Input `hopContent + feedrate` → Zeit. Koordinaten aus G01/G03M-Zeilen parsen ist machbar.
+**Pattern from Bark Beetle:** input `toolpaths (curves) + feedrate` → computed length → time. In the DYNESTIC context: input `hopContent + feedrate` → time. Parsing coordinates from G01/G03M lines is feasible.
 
-**Umsetzung:** Neuer Komponenten-Typ `HopMachiningTime` neben `HopAnalyzer` in `Components/Export/`. Ähnliche Grundstruktur wie `HopAnalyzerComponent.cs` (parst `hopContent`, `Run`-Toggle).
-
----
-
-### 3.3 Find Deepest Z / Safety Check
-**In Bark Beetle:** `Find deepest Z`-Komponente gibt den tiefsten Z-Wert über alle Toolpaths aus — Safety-Check vor dem Start.
-
-**Warum adaptierbar:** Im DYNESTIC-Kontext: Aus den `operationLines` (vor Export) oder aus `hopContent` (nach Export) das tiefste Z aus allen `Bohrung`-, `SP`-, `Tiefe`-Parametern extrahieren und mit `DZ` (Materialdicke) vergleichen. Warnung, wenn cutZ < 0 (d.h. tiefer als die Platte). Das wäre eine sinnvolle Ergänzung für `HopAnalyzer` oder als separater Check-Output.
-
-**Konkretes Risiko ohne dieses Feature:** `HopDrill` berechnet `cutZ = surfaceZ - depth` ohne zu prüfen, ob das Ergebnis negativ wird (tiefer als Maschinenaufspanntisch). Eine Tiefenvalidierung würde das abfangen.
-
-**Umsetzung:** Als zusätzlicher Check im bestehenden `HopAnalyzerComponent.cs` (Z-Werte aus `Bohrung`-Zeilen und `SP`-Zeilen parsen, gegen 0 prüfen).
+**Implementation:** new component type `HopMachiningTime` next to `HopAnalyzer` in `Components/Export/`. Similar base structure to `HopAnalyzerComponent.cs` (parses `hopContent`, `Run` toggle).
 
 ---
 
-### 3.4 Automill-Konzept → HopAutomill für einfache Brep-Dissection
-**In Bark Beetle:** `Automill`-Komponente analysiert einen Brep, klassifiziert Flächen nach Winkel (horizontal = Pocket/Cut, vertikal = 3D-Kontur), extrahiert automatisch Tiefenwerte, erzeugt kombinierten 2D+3D-Job ohne manuelles Layer-Setzen.
+### 3.3 Find Deepest Z / safety check
+**In Bark Beetle:** the `Find deepest Z` component returns the deepest Z value across all toolpaths — a safety check before starting.
 
-**Warum partiell adaptierbar:** Ein `HopAutomill` für das DYNESTIC-Plugin wäre eine Komponente, die einen Brep analysiert und automatisch `HopContour`- und `HopRectPocket`-Output-Lines erzeugt. Konkret: horizontale planare Flächen → `CALL _RechteckTasche_V5(...)`, vertikale Außenkanten → SP/G01/EP-Konturen. Das würde den häufigen Workflow "Brep rein, Fräsoperationen raus" deutlich vereinfachen.
+**Why adaptable:** in the DYNESTIC context: from the `operationLines` (before export) or from `hopContent` (after export), extract the deepest Z out of all `Bohrung`, `SP`, `Tiefe` parameters and compare against `DZ` (material thickness). Warn when cutZ < 0 (i.e. deeper than the panel). This would be a sensible addition for `HopAnalyzer` or as a separate check output.
 
-**Einschränkung:** Bark Beetles Automill erzeugt Kurven-Output (generisch), DYNESTIC braucht konkrete Maschinen-Makroparameter. Die Brep-Dissection-Logik (Flächenwinkel-Analyse, Tiefenextraktion) ist jedoch direkt übertragbar. Die Ausgabe wäre dann direkt `operationLines`.
+**Concrete risk without this feature:** `HopDrill` computes `cutZ = surfaceZ - depth` without checking whether the result becomes negative (deeper than the machine table). A depth validation would catch that.
 
-**Noch nicht im DYNESTIC-Plugin vorhanden** — kein entsprechendes Feature in `Components/Operations/`.
+**Implementation:** as an additional check in the existing `HopAnalyzerComponent.cs` (parse Z values from `Bohrung` lines and `SP` lines, check against 0).
 
 ---
 
-### 3.5 Make Pass Depths (Schicht-Generierung aus 3D-Kurve)
-**In Bark Beetle:** `Make pass depths`-Komponente nimmt 3D-Kurven und erzeugt daraus Z-gestaffelte Kopien für Roughing-Passes bis zur Zieltiefe.
+### 3.4 Automill concept → HopAutomill for simple Brep dissection
+**In Bark Beetle:** the `Automill` component analyses a Brep, classifies faces by angle (horizontal = Pocket/Cut, vertical = 3D contour), automatically extracts depth values, produces a combined 2D+3D job without manual layer setting.
 
-**Warum partiell adaptierbar:** Die `stepdown`-Logik ist in `HopContourComponent.cs` (Zeile 258–272) bereits inline implementiert (`int passCount = (int)Math.Ceiling(depth / stepdown)`). Bark Beetles Ansatz ist mächtiger: es decoupled die Pass-Generierung in eine separate, wiederverwendbare Komponente, sodass sie auch für 3D-Kurven aus anderen Quellen nutzbar ist.
+**Why partially adaptable:** a `HopAutomill` for the DYNESTIC plugin would be a component that analyses a Brep and automatically produces `HopContour` and `HopRectPocket` output lines. Concretely: horizontal planar faces → `CALL _RechteckTasche_V5(...)`, vertical outer edges → SP/G01/EP contours. This would significantly simplify the common workflow "Brep in, milling operations out".
 
-**Adaptierungsidee:** Eine `HopPassDepths`-Utility-Komponente, die aus einer 3D-Eingabekurve + stepdown-Wert eine Liste von Z-gestaffelten Kurven erzeugt. Das wäre nützlich für `HopEngraving` mit mehreren Passes, das aktuell kein `stepdown` unterstützt (`HopEngravingComponent.cs` hat keinen Stepdown-Input).
+**Limitation:** Bark Beetle's Automill produces curve output (generic), DYNESTIC needs concrete machine macro parameters. The Brep dissection logic (face-angle analysis, depth extraction) is, however, directly transferable. The output would then be `operationLines` directly.
+
+**Not yet present in the DYNESTIC plugin** — no equivalent feature in `Components/Operations/`.
+
+---
+
+### 3.5 Make Pass Depths (layer generation from a 3D curve)
+**In Bark Beetle:** the `Make pass depths` component takes 3D curves and produces Z-staggered copies as roughing passes down to the target depth.
+
+**Why partially adaptable:** the `stepdown` logic is already implemented inline in `HopContourComponent.cs` (lines 258–272) (`int passCount = (int)Math.Ceiling(depth / stepdown)`). Bark Beetle's approach is more powerful: it decouples pass generation into a separate, reusable component, so it can also be used for 3D curves from other sources.
+
+**Adaptation idea:** a `HopPassDepths` utility component that takes a 3D input curve + stepdown value and produces a list of Z-staggered curves. This would be useful for `HopEngraving` with multiple passes, which currently does not support `stepdown` (`HopEngravingComponent.cs` has no stepdown input).
 
 ---
 
 ### 3.6 Safe Offset Curve
-**In Bark Beetle:** `Safe offset curve` erzeugt immer geschlossene, nicht-selbstschneidende Offset-Kurven — auch bei extremen Offset-Werten, bei denen `Curve.Offset()` versagt.
+**In Bark Beetle:** `Safe offset curve` always produces closed, non-self-intersecting offset curves — even with extreme offset values where `Curve.Offset()` fails.
 
-**Warum adaptierbar:** `HopContourComponent.cs` (Zeile 155–167) ruft `curve.Offset()` auf und fällt nur auf "center path" zurück wenn es scheitert. Bei kleinen, engen Kurven mit großem Tool-Durchmesser schlägt das fehl. Das Safe-Offset-Pattern aus Bark Beetle (Iterations-basiertes Schrumpfen + Selbstschnitt-Check) wäre robuster.
+**Why adaptable:** `HopContourComponent.cs` (lines 155–167) calls `curve.Offset()` and only falls back to "center path" when it fails. With small, tight curves and a large tool diameter, this fails. The safe-offset pattern from Bark Beetle (iterative shrinking + self-intersection check) would be more robust.
 
-**Konkret:** In `HopContourComponent.cs`, Abschnitt 5 "GEOMETRIC PRE-OFFSET", die Fallback-Logik durch eine stabilere Offset-Implementation ersetzen.
-
----
-
-### 3.7 Layer-based Workflow als optionales Input-Pattern
-**In Bark Beetle:** `BarkBeetleLayers.py` legt Standard-Layer (`CNC drill`, `CNC pocket`, `CNC cut`, etc.) an. Kurven auf diesen Layern werden automatisch vom GH-Solver mit den richtigen Operationen verbunden.
-
-**Warum adaptierbar:** Das DYNESTIC-Plugin erwartet immer explizite GH-Verbindungen. Ein optionales Layer-Scanning-Feature ("alle Kurven auf Layer `DYNESTIC_CONTOUR` → `HopContour` mit Default-Settings") würde den Einstieg erleichtern — besonders für Nutzer, die bereits Rhino-Layer-Workflows kennen.
-
-**Umsetzung:** Entweder als separates Python-Script (analog `get_cutout_cnc.py`) oder als GH-Utility-Komponente `HopLayerScan`, die Layer-Namen als Input nimmt und Kurven-Listen ausgibt.
+**Concretely:** in `HopContourComponent.cs`, section 5 "GEOMETRIC PRE-OFFSET", replace the fallback logic with a more stable offset implementation.
 
 ---
 
-## 4. Nicht relevant
+### 3.7 Layer-based workflow as an optional input pattern
+**In Bark Beetle:** `BarkBeetleLayers.py` creates standard layers (`CNC drill`, `CNC pocket`, `CNC cut`, etc.). Curves on these layers are automatically connected by the GH solver to the right operations.
 
-### 4.1 G-Code / ShopBot-Format
-Bark Beetle schreibt Standard-G-Code (`G00`, `G01`, `G02`, `G03`, `F`, `S`) und ShopBot-Format (`.sbp`). Das DYNESTIC-Plugin schreibt `.hop`-Makroformat für CAMPUS. Die Formate sind inkompatibel — keine Code-Übernahme möglich. Die G-Code-Post-Processor-Logik aus Bark Beetles `.gh`-Scripts ist komplett irrelevant.
+**Why adaptable:** the DYNESTIC plugin always expects explicit GH connections. An optional layer-scanning feature ("all curves on the `DYNESTIC_CONTOUR` layer → `HopContour` with default settings") would lower the barrier to entry — especially for users who already know Rhino layer workflows.
 
-### 4.2 Feed-Rate-Schreibung in NC-Code
-Bark Beetle schreibt `F`-Werte direkt. DYNESTIC delegiert das an die Maschinensteuerung (`_VE`, `_VA`). Solange das CAMPUS-Controller-Verhalten nicht geändert wird, ist die Feedrate-Schreiblogik aus Bark Beetle nicht übertragbar — nur das Calculator-Konzept (Abschnitt 3.1).
-
-### 4.3 3D-Milling-Operationen (Surface 3D Mill, Horizontal 3D Mill, Trochoidal HSM)
-Laut `README.md` und `BACKLOG.md`: "3DMilling, Mill5Axis, and VSPMillSAxis are **not licensed** on the current HOPS dongle (ID: [REDACTED])." Alle 3D-Fräs-Algorithmen aus Bark Beetle (Isocurven-Extraktion, Mesh-Slicing, Arc-based HSM) sind daher irrelevant — die Maschine kann diese Paths nicht ausführen, HOPS kann sie nicht simulieren.
-
-### 4.4 Machine-Making-Tools
-Rack & Pinion, Harmonic Drive, Gear-Generatoren — sind für die Holzbearbeitung/Plattenverarbeitung nicht relevant. Diese Tools dienen der Maschinengeometrie-Erstellung (für den Maschinenbau), nicht dem Betrieb.
-
-### 4.5 OctoPrint-Integration (`Send and start gcode`)
-Bark Beetle kann G-Code an einen OctoPrint-Server uploaden und den Job starten. DYNESTIC-Maschinen laufen über CAMPUS-Controller, nicht über OctoPrint — irrelevant.
-
-### 4.6 SVG-Preview / AR-Projektion
-`Preview graphic for AR projection on machine bed` erzeugt SVG für Browser-Projektion auf das Maschinenbett. Das DYNESTIC-Plugin hat 3D-Preview direkt in Rhino (`PreviewHelper.cs`). Die SVG-Ausgabe ist redundant.
-
-### 4.7 Komplett-GH-Definition-Architektur
-Bark Beetles Ansatz (alles in einer `.gh`-Datei, keine kompilierte Bibliothek) ist eine explizite Designentscheidung für maximale Editierbarkeit. Das DYNESTIC-Plugin ist bewusst als kompiliertes `.gha` gebaut (Typsicherheit, AutoWire, Icon-System, Kategorien). Ein Wechsel zurück zu GH-Script-Knoten wäre ein Rückschritt.
+**Implementation:** either as a separate Python script (analogous to `get_cutout_cnc.py`) or as a GH utility component `HopLayerScan` that takes layer names as input and outputs curve lists.
 
 ---
 
-*Referenz-Dateien:*
+## 4. Not relevant
+
+### 4.1 G-code / ShopBot format
+Bark Beetle writes standard G-code (`G00`, `G01`, `G02`, `G03`, `F`, `S`) and ShopBot format (`.sbp`). The DYNESTIC plugin writes the `.hop` macro format for CAMPUS. The formats are incompatible — no code reuse possible. The G-code post-processor logic from Bark Beetle's `.gh` scripts is entirely irrelevant.
+
+### 4.2 Writing feed rate into NC code
+Bark Beetle writes `F` values directly. DYNESTIC delegates this to the machine controller (`_VE`, `_VA`). As long as the CAMPUS controller behaviour is not changed, the feed-rate writing logic from Bark Beetle is not transferable — only the calculator concept (section 3.1).
+
+### 4.3 3D milling operations (Surface 3D Mill, Horizontal 3D Mill, Trochoidal HSM)
+According to `README.md` and `BACKLOG.md`: "3DMilling, Mill5Axis, and VSPMillSAxis are **not licensed** on the current HOPS dongle (ID: [REDACTED])." All 3D milling algorithms from Bark Beetle (isocurve extraction, mesh slicing, arc-based HSM) are therefore irrelevant — the machine cannot run these paths, HOPS cannot simulate them.
+
+### 4.4 Machine-making tools
+Rack & Pinion, Harmonic Drive, gear generators — not relevant for woodworking / panel processing. These tools serve machine-geometry creation (for machine builders), not machine operation.
+
+### 4.5 OctoPrint integration (`Send and start gcode`)
+Bark Beetle can upload G-code to an OctoPrint server and start the job. DYNESTIC machines run via the CAMPUS controller, not via OctoPrint — irrelevant.
+
+### 4.6 SVG preview / AR projection
+`Preview graphic for AR projection on machine bed` produces SVG for browser projection onto the machine bed. The DYNESTIC plugin has 3D preview directly in Rhino (`PreviewHelper.cs`). The SVG output is redundant.
+
+### 4.7 All-in-one GH definition architecture
+Bark Beetle's approach (everything inside one `.gh` file, no compiled library) is an explicit design decision for maximum editability. The DYNESTIC plugin is deliberately built as a compiled `.gha` (type safety, AutoWire, icon system, categories). Switching back to GH script nodes would be a regression.
+
+---
+
+*Reference files:*
 - `bark-beetle-reference/README.md`
 - `bark-beetle-reference/Python_scripts/` (BarkBeetleLayers.py, get_cutout_cnc.py, get_pocket_cnc.py, define_material_cnc.py, remove_settings.py)
 - `src/DynesticPostProcessor/NcStrings.cs`

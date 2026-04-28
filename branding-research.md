@@ -1,84 +1,84 @@
-# Branding Research: NC-Hops & HOLZ-HER
+# Branding research: NC-Hops & HOLZ-HER
 
-*Recherchiert: 2026-04-10*
-
----
-
-## NC-Hops / HOPS Branding
-
-### Was ist NC-HOPS?
-
-NC-HOPS ist ein CAD/CAM-System der Firma **direkt cnc-systeme GmbH** (Neuenbuerg, Deutschland).
-Es ist eine maschinenunabhaengige WOP-Software (Werkstatt-Orientierte Programmierung) fuer CNC-Bearbeitungszentren in Holz-, Kunststoff- und Aluminiumverarbeitung. Die aktuelle Version HOPS 8 (Vorgaenger: HOPS 7.7) laeuft unter Windows und unterstuetzt 3-, 4- und 5-Achs-Maschinen. HOLZ-HER liefert HOPS als Teil des CAMPUS V7 PLUS-Pakets aus, die Software wird aber eigenstaendig von direkt cnc-systeme entwickelt und ist herstelleruebergreifend (Biesse, Busellato, Homag, SCM u.a.).
-
-### Logo — Kaenguru-Bestaetigung
-
-**Ja, das Kaenguru-Logo ist real und bestaetigt.**
-
-Das offizielle SVG-Logo (`Logo_Hops8_ohne-cropped.svg`) wurde direkt analysiert. Es zeigt:
-- Ein stilisiertes **Kaenguru** (springende Silhouette, abstrahiert, in einem weich-gelben Farbton)
-- Darunter/daneben der Schriftzug **"NC-HOPS"** in Kapitaelschrift
-
-Dieses Tier ist das eindeutige Markenzeichen von NC-HOPS. Die Form ist fliessend und organisch gezeichnet (kein einfaches Icon), mit einem erkennbaren Koerper, Schwanz und springenden Hinterlaeufen.
-
-### Logo-Farben (aus SVG extrahiert)
-
-| Element | Farbe | Hex |
-|---|---|---|
-| Kaenguru-Silhouette (Hauptkoerper) | Warmes Senfgelb / Creme | `#fbf69e` |
-| Konturlinien / Binnenzeichnung | Mittelgrau (warm) | `#706d6e` |
-| Schriftzug "NC-HOPS" | Dunkelgrau (fast Anthrazit) | `#4f4c4c` |
-| Kleines Copyright-Symbol im Logo | Grau (etwas heller) | `#656263` |
-
-Der Hintergrund des Logos ist transparent (kein Rahmen, kein Hintergrundfeld).
-
-### Typografie
-
-- **Schriftart im Logo:** Gill Sans MT Bold (klassische humanistische Groteskschrift, leicht verspielt, nicht streng)
-- **Website direkt.net:** Rajdhani Bold/Medium (Headlines), Open Sans (Bodytext)
-- Rajdhani ist eine geometrische, technische Schrift mit leichter Anmutung — passt zur industriellen CAM-Positionierung
-
-### Website-Farben (direkt.net)
-
-| Verwendung | Farbe | Hex |
-|---|---|---|
-| Primaer-Akzent / Buttons | Hellblau / Cyan | `#2ea3f2` |
-| Dunkelblau (Headlines, Akzent) | Navy-Blau | `#1f467c` |
-| Sekundaer-Blau | Mittleres Blau | `#0c71c3` |
-| Highlight / Akzent | Tuerkis-Cyan | `#1f6581` / `#82c0c7` |
-| Hintergruende | Neutralgrau | `#d8d8d8` / `#e8e8e8` |
-| Text | Dunkel | `#333` / `#666` |
-
-Die Website verwendet **keine** orangen oder warmen Akzente — reines Blau-Grau-Schema.
-
-### Visueller Stil
-
-- **Ton:** Professionell-industriell, technisch, sachlich
-- **UI der Software:** Dunkles Farbschema optional (Dark Mode seit HOPS 7), ansonsten helles Windows-UI mit blauen Akzenten
-- **Logocharakter:** Der Kontrast zwischen dem verspielten Kaenguru-Tier und dem ernsthaften CAM-Software-Kontext ist bewusst — die Marke wirkt dadurch einpraegbar und sympathisch, bleibt aber professionell
-- Kein Gradient-Heavy-Design, keine aggressiven Farben
+*Researched: 2026-04-10*
 
 ---
 
-## HOLZ-HER Branding
+## NC-Hops / HOPS branding
 
-### Unternehmen
+### What is NC-HOPS?
 
-HOLZ-HER GmbH, Nuertingen (Deutschland). Tochterunternehmen der **Michael Weinig AG** (seit ca. 2014). Hersteller von Kantenanleimaschinen, CNC-Bearbeitungszentren (u.a. DYNESTIC-Serie), Plattenaufteilsaegen und Lagersystemen.
+NC-HOPS is a CAD/CAM system from **direkt cnc-systeme GmbH** (Neuenbuerg, Germany).
+It is a machine-independent WOP software (workshop-oriented programming) for CNC machining centres in wood, plastics and aluminium processing. The current version HOPS 8 (predecessor: HOPS 7.7) runs on Windows and supports 3-, 4- and 5-axis machines. HOLZ-HER ships HOPS as part of the CAMPUS V7 PLUS package, but the software is developed independently by direkt cnc-systeme and is cross-vendor (Biesse, Busellato, Homag, SCM and others).
+
+### Logo — kangaroo confirmed
+
+**Yes, the kangaroo logo is real and confirmed.**
+
+The official SVG logo (`Logo_Hops8_ohne-cropped.svg`) was analysed directly. It shows:
+- A stylised **kangaroo** (jumping silhouette, abstracted, in a soft yellow tone)
+- Below/next to it the wordmark **"NC-HOPS"** in capitals
+
+This animal is the unmistakable trademark of NC-HOPS. The shape is drawn fluidly and organically (no simple icon), with a recognisable body, tail and jumping hind legs.
+
+### Logo colours (extracted from SVG)
+
+| Element | Colour | Hex |
+|---|---|---|
+| Kangaroo silhouette (main body) | Warm mustard yellow / cream | `#fbf69e` |
+| Outline / inner detail | Mid-grey (warm) | `#706d6e` |
+| Wordmark "NC-HOPS" | Dark grey (almost anthracite) | `#4f4c4c` |
+| Small copyright symbol in the logo | Grey (slightly lighter) | `#656263` |
+
+The background of the logo is transparent (no frame, no background fill).
+
+### Typography
+
+- **Logo typeface:** Gill Sans MT Bold (classic humanist sans-serif, slightly playful, not strict)
+- **Website direkt.net:** Rajdhani Bold/Medium (headlines), Open Sans (body text)
+- Rajdhani is a geometric, technical typeface with a light feel — fits the industrial CAM positioning
+
+### Website colours (direkt.net)
+
+| Use | Colour | Hex |
+|---|---|---|
+| Primary accent / buttons | Light blue / cyan | `#2ea3f2` |
+| Dark blue (headlines, accent) | Navy blue | `#1f467c` |
+| Secondary blue | Mid blue | `#0c71c3` |
+| Highlight / accent | Turquoise cyan | `#1f6581` / `#82c0c7` |
+| Backgrounds | Neutral grey | `#d8d8d8` / `#e8e8e8` |
+| Text | Dark | `#333` / `#666` |
+
+The website uses **no** orange or warm accents — pure blue-grey scheme.
+
+### Visual style
+
+- **Tone:** Professional-industrial, technical, factual
+- **Software UI:** dark colour scheme optional (Dark Mode since HOPS 7), otherwise a bright Windows UI with blue accents
+- **Logo character:** The contrast between the playful kangaroo animal and the serious CAM software context is intentional — it makes the brand memorable and likeable while staying professional
+- No gradient-heavy design, no aggressive colours
+
+---
+
+## HOLZ-HER branding
+
+### Company
+
+HOLZ-HER GmbH, Nuertingen (Germany). Subsidiary of **Michael Weinig AG** (since around 2014). Manufacturer of edgebanders, CNC machining centres (including the DYNESTIC series), panel saws and storage systems.
 
 ### Logo
 
-Das HOLZ-HER-Logo besteht aus zwei Elementen:
-1. **Bildmarke:** Ein grosses **"H"** in Weiss, eingebettet in eine orange Flaeche / Form (beschrieben als: weisses H, umgeben von der charakteristischen HOLZ-HER-Orange, mit schwarzer Schattierung/Fuellung im Innenbereich)
-2. **Wortmarke:** "HOLZ-HER" in Grossbuchstaben darunter
+The HOLZ-HER logo consists of two elements:
+1. **Pictorial mark:** a large **"H"** in white, embedded in an orange surface / shape (described as: white H surrounded by the characteristic HOLZ-HER orange, with black shading/fill in the inside area)
+2. **Wordmark:** "HOLZ-HER" in capital letters below it
 
-Seit dem Rebrand (ca. 2011, nochmals angepasst nach Weinig-Uebernahme) gilt: dynamisch, zukunftssicher, international lesbar.
+Since the rebrand (around 2011, adjusted again after the Weinig acquisition) the brand is positioned as: dynamic, future-proof, internationally readable.
 
-### Primaerfarbe — Orange
+### Primary colour — orange
 
-**Die HOLZ-HER-Signalfarbe ist eindeutig Orange.**
+**The HOLZ-HER signal colour is unambiguously orange.**
 
-Direkt aus dem CSS der Weinig/HOLZ-HER-Website extrahiert:
+Extracted directly from the CSS of the Weinig/HOLZ-HER website:
 
 ```css
 .holzher { background: #f60 none repeat scroll 0 0 }
@@ -86,110 +86,110 @@ Direkt aus dem CSS der Weinig/HOLZ-HER-Website extrahiert:
 .holzher-menu a.level-1:hover { color: #f60 }
 ```
 
-| Farbe | CSS-Shorthand | Vollstaendiger Hex |
+| Colour | CSS shorthand | Full hex |
 |---|---|---|
-| HOLZ-HER Orange (Primaer) | `#f60` | `#ff6600` |
+| HOLZ-HER orange (primary) | `#f60` | `#ff6600` |
 
-Diese Farbe wird ausschliesslich fuer HOLZ-HER als Marke verwendet — andere Weinig-Submarken haben abweichende Farben.
+This colour is used exclusively for HOLZ-HER as a brand — other Weinig sub-brands have different colours.
 
-### Sekundaerfarben (aus Weinig-CSS)
+### Secondary colours (from Weinig CSS)
 
-| Verwendung | Hex |
+| Use | Hex |
 |---|---|
-| Dunkelbraun-Orange (Schattierung) | `#bb4b00` |
-| Dunkelrot-Orange (Hover-State) | `#d94d38` |
-| Neutral-Dunkelgrau (Text) | `#2d2d2d` |
-| Mittelgrau | `#c5c4c4` / `#d1d1d1` |
-| Weiss | `#ffffff` |
-| Schwarz | `#000000` |
+| Dark brown-orange (shading) | `#bb4b00` |
+| Dark red-orange (hover state) | `#d94d38` |
+| Neutral dark grey (text) | `#2d2d2d` |
+| Mid-grey | `#c5c4c4` / `#d1d1d1` |
+| White | `#ffffff` |
+| Black | `#000000` |
 
-### Typografie
+### Typography
 
-- **Primaer-Schriftart:** **Lato** (Light, Regular, Bold) — bestaetigt durch `@font-face` im Weinig-CSS
-- Lato ist eine serifenlose Humanist-Grotesk mit warmem Charakter — nicht zu steril, nicht zu verspielt
-- Zweite Marken-Schrift: "Weinig" (proprietaere Schrift der Weinig-Gruppe, nur interne Markenkommunikation)
+- **Primary typeface:** **Lato** (Light, Regular, Bold) — confirmed via `@font-face` in the Weinig CSS
+- Lato is a sans-serif humanist grotesque with a warm character — not too sterile, not too playful
+- Second brand typeface: "Weinig" (proprietary Weinig group typeface, internal brand communication only)
 
-### Visueller Ton
+### Visual tone
 
-- **Industriell + Premium Modern**
-- Hochwertige Produktfotografie (Maschinen, Werkhalle, Detailaufnahmen)
-- Klares, aufgeraeumtes Layout ohne unnoetige Dekorationselemente
-- Orange als einzige Signalfarbe auf ansonsten weisgras-neutralem Untergrund
-- Anmutung: vergleichbar mit Festool oder Trumpf — etablierter Maschinenbau, der modern kommuniziert
-- Header und Footer dunkel (Charcoal/Dunkelgrau), Inhaltsbereiche weiss
-
----
-
-## Gemeinsamkeiten & Muster
-
-| Aspekt | NC-HOPS | HOLZ-HER |
-|---|---|---|
-| Hintergrundphilosophie | Hell, sauber, technisch | Hell, sauber, industriell |
-| Schriftcharakter | Humanistisch (Gill Sans, Open Sans) | Humanistisch (Lato) |
-| Akzentfarbe | Blau (`#2ea3f2`) | Orange (`#ff6600`) |
-| Sekundaerfarben | Grau, Weiss | Grau, Weiss, Dunkelbraun |
-| Maskotencharakter | Kaenguru (warm, sympathisch) | Buchstabe "H" (stark, klar) |
-| Ton | Professionell aber zugaenglich | Premium-industriell |
-
-**Verbindendes Muster:**
-1. Beide nutzen ein neutrales Grau-Weiss-Geruest als Basis
-2. Beide verzichten auf Verlaeufe und setzten stattdessen auf flache, solide Farbflaechen
-3. Beide kommunizieren Praezision — HOLZ-HER ueber Materialstaerke (Orange + Schwarz), NC-HOPS ueber Sachlichkeit mit einem sympathischen Tier-Logo
-4. Humanistische Sans-Serif-Schriften in beiden Systemen — leicht, lesbar, nicht kalt
-5. Der technische Kontext (CNC, CAM, Holzverarbeitung) ist bei beiden sichtbar, wird aber nicht ueberbetont
+- **Industrial + premium modern**
+- High-quality product photography (machines, workshop, detail shots)
+- Clean, tidy layout without unnecessary decorative elements
+- Orange as the only signal colour on otherwise white-grey-neutral backgrounds
+- Feel: comparable to Festool or Trumpf — established machine builder communicating in a modern way
+- Header and footer dark (charcoal/dark grey), content areas white
 
 ---
 
-## Empfehlungen fuer Plugin-Branding
+## Commonalities & patterns
 
-*Kontext: Grasshopper-Plugin das NC-HOPS-Dateien (.hop) verarbeitet und in den HOLZ-HER/direkt-cnc-Oekosystem eingebettet ist.*
-
-### Farbstrategie
-
-Das Plugin sitzt zwischen zwei Welten: der blauen NC-HOPS-Welt und der orangen HOLZ-HER-Welt. Drei moegliche Strategien:
-
-**Option A — Bruecke (empfohlen)**
-
-Mische beide Signalfarben zu einem eigenen Tertiaer-Ton:
-
-| Farbe | Hex | Verwendung |
+| Aspect | NC-HOPS | HOLZ-HER |
 |---|---|---|
-| Akzent Primaer | `#e05a00` | Etwas gedaempftes Orange (zwischen HOLZ-HER-Orange und NC-HOPS-neutral) |
-| Akzent Sekundaer | `#1f6581` | Das Tuerkis-Blau aus NC-HOPS — verbindet ohne zu kopieren |
-| Hintergrund | `#f4f4f4` | Fast-Weiss, neutral wie beide Elternsysteme |
-| Text / Icons | `#2d2d2d` | Aus HOLZ-HER-Palette |
+| Background philosophy | Bright, clean, technical | Bright, clean, industrial |
+| Type character | Humanist (Gill Sans, Open Sans) | Humanist (Lato) |
+| Accent colour | Blue (`#2ea3f2`) | Orange (`#ff6600`) |
+| Secondary colours | Grey, white | Grey, white, dark brown |
+| Mascot character | Kangaroo (warm, friendly) | Letter "H" (strong, clear) |
+| Tone | Professional but approachable | Premium-industrial |
 
-Rationale: Orange assoziiert mit HOLZ-HER/CNC, Blau mit CAM-Software, die Kombination macht das Plugin erkennbar als "Binder" beider Welten.
+**Connecting pattern:**
+1. Both use a neutral grey-white scaffold as a base
+2. Both avoid gradients and rely on flat, solid colour fields instead
+3. Both communicate precision — HOLZ-HER through material strength (orange + black), NC-HOPS through factuality with a friendly animal logo
+4. Humanist sans-serif typefaces in both systems — light, readable, not cold
+5. The technical context (CNC, CAM, woodworking) is visible in both but not over-emphasised
 
-**Option B — NC-HOPS-nah (Software-seitig)**
+---
 
-Primaer die direkt-cnc-Palette verwenden: Blau `#2ea3f2`, Dunkelblau `#1f467c`, weisser Hintergrund. Faellt dem NC-HOPS-Nutzer sofort als "gehoert dazu" auf.
+## Recommendations for plugin branding
 
-**Option C — HOLZ-HER-nah (Maschinen-seitig)**
+*Context: a Grasshopper plugin that processes NC-HOPS files (.hop) and is embedded in the HOLZ-HER / direkt-cnc ecosystem.*
 
-Orange `#ff6600`, schwarz/dunkelgrau, Lato als Schrift. Wirkt als Hersteller-offizielles Tool.
+### Colour strategy
 
-### Typografie-Empfehlung
+The plugin sits between two worlds: the blue NC-HOPS world and the orange HOLZ-HER world. Three possible strategies:
 
-- **Lato** (wie HOLZ-HER) oder **Open Sans** (wie NC-HOPS-Website) — beide aehnlich in Charakter, frei verfuegbar, humanistisch
-- Fuer Icon-Labels und Grasshopper-Beschriftungen: Regular/Medium Gewicht, keine Display-Schriften
-- Verzicht auf Gill Sans MT (zu sehr an NC-HOPS-Logo gebunden, lizenzpflichtig)
+**Option A — bridge (recommended)**
 
-### Logo / Icon-Empfehlung
+Blend both signal colours into a distinct tertiary tone:
 
-- **Kein zweites Kaenguru** verwenden — das ist NC-HOPS Markenschutz
-- Moegliches Motiv: stilisierter CNC-Fahrweg / Toolpath in Orange oder Blau, geometrisch, Grasshopper-kompatibel (an das Rhinoceros-Auge oder GH-Kaenguru-Auge anlehnen ist riskant, aber eine reine Pfad-Geste ist sicher)
-- Alternativ: einfaches Monogramm oder typografisches Logo ("HOP", "HOPS-GH", "GH:NC")
+| Colour | Hex | Use |
+|---|---|---|
+| Primary accent | `#e05a00` | Slightly muted orange (between HOLZ-HER orange and NC-HOPS neutral) |
+| Secondary accent | `#1f6581` | The turquoise blue from NC-HOPS — connects without copying |
+| Background | `#f4f4f4` | Near-white, neutral like both parent systems |
+| Text / icons | `#2d2d2d` | From the HOLZ-HER palette |
 
-### Zusammenfassung
+Rationale: orange associates with HOLZ-HER/CNC, blue with CAM software, the combination makes the plugin recognisable as a "binder" of both worlds.
 
-| Prioritaet | Empfehlung |
+**Option B — NC-HOPS-leaning (software side)**
+
+Use the direkt-cnc palette primarily: blue `#2ea3f2`, dark blue `#1f467c`, white background. NC-HOPS users immediately recognise it as "part of the family".
+
+**Option C — HOLZ-HER-leaning (machine side)**
+
+Orange `#ff6600`, black/dark grey, Lato as the typeface. Comes across as a manufacturer-official tool.
+
+### Typography recommendation
+
+- **Lato** (like HOLZ-HER) or **Open Sans** (like the NC-HOPS website) — both similar in character, freely available, humanist
+- For icon labels and Grasshopper labelling: Regular/Medium weight, no display fonts
+- Avoid Gill Sans MT (too closely tied to the NC-HOPS logo, licensed)
+
+### Logo / icon recommendation
+
+- **Do not use a second kangaroo** — that is NC-HOPS trademark
+- Possible motif: stylised CNC travel path / toolpath in orange or blue, geometric, Grasshopper-compatible (riffing on the Rhinoceros eye or the GH kangaroo eye is risky, but a pure path gesture is safe)
+- Alternative: simple monogram or typographic logo ("HOP", "HOPS-GH", "GH:NC")
+
+### Summary
+
+| Priority | Recommendation |
 |---|---|
-| Pflicht | Keine Farben verwenden, die mit HOLZ-HER Orange `#ff6600` oder NC-HOPS Blau `#2ea3f2` direkt identisch sind — leichte Abstufung zeigt Eigenstaendigkeit |
-| Sinnvoll | Orange-Ton im Grasshopper-Plugin nutzen, da Endnutzer CNC-Fahrprogramme = HOLZ-HER assoziiert |
-| Vermeiden | Kein Kaenguru-Motiv, kein generisches Gruen oder Rot (keine Assoziation, kein Kontext) |
-| Schrift | Lato oder Open Sans, immer serifenlos, technisch sauber |
+| Mandatory | Do not use colours identical to HOLZ-HER orange `#ff6600` or NC-HOPS blue `#2ea3f2` — a slight tonal shift signals independence |
+| Sensible | Use an orange tone in the Grasshopper plugin since end users associate CNC machine programs with HOLZ-HER |
+| Avoid | No kangaroo motif, no generic green or red (no association, no context) |
+| Type | Lato or Open Sans, always sans-serif, technical and clean |
 
 ---
 
-*Quellen: direkt.net (CSS, SVG), weinig.com (CSS), holzherusa.com (CSS), cad4wood.eu (SVG-Logo), wtp.hoechsmann.com, woodworkingnetwork.com*
+*Sources: direkt.net (CSS, SVG), weinig.com (CSS), holzherusa.com (CSS), cad4wood.eu (SVG logo), wtp.hoechsmann.com, woodworkingnetwork.com*

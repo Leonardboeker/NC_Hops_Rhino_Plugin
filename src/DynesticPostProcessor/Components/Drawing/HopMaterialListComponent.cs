@@ -72,7 +72,7 @@ namespace WallabyHop.Components.Drawing
 
             // Build output text
             var sb = new StringBuilder();
-            sb.AppendLine("MATERIALISTE  /  ZUSCHNITTLISTE");
+            sb.AppendLine("MATERIAL LIST  /  CUT LIST");
             sb.AppendLine("─────────────────────────────────────────");
 
             double totalArea = 0;
@@ -84,7 +84,7 @@ namespace WallabyHop.Components.Drawing
                 double groupArea = 0;
 
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    "Stärke {0:F0}mm:", t));
+                    "Thickness {0:F0}mm:", t));
 
                 foreach (var item in items)
                 {
@@ -95,7 +95,7 @@ namespace WallabyHop.Components.Drawing
                 }
 
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    "  → Summe: {0} Teile  /  {1:F3} m²",
+                    "  → Subtotal: {0} parts  /  {1:F3} m²",
                     items.Count, groupArea));
                 sb.AppendLine();
 
@@ -104,7 +104,7 @@ namespace WallabyHop.Components.Drawing
 
             sb.AppendLine("─────────────────────────────────────────");
             sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                "GESAMT: {0} Teile  /  {1:F3} m²",
+                "TOTAL: {0} parts  /  {1:F3} m²",
                 parts.Count, totalArea));
 
             string matList = sb.ToString().TrimEnd();
