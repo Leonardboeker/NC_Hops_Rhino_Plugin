@@ -24,5 +24,6 @@
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\BlumHingeLogic.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\FormatCutLogic.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\FixchipLogic.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\CabinetPlanner.cs" />
   </ItemGroup>
 </Project>

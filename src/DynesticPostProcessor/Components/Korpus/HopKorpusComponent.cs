@@ -5,6 +5,8 @@ using Rhino.Geometry;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Korpus
 {
     public class HopKorpusComponent : GH_Component
@@ -195,25 +197,18 @@ namespace WallabyHop.Components.Korpus
             Dictionary<string, object> doorDict     = doorWrap?.Value as Dictionary<string, object>;
 
             // 2. Guards
-            if (B <= 0 || H <= 0 || T <= 0)
+            string err = CabinetPlanner.ValidateDimensions(B, H, T, MS);
+            if (err != null)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-                    "Dimensions must be > 0");
-                return;
-            }
-
-            double minDim = Math.Min(B, Math.Min(H, T));
-            if (MS <= 0 || MS >= minDim / 2.0)
-            {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-                    "Thickness invalid (must be > 0 and < half the smallest dimension)");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, err);
                 return;
             }
 
             // 3. Calculate inner dimensions (butt-joint construction)
-            double innerB = B - 2.0 * MS;  // between side panels
-            double innerH = H - 2.0 * MS;  // between Bottom and Top
-            double innerT = T;              // depth stays same for butt-joint
+            var inner = CabinetPlanner.ComputeInnerDimensions(B, H, T, MS);
+            double innerB = inner.InnerWidth;
+            double innerH = inner.InnerHeight;
+            double innerT = inner.InnerDepth;
 
             // 4. Create 5 KorpusPanel objects (NO front panel -- open front)
             var bottom       = new KorpusPanel("Bottom",    innerB, T, MS);
@@ -372,14 +367,8 @@ namespace WallabyHop.Components.Korpus
                 if (!isRouting && drillDia > 0)
                 {
                     if (autoCount)
-                        connCount = T <= 300 ? 2 : (T <= 500 ? 3 : 4);
-                    connCount = Math.Max(1, connCount);
-
-                    // Even distribution along depth T
-                    double spacing = connCount > 1 ? (T - 2 * edge) / (connCount - 1) : 0;
-                    var xPositions = new List<double>();
-                    for (int i = 0; i < connCount; i++)
-                        xPositions.Add(edge + i * spacing);
+                        connCount = CabinetPlanner.AutoConnectorCount(T);
+                    var xPositions = CabinetPlanner.ConnectorPositions(T, connCount, edge);
 
                     // Side panels: face drilling at joint zones (Y = MS/2 for Boden, Y = H-MS/2 for Deckel)
                     foreach (double xp in xPositions)
@@ -412,20 +401,18 @@ namespace WallabyHop.Components.Korpus
                 }
             }
 
-            // Compute effective cabinet depth (front to back panel inner face),
-            // accounting for back panel type and setback. Shelves and S32 holes respect this limit.
+            // Compute effective cabinet depth — delegated to CabinetPlanner
             double effectiveDepth = T;
             if (backDict != null)
             {
-                int bt = Convert.ToInt32(backDict["type"]);
-                double bThick = Convert.ToDouble(backDict["thickness"]);
-                if (bt == 0) // Inset: back panel front face at T - bThick - setback
-                    effectiveDepth = T - bThick - Convert.ToDouble(backDict["setback"]);
-                else if (bt == 1) // Rabbeted: front face at T - falzWidth
-                    effectiveDepth = T - Convert.ToDouble(backDict["falzWidth"]);
-                else // Grooved: front face at T - setbackDist - thickness
-                    effectiveDepth = T - Convert.ToDouble(backDict["setbackDist"]) - bThick;
-                effectiveDepth = Math.Max(MS + 10, effectiveDepth); // minimum sanity
+                effectiveDepth = CabinetPlanner.EffectiveDepth(
+                    cabinetDepth: T,
+                    thickness: MS,
+                    type: (CabinetPlanner.BackType)Convert.ToInt32(backDict["type"]),
+                    backThickness: Convert.ToDouble(backDict["thickness"]),
+                    setback:     Convert.ToDouble(backDict["setback"]),
+                    falzWidth:   Convert.ToDouble(backDict["falzWidth"]),
+                    setbackDist: Convert.ToDouble(backDict["setbackDist"]));
             }
 
             // -- Process Shelves (N shelves evenly distributed, System-32 holes in sides) --
@@ -452,21 +439,15 @@ namespace WallabyHop.Components.Korpus
                         extraPanels.Add(shelf);
                     }
 
-                    // System-32 hole rows in both side panels
-                    // Front column at X=s32edge, back column at X=effectiveDepth-s32edge
-                    double hStart    = s32edge;
-                    double hEnd      = H - s32edge;
-                    double backColX  = Math.Max(s32edge + s32raster, effectiveDepth - s32edge);
-                    var hPos = new List<double>();
-                    for (double yp = hStart; yp <= hEnd + 0.1; yp += s32raster)
-                        hPos.Add(yp);
-
+                    // System-32 hole rows in both side panels — delegated to planner
+                    var hPos = CabinetPlanner.System32YPositions(H, s32edge, s32raster);
+                    var cols = CabinetPlanner.System32ColumnsX(effectiveDepth, s32edge, s32raster);
                     foreach (double yp in hPos)
                     {
-                        leftSide.AddDrillGroup(s32edge,  yp, s32dia, s32depth, drillToolNr);
-                        leftSide.AddDrillGroup(backColX, yp, s32dia, s32depth, drillToolNr);
-                        rightSide.AddDrillGroup(s32edge,  yp, s32dia, s32depth, drillToolNr);
-                        rightSide.AddDrillGroup(backColX, yp, s32dia, s32depth, drillToolNr);
+                        leftSide.AddDrillGroup(cols.FrontX, yp, s32dia, s32depth, drillToolNr);
+                        leftSide.AddDrillGroup(cols.BackX,  yp, s32dia, s32depth, drillToolNr);
+                        rightSide.AddDrillGroup(cols.FrontX, yp, s32dia, s32depth, drillToolNr);
+                        rightSide.AddDrillGroup(cols.BackX,  yp, s32dia, s32depth, drillToolNr);
                     }
                 }
             }
@@ -479,27 +460,15 @@ namespace WallabyHop.Components.Korpus
                 double footOffset = Convert.ToDouble(feetDict["footOffset"]);
                 double halfGrid   = Convert.ToDouble(feetDict["footGrid"]) / 2.0; // 32mm
 
-                // Foot plate centers in flat Boden coords (X=0..innerB, Y=0..T)
-                var footCenters = new List<(double x, double y)>
-                {
-                    (footOffset,          footOffset),
-                    (innerB - footOffset, footOffset),
-                    (footOffset,          T - footOffset),
-                    (innerB - footOffset, T - footOffset),
-                };
-                if (B > 800)
-                {
-                    footCenters.Add((innerB / 2.0, footOffset));
-                    footCenters.Add((innerB / 2.0, T - footOffset));
-                }
-
-                foreach (var (refX, refY) in footCenters)
+                // Foot plate centers in flat Boden coords — delegated to planner
+                var footCenters = CabinetPlanner.FootCenters(B, innerB, T, footOffset);
+                foreach (var c in footCenters)
                 {
                     // 4 holes at ±halfGrid from center
-                    bottom.AddDrillGroup(refX - halfGrid, refY - halfGrid, footDia, footDepth, drillToolNr);
-                    bottom.AddDrillGroup(refX + halfGrid, refY - halfGrid, footDia, footDepth, drillToolNr);
-                    bottom.AddDrillGroup(refX - halfGrid, refY + halfGrid, footDia, footDepth, drillToolNr);
-                    bottom.AddDrillGroup(refX + halfGrid, refY + halfGrid, footDia, footDepth, drillToolNr);
+                    bottom.AddDrillGroup(c.X - halfGrid, c.Y - halfGrid, footDia, footDepth, drillToolNr);
+                    bottom.AddDrillGroup(c.X + halfGrid, c.Y - halfGrid, footDia, footDepth, drillToolNr);
+                    bottom.AddDrillGroup(c.X - halfGrid, c.Y + halfGrid, footDia, footDepth, drillToolNr);
+                    bottom.AddDrillGroup(c.X + halfGrid, c.Y + halfGrid, footDia, footDepth, drillToolNr);
                 }
             }
 
@@ -514,43 +483,15 @@ namespace WallabyHop.Components.Korpus
                 double edgeDist  = Convert.ToDouble(doorDict["hinge_edgeDist"]);  // 22.5
                 double firstPos  = Convert.ToDouble(doorDict["hinge_s32Pos"]);    // 128
 
-                // Compute door dimensions based on overlay type
-                // For 2 doors: account for center gap (doorCount+1 total gaps)
-                double doorW, doorH;
-                int totalGaps = doorCount + 1; // left gap + center gap(s) + right gap
-                if (overlay == 0) // FullOverlay
-                {
-                    doorW = (B - totalGaps * gap) / doorCount;
-                    doorH = H - 2 * gap;
-                }
-                else if (overlay == 1) // HalfOverlay
-                {
-                    doorW = (B - MS - totalGaps * gap) / doorCount;
-                    doorH = H - 2 * gap;
-                }
-                else // Inset
-                {
-                    doorW = (innerB - totalGaps * gap) / doorCount;
-                    doorH = innerH - 2 * gap;
-                }
-                doorW = Math.Max(1, doorW);
-                doorH = Math.Max(1, doorH);
+                // Door dimensions + hinge layout — delegated to planner
+                var doorDims = CabinetPlanner.ComputeDoorDimensions(
+                    B, H, innerB, innerH, MS,
+                    doorCount, gap, (CabinetPlanner.DoorOverlay)overlay);
+                double doorW = doorDims.Width;
+                double doorH = doorDims.Height;
 
-                // Hinge count by door height
-                int hingeCount = doorH <= 900 ? 2 : (doorH <= 1500 ? 3 : (doorH <= 1800 ? 4 : 5));
-
-                // Hinge Y positions along door height (in flat panel coords, Y = height)
-                var hingeYPositions = new List<double>();
-                hingeYPositions.Add(firstPos);           // from top = firstPos, so from bottom = doorH - firstPos
-                hingeYPositions.Add(doorH - firstPos);   // from bottom
-                // Additional hinges evenly distributed
-                if (hingeCount > 2)
-                {
-                    double spacing = (doorH - 2 * firstPos) / (hingeCount - 1);
-                    for (int i = 1; i < hingeCount - 1; i++)
-                        hingeYPositions.Add(firstPos + i * spacing);
-                    hingeYPositions.Sort();
-                }
+                int hingeCount = CabinetPlanner.HingeCount(doorH);
+                var hingeYPositions = CabinetPlanner.HingeYPositions(doorH, hingeCount, firstPos);
 
                 // Create door panel(s)
                 for (int d = 0; d < doorCount; d++)
