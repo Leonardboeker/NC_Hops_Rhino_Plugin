@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Pre-commit hook for Wallaby Hop.
+# Blocks commits that would leak sensitive info, drift the translation,
+# or break the test suite.
+#
+# Install with:  bash tools/install-hooks.sh
+# Bypass with:   git commit --no-verify   (use sparingly)
+
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+red()    { printf '\033[0;31m%s\033[0m\n' "$*" 1>&2; }
+yellow() { printf '\033[0;33m%s\033[0m\n' "$*" 1>&2; }
+green()  { printf '\033[0;32m%s\033[0m\n' "$*" 1>&2; }
+
+# -------------------------------------------------------------
+# 1. Block dongle-ID-shaped strings (any "N-NNNNNNN" pattern)
+# -------------------------------------------------------------
+# Match a single-digit prefix + dash + 7 digits, anchored as a token.
+# This catches the previously-leaked ID and any sibling pattern.
+DONGLE_HITS=$(git diff --cached -U0 --no-color | grep -E '^\+' | grep -vE '^\+\+\+' \
+  | grep -E '\b[0-9]-[0-9]{7}\b' || true)
+
+if [[ -n "$DONGLE_HITS" ]]; then
+    red "==> BLOCKED: HOPS dongle-ID pattern in staged changes"
+    red "    Move the value to LOCAL/ (gitignored) or strip it."
+    red ""
+    echo "$DONGLE_HITS" | head -10 | sed 's/^/    /' 1>&2
+    exit 1
+fi
+
+# -------------------------------------------------------------
+# 2. Block German umlauts/eszett added to .cs files
+#    EXCEPT in src/.../Logic/ where machine-literal strings live
+#    (BREITE, TIEFE, SEITE etc. are NOT umlaut chars so this is safe).
+# -------------------------------------------------------------
+UMLAUT_HITS=$(git diff --cached -U0 --no-color \
+  -- 'src/DynesticPostProcessor/**/*.cs' \
+  ':(exclude)src/DynesticPostProcessor/Logic/**' \
+  ':(exclude)src/DynesticPostProcessor/PluginConfig.cs' \
+  | grep -E '^\+' | grep -vE '^\+\+\+' \
+  | grep -E '[äöüÄÖÜß]' || true)
+
+if [[ -n "$UMLAUT_HITS" ]]; then
+    red "==> BLOCKED: German umlaut characters added to a .cs file"
+    red "    The plugin is English-only. Machine-literal Sondernamen"
+    red "    (BREITE, TIEFE, SEITE, ABSTAND, FARBE) are ASCII anyway"
+    red "    and live in src/.../Logic/ where this check is exempt."
+    red ""
+    echo "$UMLAUT_HITS" | head -10 | sed 's/^/    /' 1>&2
+    exit 1
+fi
+
+# -------------------------------------------------------------
+# 3. Run the test suite
+# -------------------------------------------------------------
+yellow "==> Running dotnet test..."
+if ! dotnet test tests/DynesticPostProcessor.Tests/DynesticPostProcessor.Tests.csproj \
+       --nologo --verbosity quiet 2>&1 | tail -5; then
+    red "==> BLOCKED: tests failed. Fix them or use --no-verify."
+    exit 1
+fi
+
+green "==> pre-commit: all checks passed"
+exit 0

@@ -719,3 +719,60 @@ When you drop a component onto the Grasshopper canvas, **AutoWire** automaticall
 - `WZS` — saw tool
 
 Feed rates, spindle speed, and approach behavior are handled at the machine level via the tool magazine configuration. This plugin does not write feed values — only tool position number and the `_VE`, `_VA`, `_SD` placeholders that CAMPUS resolves at runtime.
+
+---
+
+## Gotchas (read before changing anything)
+
+These are non-obvious things that have already cost time. Skim them once.
+
+### Machine protocol literals are German on purpose
+The HOLZ-HER CAMPUS controller parses macro parameter names verbatim. Do **not** translate any of these strings, even if they look like comments:
+
+```
+Bohrung (...)            BREITE:=         TIEFE:=          ZUTIEFE:=
+SPIEGELN:=               SEITE:=          ABSTAND:=        FARBE:=
+RADIUSKORREKTUR:=        EBENE:=          ARAND:=          NB:=
+TOPF_D:= TOPF_T:=        DUEBEL_D:= DUEBEL_T:=
+_Rechteck_V7    _Kreistasche_V5    _Kreisbahn_V5
+_Bohgx_V5       _Bohgy_V5          _Topf_V5
+_Nuten_X_V5     _Nuten_Y_V5        _nuten_frei_v5
+_saege_x_V7     _saege_y_V7
+WZB WZF WZS                    ;MASCHINE=HOLZHER
+```
+
+The plugin's user-visible identifiers (component names, parameter labels, comments) are English. The machine protocol stays German. Don't confuse the two.
+
+### ComponentGuids never change
+Every `HopXxxComponent.ComponentGuid` is the long-term identity used by Grasshopper to wire saved `.gh` files. Renaming a component is fine. Reordering its inputs/outputs may need a one-time `IO_Schema_Migration`. **Changing the GUID breaks every existing `.gh` that references the component.**
+
+### File format edge cases
+- `.hop` files are **ASCII** — no umlauts, no em-dashes, no smart quotes. The CAMPUS parser will reject Unicode.
+- Line endings are **CRLF**. The export writer enforces this; if you copy-paste lines from a unix tool, watch for stripped `\r`.
+- All numeric formatting goes through `CultureInfo.InvariantCulture`. A German locale with `,` as decimal separator would produce broken NC. The Logic layer is tested for this; if you add a new emitter, copy the pattern.
+
+### Bucket-sort behavior at export
+`HopExport` groups operation lines into 4 tool buckets (`WZB` drill, `WZF` mill, `WZS` saw, other) and merges blocks that share the same tool-call line. Side effect: if two `HopSaw` components produce different tool numbers but the same downstream `WZS` setup, they end up in two separate blocks. Order within a block is stable. See `NcExport.SortOperationLines`.
+
+### Spoilboard allowance and clamp radius
+`HopAnalyzer` flags two collision risks:
+- **Depth overshoot**: any drill or SP plunge below `DZ + MachineConstants.SpoilboardAllowanceMm` (default 5 mm). Adjust the constant if your spoilboard is thicker or thinner.
+- **Fixchip collision**: any operation XY within `MachineConstants.FixchipClampRadiusMm` (default 25 mm) of a `Fixchip_K` position. Tighten only after measuring an actual clamp on the bed.
+
+Both constants live in `src/DynesticPostProcessor/MachineConstants.cs` — single source of truth.
+
+### Per-rechner paths
+Two paths are user-overridable without code changes:
+
+| Concern | Env var | Config-file key |
+|---|---|---|
+| Drawing template `.3dm` | `WALLABYHOP_TEMPLATE_PATH` | `template = ...` |
+| Tool database `.too`    | `WALLABYHOP_TOOLDB_PATH`   | `tooldb = ...`   |
+
+Resolution order: env var → `WallabyHop.config.txt` next to the `.gha` → `%APPDATA%\Grasshopper\Libraries\WallabyHop.config.txt` → hardcoded fallback. See `PluginConfig.cs`.
+
+### Local-only files
+Anything machine-specific, dongle-related, or research notes lives in `LOCAL/` (gitignored). `.planning/` is also gitignored. Never `git add` either folder, never paste a dongle ID into a public file.
+
+### Tests are the safety net, not Rhino
+Don't ship a Logic-layer change without `dotnet test` passing. The 119 snapshot tests catch any drift in the NC output format. If a test fails, the machine output would have changed too — investigate before pushing.
