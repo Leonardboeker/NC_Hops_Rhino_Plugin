@@ -5,3 +5,11 @@ output/*.hop
 # .NET build artifacts
 **/bin/
 **/obj/
+
+# Local-only sensitive files (machine details, research notes, dongle IDs).
+# Anything in LOCAL/ stays on Leo's drive and never reaches the public repo.
+LOCAL/
+*.local.md
+
+# Per-rechner config (paths/env overrides for the plugin)
+WallabyHop.config.txt

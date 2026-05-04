@@ -11,11 +11,15 @@ namespace WallabyHop.Components.Utility
     /// The label template reads VP18-VP21 (+extra) from the HOPS VARS block.
     /// Wire output into HopExport's LabelVars input.
     ///
-    /// Default VP mapping (matches standard HOLZ-HER EasyTronic label template):
-    ///   VP18 = Auftragsnummer  → "Auftrag:"  field
-    ///   VP19 = Bestellnummer   → "EINr.:"   field
-    ///   VP20 = Bauteilnummer   → "Pos.:"    field
-    ///   VP21 = Bauteilname     → "Material:" field
+    /// Default VP mapping (matches the standard HOLZ-HER EasyTronic label template):
+    ///   VP18 = Order number   -> "Auftrag:"  field on the printed label
+    ///   VP19 = Reference no.  -> "EINr.:"    field
+    ///   VP20 = Part position  -> "Pos.:"     field
+    ///   VP21 = Material name  -> "Material:" field
+    ///
+    /// NOTE: the printed label captions ("Auftrag:", "Pos.:", "Material:") live
+    /// in the label-template file on the EasyTronic side, not in this .hop output.
+    /// We only ship the VP values + a *VAR* documentation tag.
     /// </summary>
     public class HopLabelComponent : GH_Component
     {
@@ -38,23 +42,23 @@ namespace WallabyHop.Components.Utility
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddTextParameter("Auftrag", "auftrag",
-                "Order / job number printed on the label (VP18 = Auftragsnummer).",
+            pManager.AddTextParameter("Order", "order",
+                "Order / job number printed on the label (VP18).",
                 GH_ParamAccess.item, "");
             pManager[0].Optional = true;
 
-            pManager.AddTextParameter("EINr", "einr",
-                "Setup or purchase reference number (VP19 = Bestellnummer / EINr).",
+            pManager.AddTextParameter("RefNr", "refNr",
+                "Setup or purchase reference number printed in the EINr. field (VP19).",
                 GH_ParamAccess.item, "");
             pManager[1].Optional = true;
 
-            pManager.AddTextParameter("Pos", "pos",
-                "Part number / position identifier shown in Pos. field (VP20 = Bauteilnummer).",
+            pManager.AddTextParameter("Position", "position",
+                "Part number / position identifier shown in the Pos. field (VP20).",
                 GH_ParamAccess.item, "");
             pManager[2].Optional = true;
 
             pManager.AddTextParameter("Material", "material",
-                "Material description shown in Material field (VP21 = Bauteilname / Material).",
+                "Material description shown in the Material field (VP21).",
                 GH_ParamAccess.item, "");
             pManager[3].Optional = true;
 
@@ -80,31 +84,31 @@ namespace WallabyHop.Components.Utility
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            string auftrag  = "";
-            string einr     = "";
-            string pos      = "";
+            string order    = "";
+            string refNr    = "";
+            string position = "";
             string material = "";
             var extraVars = new List<string>();
 
-            DA.GetData(0, ref auftrag);
-            DA.GetData(1, ref einr);
-            DA.GetData(2, ref pos);
+            DA.GetData(0, ref order);
+            DA.GetData(1, ref refNr);
+            DA.GetData(2, ref position);
             DA.GetData(3, ref material);
             DA.GetDataList(4, extraVars);
 
             var lines = new List<string>();
 
-            if (!string.IsNullOrWhiteSpace(auftrag))
-                lines.Add("   VP18 := '" + Sanitize(auftrag) + "';*VAR*Auftragsnummer");
+            if (!string.IsNullOrWhiteSpace(order))
+                lines.Add("   VP18 := '" + Sanitize(order) + "';*VAR*OrderNumber");
 
-            if (!string.IsNullOrWhiteSpace(einr))
-                lines.Add("   VP19 := '" + Sanitize(einr) + "';*VAR*Bestellnummer");
+            if (!string.IsNullOrWhiteSpace(refNr))
+                lines.Add("   VP19 := '" + Sanitize(refNr) + "';*VAR*ReferenceNumber");
 
-            if (!string.IsNullOrWhiteSpace(pos))
-                lines.Add("   VP20 := '" + Sanitize(pos) + "';*VAR*Bauteilnummer");
+            if (!string.IsNullOrWhiteSpace(position))
+                lines.Add("   VP20 := '" + Sanitize(position) + "';*VAR*PartNumber");
 
             if (!string.IsNullOrWhiteSpace(material))
-                lines.Add("   VP21 := '" + Sanitize(material) + "';*VAR*Bauteilname");
+                lines.Add("   VP21 := '" + Sanitize(material) + "';*VAR*PartName");
 
             foreach (string extra in extraVars)
             {
@@ -115,12 +119,12 @@ namespace WallabyHop.Components.Utility
 
             if (lines.Count == 0)
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
-                    "All label fields are empty — no VP variables will be written.");
+                    "All label fields are empty -- no VP variables will be written.");
 
             DA.SetDataList(0, lines);
         }
 
-        // Single quotes inside values would break the HOPS parser — strip them
+        // Single quotes inside values would break the HOPS parser -- strip them
         private static string Sanitize(string s) => s.Replace("'", "").Trim();
     }
 }

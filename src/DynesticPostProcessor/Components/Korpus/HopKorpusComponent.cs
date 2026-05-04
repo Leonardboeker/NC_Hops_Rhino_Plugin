@@ -370,7 +370,7 @@ namespace WallabyHop.Components.Korpus
                         connCount = CabinetPlanner.AutoConnectorCount(T);
                     var xPositions = CabinetPlanner.ConnectorPositions(T, connCount, edge);
 
-                    // Side panels: face drilling at joint zones (Y = MS/2 for Boden, Y = H-MS/2 for Deckel)
+                    // Side panels: face drilling at joint zones (Y = MS/2 for Bottom, Y = H-MS/2 for Top)
                     foreach (double xp in xPositions)
                     {
                         leftSide.AddDrillGroup(xp, MS / 2.0,      drillDia, drillDepth, drillToolNr);
@@ -380,8 +380,8 @@ namespace WallabyHop.Components.Korpus
                     }
 
                     // Bottom/Top: edge drillings from left/right sides (horizontal, visual preview only)
-                    // In world space: Boden assembled at Z=0..MS, center Z=MS/2
-                    //                 Deckel assembled at Z=H-MS..H, center Z=H-MS/2
+                    // In world space: Bottom panel assembled at Z=0..MS, center Z=MS/2
+                    //                 Top panel    assembled at Z=H-MS..H, center Z=H-MS/2
                     double edgeR = drillDia / 2.0;
                     foreach (double xp in xPositions)
                     {
@@ -460,7 +460,7 @@ namespace WallabyHop.Components.Korpus
                 double footOffset = Convert.ToDouble(feetDict["footOffset"]);
                 double halfGrid   = Convert.ToDouble(feetDict["footGrid"]) / 2.0; // 32mm
 
-                // Foot plate centers in flat Boden coords — delegated to planner
+                // Foot plate centers in flat bottom-panel coords -- delegated to planner
                 var footCenters = CabinetPlanner.FootCenters(B, innerB, T, footOffset);
                 foreach (var c in footCenters)
                 {

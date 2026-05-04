@@ -265,12 +265,12 @@ namespace WallabyHop.Components.Drawing
             double bbD = bb.Max.Y - bb.Min.Y;
 
             // ---------------------------------------------------------------
-            // 2×2 grid layout (left 295mm for views, right 120mm for title block)
+            // 2x2 grid layout (left 295mm for views, right 120mm for title block)
             //
-            //   [Draufsicht  ] [Isometrie   ]
-            //   [Vorderansicht][Seitenansicht]
+            //   [Top         ] [Iso         ]
+            //   [Front       ] [Side        ]
             //   [Dim text                   ]
-            //   ─────────────── | title block
+            //   --------------- | title block
             // ---------------------------------------------------------------
             const double m     = 5.0;   // margin
             const double sepX  = 295.0; // left/right separator
@@ -279,10 +279,10 @@ namespace WallabyHop.Components.Drawing
 
             var views = new[]
             {
-                ("Draufsicht",     m,           midY + m,  m + halfX,    pageH - m,  DefinedViewportProjection.Top),
-                ("Isometrie",      m + halfX + m, midY + m, sepX - m,   pageH - m,  DefinedViewportProjection.Perspective),
-                ("Vorderansicht",  m,           m + 8,     m + halfX,    midY - m,  DefinedViewportProjection.Front),
-                ("Seitenansicht",  m + halfX + m, m + 8,   sepX - m,    midY - m,  DefinedViewportProjection.Right),
+                ("Top",   m,             midY + m, m + halfX, pageH - m, DefinedViewportProjection.Top),
+                ("Iso",   m + halfX + m, midY + m, sepX - m,  pageH - m, DefinedViewportProjection.Perspective),
+                ("Front", m,             m + 8,    m + halfX, midY - m,  DefinedViewportProjection.Front),
+                ("Side",  m + halfX + m, m + 8,    sepX - m,  midY - m,  DefinedViewportProjection.Right),
             };
 
             // ---------------------------------------------------------------

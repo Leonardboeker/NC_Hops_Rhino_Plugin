@@ -709,9 +709,9 @@ When you drop a component onto the Grasshopper canvas, **AutoWire** automaticall
 | CAM software | HOPS 7.7.12.80 (direkt cnc-systeme gmbh) |
 | File format | `.hop` (NC-Hops Part Program) |
 | Encoding | ASCII, CRLF line endings |
-| Licensed 3D milling | Not available on current HOPS dongle |
+| Scope | 2.5D operations only (XY + vertical Z plunge) |
 
-**Important:** 3DMilling, Mill5Axis, and VSPMillSAxis are **not licensed** on the current HOPS dongle (ID: [REDACTED]). All operations in this plugin are 2.5D (XY movement + vertical Z plunge).
+**Note:** This plugin targets 2.5D operations only. 3D milling and 5-axis paths are out of scope.
 
 **Tool type codes:**
 - `WZB` — drilling tool

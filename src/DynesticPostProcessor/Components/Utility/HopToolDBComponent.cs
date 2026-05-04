@@ -43,7 +43,8 @@ namespace WallabyHop.Components.Utility
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddTextParameter("ToolFile", "toolFile",
-                "Full path to the NC-HOPS .too tool database file (e.g. C:\\HOPS\\werkzeug.too).",
+                "Full path to the NC-HOPS .too tool database file (e.g. C:\\HOPS\\tools.too). " +
+                "If empty, falls back to the WALLABYHOP_TOOLDB_PATH env var, then config file, then default.",
                 GH_ParamAccess.item, "");
             pManager[0].Optional = true;
 
@@ -75,10 +76,10 @@ namespace WallabyHop.Components.Utility
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            string filePath = @"D:\Projekte\SynologyDrive\53_post-processor\reference-hops\werkzeug klemp.too";
+            string filePath = PluginConfig.DefaultToolDbPath;
             DA.GetData(0, ref filePath);
             if (string.IsNullOrWhiteSpace(filePath))
-                filePath = @"F:\werkzeug klemp.too";
+                filePath = PluginConfig.DefaultToolDbPath;
 
             // Re-parse when path changes
             if (filePath != _lastPath)
@@ -141,8 +142,8 @@ namespace WallabyHop.Components.Utility
                 WallabyHop.AutoWire.Spec.Skip(), // toolId — we create the ValueList
             });
 
-            // Parse with default path
-            string defaultPath = @"D:\Projekte\SynologyDrive\53_post-processor\reference-hops\werkzeug klemp.too";
+            // Parse with default path (resolved via PluginConfig — env var / config file / fallback)
+            string defaultPath = PluginConfig.DefaultToolDbPath;
             _tools    = ParseTooFile(defaultPath);
             _lastPath = defaultPath;
 

@@ -59,7 +59,7 @@ namespace WallabyHop.Components.Export
 
             pManager.AddTextParameter("LabelVars", "labelVars",
                 "VP variable lines from HopLabel component. Injected into the VARS block after DX/DY/DZ " +
-                "so the EasyTronic Label printer reads job metadata (Auftrag, Pos, Material, etc.).",
+                "so the EasyTronic Label printer reads job metadata (order, position, material, etc.).",
                 GH_ParamAccess.list);
             pManager[8].Optional = true;
         }
