@@ -163,7 +163,7 @@ namespace WallabyHop.Components.Operations
                 BoundingBox bb = curve.GetBoundingBox(true);
                 Point3d startP = curve.PointAtStart;
                 _approachLines.Add(new Line(
-                    new Point3d(startP.X, startP.Y, bb.Max.Z + 20.0), startP));
+                    new Point3d(startP.X, startP.Y, bb.Max.Z + MachineConstants.PreviewSafeZOffset), startP));
 
                 // Decompose: join → ToArcsAndLines → flatten to leaf segments
                 Curve[] segs2 = curve.DuplicateSegments();

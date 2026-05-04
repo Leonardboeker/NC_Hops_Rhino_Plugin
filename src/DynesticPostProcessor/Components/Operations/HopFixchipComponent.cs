@@ -86,7 +86,7 @@ namespace WallabyHop.Components.Operations
             {
                 Point3d pt = positions[i];
                 _approachLines.Add(new Line(
-                    new Point3d(pt.X, pt.Y, pt.Z + 20.0),
+                    new Point3d(pt.X, pt.Y, pt.Z + MachineConstants.PreviewSafeZOffset),
                     new Point3d(pt.X, pt.Y, pt.Z)));
                 purePositions.Add(new DrillLogic.Point2dz(pt.X, pt.Y, pt.Z));
             }

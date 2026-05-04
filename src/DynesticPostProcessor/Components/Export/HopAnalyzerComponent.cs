@@ -84,9 +84,12 @@ namespace WallabyHop.Components.Export
                 result.Summary);
             foreach (string zw in result.ZWarnings)
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, zw);
+            foreach (string fc in result.FixchipWarnings)
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, fc);
 
             var allMessages = new List<string>();
             if (result.Errors.Count > 0) allMessages.AddRange(result.Errors);
+            if (result.FixchipWarnings.Count > 0) allMessages.AddRange(result.FixchipWarnings);
             if (result.ZWarnings.Count > 0) allMessages.AddRange(result.ZWarnings);
             if (allMessages.Count == 0) allMessages.Add("No errors.");
 

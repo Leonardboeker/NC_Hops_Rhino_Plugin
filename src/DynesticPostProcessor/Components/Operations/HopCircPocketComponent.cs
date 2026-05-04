@@ -125,7 +125,7 @@ namespace WallabyHop.Components.Operations
                 _previewVolumes.Add(cylBrep);
 
             // PREVIEW: approach line from safeZ to circle center
-            double safeZ = center.Z + 20.0;
+            double safeZ = center.Z + MachineConstants.PreviewSafeZOffset;
             _approachLines.Add(new Line(new Point3d(center.X, center.Y, safeZ), center));
 
             // ---------------------------------------------------------------

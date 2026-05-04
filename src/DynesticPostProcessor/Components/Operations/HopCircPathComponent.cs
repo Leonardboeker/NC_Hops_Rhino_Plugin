@@ -145,7 +145,7 @@ namespace WallabyHop.Components.Operations
             }
 
             // PREVIEW: approach line from safeZ to the 3 o'clock entry point
-            double safeZ = center.Z + 20.0;
+            double safeZ = center.Z + MachineConstants.PreviewSafeZOffset;
             Point3d entryPt = new Point3d(center.X + radius, center.Y, previewZ);
             _approachLines.Add(new Line(new Point3d(entryPt.X, entryPt.Y, safeZ), entryPt));
 

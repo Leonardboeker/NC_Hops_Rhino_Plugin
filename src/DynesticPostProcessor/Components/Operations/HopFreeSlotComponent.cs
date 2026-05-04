@@ -157,7 +157,7 @@ namespace WallabyHop.Components.Operations
             }
 
             // PREVIEW: approach line from safeZ to p1
-            double safeZVal = Math.Max(p1.Z, p2.Z) + 20.0;
+            double safeZVal = Math.Max(p1.Z, p2.Z) + MachineConstants.PreviewSafeZOffset;
             _approachLines.Add(new Line(new Point3d(a.X, a.Y, safeZVal), a));
 
             // ---------------------------------------------------------------

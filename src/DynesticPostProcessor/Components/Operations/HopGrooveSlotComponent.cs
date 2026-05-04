@@ -162,7 +162,7 @@ namespace WallabyHop.Components.Operations
                 BoundingBox bb = new BoundingBox(p1, p2);
                 Brep box = Brep.CreateFromBox(bb);
                 if (box != null) _previewVolumes.Add(box);
-                _approachLines.Add(new Line(new Point3d(pt.X, pt.Y, surfaceZ + 20.0), new Point3d(pt.X, pt.Y, surfaceZ)));
+                _approachLines.Add(new Line(new Point3d(pt.X, pt.Y, surfaceZ + MachineConstants.PreviewSafeZOffset), new Point3d(pt.X, pt.Y, surfaceZ)));
 
                 purePositions.Add(new SlotLogic.GroovePosition
                 {

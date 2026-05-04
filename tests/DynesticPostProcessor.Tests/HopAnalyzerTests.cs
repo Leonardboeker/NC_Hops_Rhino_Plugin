@@ -188,5 +188,73 @@ namespace DynesticPostProcessor.Tests
             Assert.That(r.Summary, Does.StartWith("OK  "));
             Assert.That(r.Summary, Does.Contain("Lines=2"));
         }
+
+        // -------------------------------------------------------------
+        // FIXCHIP COLLISION (clamps + operations within ClampRadius)
+        // -------------------------------------------------------------
+
+        [Test]
+        public void FixchipCollision_DrillRightOnClamp_TriggersError()
+        {
+            // Clamp at (100,100); drill at exact same XY -> 0 mm distance, well inside 25 mm radius
+            var content = string.Join("\n", new[]
+            {
+                "Fixchip_K (100,100,19,0)",
+                "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
+                "Bohrung (100,100,19,9,8,0,0,0,0,0,0,0)",
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.FixchipWarnings.Count, Is.EqualTo(1));
+            Assert.That(r.FixchipWarnings[0], Does.Contain("Drill"));
+            Assert.That(r.FixchipWarnings[0], Does.Contain("Fixchip"));
+            Assert.That(r.IsValid, Is.False);
+            Assert.That(r.FixchipCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void FixchipCollision_DrillFarFromClamp_NoWarning()
+        {
+            // Clamp at (100,100); drill at (500,500) -> ~566 mm distance, way outside 25 mm
+            var content = string.Join("\n", new[]
+            {
+                "Fixchip_K (100,100,19,0)",
+                "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
+                "Bohrung (500,500,19,9,8,0,0,0,0,0,0,0)",
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.FixchipWarnings.Count, Is.EqualTo(0));
+            Assert.That(r.IsValid, Is.True);
+        }
+
+        [Test]
+        public void FixchipCollision_ContourSPInsideClamp_TriggersError()
+        {
+            // SP within clamp footprint
+            var content = string.Join("\n", new[]
+            {
+                "Fixchip_K (200,200,19,0)",
+                "WZF (4,_VE,_V*1,_VA,_SD,0,'')",
+                "SP (210,205,-10,2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)",
+                "G01 (250,205,0,0,0,2)",
+                "EP (0,_ANF,0)",
+            });
+            var r = HopAnalyzer.Analyze(content);
+            // SP is ~11 mm from clamp -> within 25 mm radius
+            Assert.That(r.FixchipWarnings, Has.Some.Contains("SP"));
+        }
+
+        [Test]
+        public void FixchipCollision_RectPocketCenterInsideClamp_TriggersError()
+        {
+            // Pocket centered on (300,300); clamp at (305,302) -> ~5.4 mm distance
+            var content = string.Join("\n", new[]
+            {
+                "Fixchip_K (305,302,19,0)",
+                "WZF (4,_VE,_V*1,_VA,_SD,0,'')",
+                "CALL _Rechteck_V7(VAL X_MITTE:=300,Y_MITTE:=300,LAENGE:=80,BREITE:=40,RADIUS:=0,WINKEL:=0,TIEFE:=-10,ZUTIEFE:=0,RADIUSKORREKTUR:=2,AB:=2,AUFMASS:=0,ANF:=_ANF,ABF:=_ANF,UMKEHREN:=0,RAMPE:=0,RAMPENLAENGE:=50,QUADRANT:=1,INTERPOL:=1,ESXY:=0,ESMD:=0,LASER:=0)",
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.FixchipWarnings, Has.Some.Contains("CALL"));
+        }
     }
 }

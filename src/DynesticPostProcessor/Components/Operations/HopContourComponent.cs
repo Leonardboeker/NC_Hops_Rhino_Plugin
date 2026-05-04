@@ -264,7 +264,7 @@ namespace WallabyHop.Components.Operations
 
             // Dashed approach line above start point
             BoundingBox curveBB = curve.GetBoundingBox(true);
-            double safeZ   = curveBB.Max.Z + 20.0;
+            double safeZ   = curveBB.Max.Z + MachineConstants.PreviewSafeZOffset;
             Point3d startP = previewCrv.PointAtStart;
             _approachLines.Add(new Line(new Point3d(startP.X, startP.Y, safeZ), startP));
 

@@ -169,7 +169,7 @@ namespace WallabyHop.Components.Operations
             }
 
             // PREVIEW: approach line from safeZ to bottom-left corner
-            double safeZ = rectCurve.GetBoundingBox(true).Max.Z + 20.0;
+            double safeZ = rectCurve.GetBoundingBox(true).Max.Z + MachineConstants.PreviewSafeZOffset;
             Point3d startPt = new Point3d(bb.Min.X, bb.Min.Y, topZ);
             _approachLines.Add(new Line(new Point3d(startPt.X, startPt.Y, safeZ), startPt));
 

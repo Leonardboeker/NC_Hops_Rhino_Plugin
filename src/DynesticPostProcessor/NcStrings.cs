@@ -64,14 +64,14 @@ namespace WallabyHop
             if (!string.IsNullOrEmpty(wzgv))
                 lines.Add(";WZGV=" + wzgv);
             lines.Add(";WZGVCONFIG=");
-            lines.Add(";MASCHINE=HOLZHER");
+            lines.Add(";MASCHINE=" + MachineConstants.HeaderMachineId);
             lines.Add(";NCNAME=" + ncName);
             lines.Add(";KOMMENTAR=");
             lines.Add(";DX=" + dx.ToString("F3", CultureInfo.InvariantCulture));
             lines.Add(";DY=" + dy.ToString("F3", CultureInfo.InvariantCulture));
             lines.Add(";DZ=" + dz.ToString("F3", CultureInfo.InvariantCulture));
-            lines.Add(";DIALOGDLL=Dialoge.Dll");
-            lines.Add(";DIALOGPROC=StandardFormAnzeigen");
+            lines.Add(";DIALOGDLL=" + MachineConstants.HeaderDialogDll);
+            lines.Add(";DIALOGPROC=" + MachineConstants.HeaderDialogProc);
             lines.Add(";AUTOSCRIPTSTART=1");
             lines.Add(";BUTTONBILD=");
             lines.Add(";DIMENSION_UNIT=0");

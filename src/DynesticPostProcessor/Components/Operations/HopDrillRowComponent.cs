@@ -176,7 +176,7 @@ namespace WallabyHop.Components.Operations
                 if (cylBrep != null) _previewVolumes.Add(cylBrep);
             }
             _approachLines.Add(new Line(
-                new Point3d(startPoint.X, startPoint.Y, surfaceZ + 20.0),
+                new Point3d(startPoint.X, startPoint.Y, surfaceZ + MachineConstants.PreviewSafeZOffset),
                 new Point3d(startPoint.X, startPoint.Y, surfaceZ)));
 
             // NC macro — delegate to pure logic

@@ -173,7 +173,7 @@ namespace WallabyHop.Components.Operations
                     p1 = new Point3d(pt.X, pt.Y - halfLen, surfaceZ);
                     p2 = new Point3d(pt.X, pt.Y + halfLen, surfaceZ);
                 }
-                _approachLines.Add(new Line(new Point3d(p1.X, p1.Y, surfaceZ + 20.0), p1));
+                _approachLines.Add(new Line(new Point3d(p1.X, p1.Y, surfaceZ + MachineConstants.PreviewSafeZOffset), p1));
 
                 double kerfW = 3.2;
                 Vector3d perp = isXCut ? Vector3d.YAxis : Vector3d.XAxis;

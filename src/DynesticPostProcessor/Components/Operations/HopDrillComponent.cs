@@ -145,7 +145,7 @@ namespace WallabyHop.Components.Operations
             if (points.Count > 0)
             {
                 Point3d firstPt = new Point3d(points[0].X, points[0].Y, surfaceZ);
-                double safeZ = surfaceZ + 20.0;
+                double safeZ = surfaceZ + MachineConstants.PreviewSafeZOffset;
                 _approachLines.Add(new Line(new Point3d(firstPt.X, firstPt.Y, safeZ), firstPt));
             }
 

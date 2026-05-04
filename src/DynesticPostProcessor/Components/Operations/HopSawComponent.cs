@@ -264,7 +264,7 @@ namespace WallabyHop.Components.Operations
                 Brep box = BuildTiltedBox(t0, t1, t2, t3, b0, b1, b2, b3, tol);
                 if (box != null) _previewVolumes.Add(box);
 
-                _approachLines.Add(new Line(new Point3d(aTop.X, aTop.Y, topZ + 20.0), aTop));
+                _approachLines.Add(new Line(new Point3d(aTop.X, aTop.Y, topZ + MachineConstants.PreviewSafeZOffset), aTop));
 
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                     "[" + origIdx + "] bladeAngle=" + seg.BladeAngle.ToString("F1", CultureInfo.InvariantCulture) + "deg"

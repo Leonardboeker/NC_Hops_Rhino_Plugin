@@ -166,7 +166,7 @@ namespace WallabyHop.Components.Operations
                 Cylinder cupCyl = new Cylinder(new Circle(cupPlane, cupRadius), -Math.Abs(cupDepth));
                 Brep cupBrep = cupCyl.ToBrep(true, true);
                 if (cupBrep != null) _previewVolumes.Add(cupBrep);
-                _approachLines.Add(new Line(new Point3d(pt.X, pt.Y, surfaceZ + 20.0), cupCenter));
+                _approachLines.Add(new Line(new Point3d(pt.X, pt.Y, surfaceZ + MachineConstants.PreviewSafeZOffset), cupCenter));
 
                 purePositions.Add(new BlumHingeLogic.HingePosition
                 {
