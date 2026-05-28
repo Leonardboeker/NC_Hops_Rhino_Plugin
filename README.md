@@ -6,7 +6,7 @@
 
 **A Grasshopper plugin that turns parametric Rhino geometry into production-ready `.hop` NC files for HOLZ-HER CNC machines — no manual NC coding, no HOPS GUI.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm_Noncommercial_1.0.0-orange.svg)](./LICENSE)
 [![Rhino 7 / 8](https://img.shields.io/badge/Rhino-7%20%7C%208-A0DC3F?logo=rhinoceros&logoColor=white)](https://www.rhino3d.com/)
 [![.NET Framework 4.8](https://img.shields.io/badge/.NET-Framework%204.8-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![C#](https://img.shields.io/badge/C%23-9-239120?logo=csharp&logoColor=white)](https://docs.microsoft.com/dotnet/csharp/)
@@ -840,7 +840,11 @@ All 119 snapshot tests must pass before shipping a change to the Logic layer —
 
 ## License
 
-[MIT](./LICENSE) — use it, fork it, ship it. If you adapt it for a different HOPS-compatible machine, drop a note in an issue — I'd love to know.
+[PolyForm Noncommercial 1.0.0](./LICENSE) — free for personal, academic, research, hobby, charitable, and government use. Fork, modify, and build on it for any of those without asking.
+
+**For commercial use** (paid shops embedding it in production, paid services, products that depend on it, internal use at a for-profit company beyond evaluation) please reach out — I'm open to commercial licensing on reasonable terms.
+
+Even for noncommercial use: see [`CONTRIBUTING.md`](./CONTRIBUTING.md) before you fork or build on this. A one-paragraph "hey, I'm planning to do X" in a GitHub issue is enough — it lets me flag context that hasn't made it into the docs and helps me understand who's actually using this.
 
 ---
 
