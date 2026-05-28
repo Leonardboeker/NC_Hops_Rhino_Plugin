@@ -1,35 +1,63 @@
-# Wallaby Hop
+<div align="center">
 
-A Grasshopper plugin for generating `.hop` NC files for the **HOLZ-HER DYNESTIC 7535** CNC machine, controlled via the **HOPS 7.7** CAM software and **HOLZHER CAMPUS** machine controller.
+![Wallaby Hop banner](./banner.png)
 
-Design parametrically in Rhino/Grasshopper, wire components together, and export production-ready `.hop` files directly — no manual NC coding, no HOPS GUI.
+# 🪚 Wallaby Hop
+
+**A Grasshopper plugin that turns parametric Rhino geometry into production-ready `.hop` NC files for HOLZ-HER CNC machines — no manual NC coding, no HOPS GUI.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![Rhino 7 / 8](https://img.shields.io/badge/Rhino-7%20%7C%208-A0DC3F?logo=rhinoceros&logoColor=white)](https://www.rhino3d.com/)
+[![.NET Framework 4.8](https://img.shields.io/badge/.NET-Framework%204.8-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![C#](https://img.shields.io/badge/C%23-9-239120?logo=csharp&logoColor=white)](https://docs.microsoft.com/dotnet/csharp/)
+[![Platform Windows](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white)](#installation)
+[![NC-Hops 7.7+](https://img.shields.io/badge/NC--Hops-7.7%2B-F5C518)](https://www.direkt.net/)
+
+</div>
+
+Design furniture and panel parts parametrically in Rhino/Grasshopper, wire components together, and export production-ready `.hop` files directly. The plugin emits the macro language interpreted by the **HOLZHER CAMPUS** controller (drilling, milling, sawing, pocketing, hinge cups, fixing clamps, full cabinet carcasses, OpenNest-based nesting). 119 snapshot tests on the NC-output formatter make sure a tested machine program stays a tested machine program.
+
+Built for the **HOLZ-HER DYNESTIC 7535** controlled via **HOPS 7.7** + **HOLZHER CAMPUS**, but the macro emitters are isolated — porting to another HOPS-compatible machine is an afternoon of renaming, not a rewrite.
+
+> **2.5D only.** XY + vertical Z plunge. 3D milling and 5-axis paths are out of scope. The plugin trusts your tool magazine for feeds, speeds, and approach behavior — it writes positions and tool numbers, the controller resolves the rest.
 
 ---
 
-## Table of Contents
+## Contents
 
+- [Why this exists](#why-this-exists)
 - [How it works](#how-it-works)
 - [Installation](#installation)
-- [The .hop file format](#the-hop-file-format)
+- [The `.hop` file format](#the-hop-file-format)
 - [Component reference](#component-reference)
   - [Drilling](#drilling)
   - [Milling](#milling)
   - [Sawing](#sawing)
   - [Hardware](#hardware)
   - [Export](#export)
-  - [Cabinet (Cabinet)](#cabinet-cabinet)
+  - [Cabinet](#cabinet)
   - [Nesting](#nesting)
   - [Drawing](#drawing)
   - [Utility](#utility)
 - [AutoWire](#autowire)
 - [Typical workflows](#typical-workflows)
 - [Machine & software notes](#machine--software-notes)
+- [Gotchas (read before changing anything)](#gotchas-read-before-changing-anything)
+- [Development](#development)
+- [License](#license)
+- [Sibling project](#sibling-project)
+
+---
+
+## Why this exists
+
+If you've ever sat in front of HOPS trying to click-build a cabinet program by hand, you already know. The macro language is powerful but documented mostly through CAMPUS examples. The GUI is fine for one-offs and miserable for parametric variants — change a dimension and you click the same fifty buttons again.
+
+**Wallaby Hop moves the design step into Grasshopper.** You author parts as Rhino geometry + GH parameters, the plugin emits the exact same `Bohrung()`, `CALL _RechteckTasche_V5()`, `WZB/WZF/WZS` macro calls CAMPUS expects, and you skip the GUI entirely. A `HopKorpus` component generates a full carcass from `W × H × D`; an OpenNest pipeline emits one `.hop` per nested part; a `HopAnalyzer` checks SP/EP structural correctness before you walk the file to the machine.
 
 ---
 
 ## How it works
-
-The plugin follows a simple pipeline:
 
 ```
 [Geometry / Points / Curves]
@@ -41,7 +69,7 @@ The plugin follows a simple pipeline:
 [HopAnalyzer]            →   isValid / errors (optional validation step)
 ```
 
-Each operation component (HopDrill, HopContour, etc.) takes Grasshopper geometry as input and outputs a `List<string>` — a list of NC-Hops macro call strings. **HopExport** collects these lists, sorts them by tool type (WZB → WZF → WZS), assembles the file header, VARS block, and START section, then writes a syntactically valid `.hop` file. **HopAnalyzer** can validate the final output before machining.
+Each operation component (`HopDrill`, `HopContour`, etc.) takes Grasshopper geometry as input and outputs a `List<string>` — a list of NC-Hops macro call strings. **HopExport** collects these lists, sorts them by tool type (WZB → WZF → WZS), assembles the file header, VARS block, and START section, then writes a syntactically valid `.hop` file. **HopAnalyzer** can validate the final output before machining.
 
 The `.hop` format is not G-code. It is a macro language interpreted by the HOLZHER CAMPUS controller. Each line like `Bohrung(...)` or `CALL _RechteckTasche_V5(...)` is a machine-side subroutine call — the controller handles feed rates, Z-homing, and tool approach internally.
 
@@ -50,22 +78,28 @@ The `.hop` format is not G-code. It is a macro language interpreted by the HOLZH
 ## Installation
 
 **Requirements:**
+
 - Rhino 7 or 8
 - Grasshopper (included with Rhino)
+- Visual Studio 2022 with .NET Framework 4.8 SDK (build only)
 
 **Steps:**
-1. Build the project in Visual Studio:
-   `src/DynesticPostProcessor/DynesticPostProcessor.csproj`
-   Target framework: `.NET Framework 4.8` (required by Rhino 7/8)
 
-2. The post-build step automatically copies `WallabyHop.gha` to:
-   `%AppData%\Grasshopper\Libraries\`
-
+1. Clone the repo and open the solution:
+   ```
+   src/DynesticPostProcessor/DynesticPostProcessor.csproj
+   ```
+2. Build in Release. The post-build step automatically copies `WallabyHop.gha` to:
+   ```
+   %AppData%\Grasshopper\Libraries\
+   ```
 3. Restart Rhino. The components appear in the **Wallaby Hop** tab in the Grasshopper toolbar.
+
+A pre-built `.yak` distribution via the Rhino Package Manager is planned (`manifest.yml` already prepared) but not yet published.
 
 ---
 
-## The .hop file format
+## The `.hop` file format
 
 A `.hop` file is a plain ASCII text file with CRLF line endings. It has three sections:
 
@@ -205,10 +239,6 @@ Generates engraving paths for one or more curves. Follows the input curve exactl
 | `tolerance` | float | NURBS conversion tolerance. Default: 0.05 |
 | `toolNr` | int | Tool magazine position |
 | `colour` | Color | Viewport preview color |
-
-**Notes:**
-- Multiple input curves each produce their own SP/EP block within one WZF call.
-- Preview renders a pipe volume along the engraving path.
 
 ---
 
@@ -394,6 +424,7 @@ Assembles all operation lines into a complete `.hop` file and writes it to disk.
 - `export = false` means no accidental file writes.
 
 **Generated file structure:**
+
 ```
 ;MAKROTYP=0
 ;MASCHINE=HOLZHER
@@ -436,7 +467,7 @@ Validates the final `.hop` file content for SP/EP structural correctness. Wire `
 
 ---
 
-### Cabinet (Cabinet)
+### Cabinet
 
 High-level parametric components for generating complete furniture carcasses.
 
@@ -714,6 +745,7 @@ When you drop a component onto the Grasshopper canvas, **AutoWire** automaticall
 **Note:** This plugin targets 2.5D operations only. 3D milling and 5-axis paths are out of scope.
 
 **Tool type codes:**
+
 - `WZB` — drilling tool
 - `WZF` — milling tool
 - `WZS` — saw tool
@@ -727,6 +759,7 @@ Feed rates, spindle speed, and approach behavior are handled at the machine leve
 These are non-obvious things that have already cost time. Skim them once.
 
 ### Machine protocol literals are German on purpose
+
 The HOLZ-HER CAMPUS controller parses macro parameter names verbatim. Do **not** translate any of these strings, even if they look like comments:
 
 ```
@@ -744,24 +777,30 @@ WZB WZF WZS                    ;MASCHINE=HOLZHER
 The plugin's user-visible identifiers (component names, parameter labels, comments) are English. The machine protocol stays German. Don't confuse the two.
 
 ### ComponentGuids never change
+
 Every `HopXxxComponent.ComponentGuid` is the long-term identity used by Grasshopper to wire saved `.gh` files. Renaming a component is fine. Reordering its inputs/outputs may need a one-time `IO_Schema_Migration`. **Changing the GUID breaks every existing `.gh` that references the component.**
 
 ### File format edge cases
+
 - `.hop` files are **ASCII** — no umlauts, no em-dashes, no smart quotes. The CAMPUS parser will reject Unicode.
 - Line endings are **CRLF**. The export writer enforces this; if you copy-paste lines from a unix tool, watch for stripped `\r`.
 - All numeric formatting goes through `CultureInfo.InvariantCulture`. A German locale with `,` as decimal separator would produce broken NC. The Logic layer is tested for this; if you add a new emitter, copy the pattern.
 
 ### Bucket-sort behavior at export
+
 `HopExport` groups operation lines into 4 tool buckets (`WZB` drill, `WZF` mill, `WZS` saw, other) and merges blocks that share the same tool-call line. Side effect: if two `HopSaw` components produce different tool numbers but the same downstream `WZS` setup, they end up in two separate blocks. Order within a block is stable. See `NcExport.SortOperationLines`.
 
 ### Spoilboard allowance and clamp radius
+
 `HopAnalyzer` flags two collision risks:
+
 - **Depth overshoot**: any drill or SP plunge below `DZ + MachineConstants.SpoilboardAllowanceMm` (default 5 mm). Adjust the constant if your spoilboard is thicker or thinner.
 - **Fixchip collision**: any operation XY within `MachineConstants.FixchipClampRadiusMm` (default 25 mm) of a `Fixchip_K` position. Tighten only after measuring an actual clamp on the bed.
 
 Both constants live in `src/DynesticPostProcessor/MachineConstants.cs` — single source of truth.
 
 ### Per-rechner paths
+
 Two paths are user-overridable without code changes:
 
 | Concern | Env var | Config-file key |
@@ -772,7 +811,41 @@ Two paths are user-overridable without code changes:
 Resolution order: env var → `WallabyHop.config.txt` next to the `.gha` → `%APPDATA%\Grasshopper\Libraries\WallabyHop.config.txt` → hardcoded fallback. See `PluginConfig.cs`.
 
 ### Local-only files
+
 Anything machine-specific, dongle-related, or research notes lives in `LOCAL/` (gitignored). `.planning/` is also gitignored. Never `git add` either folder, never paste a dongle ID into a public file.
 
 ### Tests are the safety net, not Rhino
+
 Don't ship a Logic-layer change without `dotnet test` passing. The 119 snapshot tests catch any drift in the NC output format. If a test fails, the machine output would have changed too — investigate before pushing.
+
+---
+
+## Development
+
+Curious about the internals or thinking of contributing? Three docs explain the architecture and current roadmap:
+
+- [`DESIGN.md`](./DESIGN.md) — module boundaries, Logic/Adapter/Emitter layering, NC format invariants
+- [`DEVELOPMENT.md`](./DEVELOPMENT.md) — build pipeline, test runner, conventions for adding a new operation
+- [`BACKLOG.md`](./BACKLOG.md) — what's planned next (additional macros, Yak distribution, 3D milling exploration)
+
+Run the test suite:
+
+```bash
+dotnet test
+```
+
+All 119 snapshot tests must pass before shipping a change to the Logic layer — they're what guarantees a tested machine program stays a tested machine program.
+
+---
+
+## License
+
+[MIT](./LICENSE) — use it, fork it, ship it. If you adapt it for a different HOPS-compatible machine, drop a note in an issue — I'd love to know.
+
+---
+
+## Sibling project
+
+Part of a small toolkit of Rhino/Grasshopper helpers:
+
+- **[C-_GH_Editor_Claude](https://github.com/Leonardboeker/C-_GH_Editor_Claude)** — copy-paste C# templates + a comprehensive learnings doc for writing scripts in the Rhino 8 Grasshopper Script Editor. The companion to this plugin when you outgrow plain components.
