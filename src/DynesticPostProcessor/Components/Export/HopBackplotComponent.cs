@@ -35,6 +35,10 @@ namespace WallabyHop.Components.Export
 
         public override GH_Exposure Exposure => GH_Exposure.secondary;
 
+        // The component has no geometry parameters, so Grasshopper would
+        // treat it as not preview-capable and never call the Draw methods.
+        public override bool IsPreviewCapable => true;
+
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddTextParameter("HopContent", "hopContent",
@@ -118,6 +122,14 @@ namespace WallabyHop.Components.Export
                 {
                     bb.Union(new Point3d(op.StartX, op.StartY, 0));
                     bb.Union(new Point3d(op.EndX, op.EndY, 0));
+                }
+                // Inflate: a perfectly flat box is degenerate and gets
+                // rejected by preview-bounds scanners; plunge markers reach
+                // up to PreviewSafeZOffset anyway.
+                if (bb.IsValid)
+                {
+                    bb.Union(bb.Min + new Vector3d(0, 0, -1));
+                    bb.Union(bb.Max + new Vector3d(0, 0, MachineConstants.PreviewSafeZOffset));
                 }
                 return bb;
             }
