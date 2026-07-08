@@ -120,16 +120,31 @@ namespace WallabyHop.Components.Operations
             }
             if (diameter <= 0) diameter = 8.0;
 
-            // Minimum distance check: warn if any two points are closer than the tool diameter
-            for (int i = 0; i < points.Count; i++)
-                for (int j = i + 1; j < points.Count; j++)
-                {
-                    double dist = points[i].DistanceTo(points[j]);
-                    if (dist < diameter)
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
-                            "Points " + i + " and " + j + " are " + dist.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)
-                            + " mm apart — less than tool diameter " + diameter.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + " mm.");
-                }
+            // Minimum distance check: one aggregated warning instead of one per
+            // pair (a 32-hole row used to flood the balloon), and capped at 200
+            // points so large sets don't stall the solve with an O(n^2) scan.
+            if (points.Count <= 200)
+            {
+                int tooClose = 0;
+                string firstPair = null;
+                for (int i = 0; i < points.Count; i++)
+                    for (int j = i + 1; j < points.Count; j++)
+                    {
+                        double dist = points[i].DistanceTo(points[j]);
+                        if (dist < diameter)
+                        {
+                            tooClose++;
+                            if (firstPair == null)
+                                firstPair = "e.g. points " + i + "/" + j + " at "
+                                    + dist.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + " mm";
+                        }
+                    }
+                if (tooClose > 0)
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                        tooClose + " point pair(s) closer than tool diameter "
+                        + diameter.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)
+                        + " mm (" + firstPair + ") — holes may intersect.");
+            }
 
             // surfaceZ: highest Z across all input points
             double surfaceZ = points[0].Z;

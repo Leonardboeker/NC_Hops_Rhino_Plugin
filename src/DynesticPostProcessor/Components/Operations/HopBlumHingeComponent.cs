@@ -180,10 +180,7 @@ namespace WallabyHop.Components.Operations
                     X = pt.X, Y = pt.Y, SurfaceZ = surfaceZ,
                 });
 
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                    "[" + i + "] Hinge at Y=" + NcFmt.F(pt.Y)
-                    + "  DISTANCE=" + NcFmt.F(distance)
-                    + "  Cup Ø" + NcFmt.F(cupDiameter));
+// per-hinge remark replaced by one aggregate below
             }
 
             var lines = BlumHingeLogic.Generate(new BlumHingeLogic.BlumHingeInput
@@ -197,6 +194,11 @@ namespace WallabyHop.Components.Operations
                 DowelDepth = dowelDepth,
                 ToolNr = toolNr,
             });
+
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
+                positions.Count + " hinge(s)  DISTANCE=" + NcFmt.F(distance)
+                + "  Cup Ø" + NcFmt.F(cupDiameter)
+                + " x" + NcFmt.F(cupDepth));
 
             DA.SetDataList(0, lines);
         }

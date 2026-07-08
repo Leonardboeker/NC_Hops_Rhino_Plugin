@@ -199,11 +199,7 @@ namespace WallabyHop.Components.Operations
                     X = pt.X, Y = pt.Y, SurfaceZ = surfaceZ,
                 });
 
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                    "[" + i + "] " + (isXCut ? "X-cut at Y=" : "Y-cut at X=")
-                    + NcFmt.F(isXCut ? pt.Y : pt.X)
-                    + "  SZ=" + NcFmt.F(cutZ)
-                    + "  KW=" + kw.ToString("F2", CultureInfo.InvariantCulture));
+// per-position remark replaced by one aggregate below
             }
 
             var lines = FormatCutLogic.Generate(new FormatCutLogic.FormatCutInput
@@ -215,6 +211,11 @@ namespace WallabyHop.Components.Operations
                 LengthOverride = lengthOverride,
                 ToolNr = toolNr,
             });
+
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
+                positions.Count + " " + (isXCut ? "X-cut(s)" : "Y-cut(s)")
+                + "  thickness=" + NcFmt.F(thickness)
+                + "  KW=" + kw.ToString("F2", CultureInfo.InvariantCulture));
 
             DA.SetDataList(0, lines);
         }

@@ -284,15 +284,15 @@ namespace WallabyHop.Components.Operations
 
                 _approachLines.Add(new Line(new Point3d(aTop.X, aTop.Y, topZ + MachineConstants.PreviewSafeZOffset), aTop));
 
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                    "[" + origIdx + "] bladeAngle=" + seg.BladeAngle.ToString("F1", CultureInfo.InvariantCulture) + "deg"
-                    + "  side=" + sideLabel
-                    + "  len=" + seg.CutLength.ToString("F1", CultureInfo.InvariantCulture)
-                    + "  P1=(" + seg.CutP1X.ToString("F1", CultureInfo.InvariantCulture)
-                    + "," + seg.CutP1Y.ToString("F1", CultureInfo.InvariantCulture) + ")"
-                    + "  P2=(" + seg.CutP2X.ToString("F1", CultureInfo.InvariantCulture)
-                    + "," + seg.CutP2Y.ToString("F1", CultureInfo.InvariantCulture) + ")");
+// per-segment remark replaced by one aggregate below (warning-blindness fix)
             }
+
+            int okCuts = 0;
+            foreach (var sr in sawResult.Segments) if (!sr.Skipped) okCuts++;
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
+                okCuts + " saw cut(s)  side=" + sideLabel
+                + "  kerf=" + sawKerf.ToString("F1", CultureInfo.InvariantCulture)
+                + "  depth=" + depth.ToString("F1", CultureInfo.InvariantCulture));
 
             DA.SetDataList(0, new List<string>(sawResult.Lines));
         }
