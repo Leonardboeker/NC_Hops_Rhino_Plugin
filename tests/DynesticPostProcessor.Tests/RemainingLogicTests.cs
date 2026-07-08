@@ -178,39 +178,44 @@ namespace DynesticPostProcessor.Tests
     [TestFixture]
     public class FixchipLogicTests
     {
+        // Reference syntax (HZK_Boden_Deckel_602x278.hop):
+        //   /CALL Fixchip_K ( VAL SPX:=0,SPY:=60,SPZ:=9.5,WKLXY:=0)
+
         [Test]
-        public void ThreeClamps_OneLineEach_Snapshot()
+        public void ThreeClamps_MachineSyntax_Snapshot()
         {
             var input = new FixchipLogic.FixchipInput
             {
                 Positions = new[]
                 {
-                    new DrillLogic.Point2dz(100, 100, 19),
-                    new DrillLogic.Point2dz(500, 100, 19),
-                    new DrillLogic.Point2dz(900, 100, 19),
+                    new DrillLogic.Point2dz(0, 60, 9.5),
+                    new DrillLogic.Point2dz(0, 218, 9.5),
+                    new DrillLogic.Point2dz(902, 60, 9.5),
                 },
                 Angle = 0,
+                Optional = false,
             };
             var lines = FixchipLogic.Generate(input);
 
             Assert.That(lines, Is.EquivalentTo(new[]
             {
-                "Fixchip_K (100,100,19,0)",
-                "Fixchip_K (500,100,19,0)",
-                "Fixchip_K (900,100,19,0)",
+                "CALL Fixchip_K ( VAL SPX:=0,SPY:=60,SPZ:=9.5,WKLXY:=0)",
+                "CALL Fixchip_K ( VAL SPX:=0,SPY:=218,SPZ:=9.5,WKLXY:=0)",
+                "CALL Fixchip_K ( VAL SPX:=902,SPY:=60,SPZ:=9.5,WKLXY:=0)",
             }));
         }
 
         [Test]
-        public void NonZeroAngle_PreservedInOutput()
+        public void Optional_EmitsLeadingSlash()
         {
             var input = new FixchipLogic.FixchipInput
             {
-                Positions = new[] { new DrillLogic.Point2dz(0, 0, 0) },
-                Angle = 45,
+                Positions = new[] { new DrillLogic.Point2dz(0, 60, 9.5) },
+                Angle = 180,
+                Optional = true,
             };
             var lines = FixchipLogic.Generate(input);
-            Assert.That(lines[0], Is.EqualTo("Fixchip_K (0,0,0,45)"));
+            Assert.That(lines[0], Is.EqualTo("/CALL Fixchip_K ( VAL SPX:=0,SPY:=60,SPZ:=9.5,WKLXY:=180)"));
         }
     }
 }

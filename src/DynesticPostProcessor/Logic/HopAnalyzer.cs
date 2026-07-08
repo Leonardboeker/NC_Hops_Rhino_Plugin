@@ -203,18 +203,20 @@ namespace WallabyHop.Logic
                         }
                     }
                 }
-                else if (s.StartsWith("Fixchip_K ("))
+                // Fixchip clamp declarations — checked OUTSIDE the else-if chain
+                // because the machine syntax "[/]CALL Fixchip_K ( VAL SPX:=…)" also
+                // matches the generic CALL branch above.
+                // Positions may be variable expressions (SPY:=DY-60) — those can't
+                // be collision-checked numerically and are skipped.
+                if (s.Contains("Fixchip_K"))
                 {
-                    int o = s.IndexOf('('), c = s.LastIndexOf(')');
-                    if (o >= 0 && c > o)
+                    var mx = Regex.Match(s, @"SPX\s*:=\s*([-\d.]+)\s*,", RegexOptions.IgnoreCase);
+                    var my = Regex.Match(s, @"SPY\s*:=\s*([-\d.]+)\s*,", RegexOptions.IgnoreCase);
+                    if (mx.Success && my.Success
+                        && double.TryParse(mx.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double fx)
+                        && double.TryParse(my.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double fy))
                     {
-                        string[] fp = s.Substring(o + 1, c - o - 1).Split(',');
-                        if (fp.Length >= 2
-                            && double.TryParse(fp[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double fx)
-                            && double.TryParse(fp[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double fy))
-                        {
-                            fixchips.Add((lineNum, fx, fy));
-                        }
+                        fixchips.Add((lineNum, fx, fy));
                     }
                 }
 

@@ -40,14 +40,23 @@ namespace WallabyHop.Components.Operations
         {
             // 0 - Positions
             pManager.AddPointParameter("Positions", "positions",
-                "Clamp center positions. XY = position on board, Z = surface height.",
+                "Clamp center positions. XY = position on board (SPX/SPY). " +
+                "Z = clamp height (SPZ) — machine files typically use HALF the plate " +
+                "thickness here (e.g. 9.5 for a 19 mm plate).",
                 GH_ParamAccess.list);
 
             // 1 - Angle
             pManager.AddNumberParameter("Angle", "angle",
-                "Rotation angle of the clamp in degrees (WKLXY). 0 = no rotation. Default 0.",
+                "Rotation angle of the clamp in degrees (WKLXY). Reference files use 0 or 180. Default 0.",
                 GH_ParamAccess.item, 0.0);
             pManager[1].Optional = true;
+
+            // 2 - Optional block
+            pManager.AddBooleanParameter("Skippable", "skippable",
+                "Emit with a leading '/' so the operator can enable/disable the clamp " +
+                "block at the machine (matches typical machine-generated files). Default true.",
+                GH_ParamAccess.item, true);
+            pManager[2].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
@@ -69,9 +78,11 @@ namespace WallabyHop.Components.Operations
 
             var positions = new List<Point3d>();
             double angle = 0.0;
+            bool skippable = true;
 
             if (!DA.GetDataList(0, positions)) return;
             DA.GetData(1, ref angle);
+            DA.GetData(2, ref skippable);
 
             if (positions.Count == 0)
             {
@@ -95,6 +106,7 @@ namespace WallabyHop.Components.Operations
             {
                 Positions = purePositions,
                 Angle = angle,
+                Optional = skippable,
             });
 
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
@@ -130,6 +142,7 @@ namespace WallabyHop.Components.Operations
             {
                 WallabyHop.AutoWire.Spec.Point(),
                 WallabyHop.AutoWire.Spec.Float("-360<0<360"),
+                WallabyHop.AutoWire.Spec.Skip(),   // Skippable (bool default true)
             });
         }
     }

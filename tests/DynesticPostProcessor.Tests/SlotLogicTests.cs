@@ -54,8 +54,10 @@ namespace DynesticPostProcessor.Tests
         // -------------------------------------------------------------
 
         [Test]
-        public void XGroove_ThreePositions_OneToolCallThreeMacros()
+        public void XGroove_ThreePositions_DistinctARANDPerPosition()
         {
+            // C1 regression: the position must reach the macro — as ARAND
+            // (distance from edge = the point's Y for an X-groove).
             var input = new SlotLogic.GrooveInput
             {
                 IsXGroove = true,
@@ -65,19 +67,20 @@ namespace DynesticPostProcessor.Tests
                     new SlotLogic.GroovePosition { X = 0, Y = 200, SurfaceZ = 19 },
                     new SlotLogic.GroovePosition { X = 0, Y = 300, SurfaceZ = 19 },
                 },
-                Width = 8.0, Depth = 8.0, EdgeDist = 0.0,
+                Width = 8.0, Depth = 8.0,
                 ToolNr = 4,
             };
             var lines = SlotLogic.GenerateGroove(input);
 
             Assert.That(lines.Count, Is.EqualTo(4)); // 1 tool call + 3 macros
             Assert.That(lines[0], Does.StartWith("WZF"));
-            for (int i = 1; i < 4; i++)
-                Assert.That(lines[i], Does.StartWith("CALL _Nuten_X_V5"));
+            Assert.That(lines[1], Does.Contain("ARAND:=100"));
+            Assert.That(lines[2], Does.Contain("ARAND:=200"));
+            Assert.That(lines[3], Does.Contain("ARAND:=300"));
         }
 
         [Test]
-        public void YGroove_ProducesNutenY_V5()
+        public void YGroove_ARANDComesFromX()
         {
             var input = new SlotLogic.GrooveInput
             {
@@ -90,19 +93,22 @@ namespace DynesticPostProcessor.Tests
             };
             var lines = SlotLogic.GenerateGroove(input);
             Assert.That(lines[1], Does.StartWith("CALL _Nuten_Y_V5"));
+            Assert.That(lines[1], Does.Contain("ARAND:=50"));
         }
 
         [Test]
-        public void Groove_Snapshot()
+        public void Groove_Snapshot_MatchesReferenceShape()
         {
+            // Shape verified against reference-hops/files/HZK_Boden_Deckel_602x278.hop:
+            // CALL _Nuten_X_V5 ( VAL NB:=8.25,NT:=10,EBENE:=0,ARAND:=10,ALINKS:=0,ARECHTS:=0,RK:=0,ESMD:=1)
             var input = new SlotLogic.GrooveInput
             {
                 IsXGroove = true,
                 Positions = new[]
                 {
-                    new SlotLogic.GroovePosition { X = 0, Y = 100, SurfaceZ = 19 },
+                    new SlotLogic.GroovePosition { X = 0, Y = 10, SurfaceZ = 19 },
                 },
-                Width = 8.0, Depth = 8.0, EdgeDist = 5.0,
+                Width = 8.25, Depth = 10.0, Ebene = 0,
                 ToolNr = 4,
             };
             var lines = SlotLogic.GenerateGroove(input);
@@ -110,19 +116,37 @@ namespace DynesticPostProcessor.Tests
             Assert.That(lines, Is.EquivalentTo(new[]
             {
                 "WZF (4,_VE,_V*1,_VA,_SD,0,'')",
-                "CALL _Nuten_X_V5(VAL NB:=8,NT:=8,EBENE:=19,ARAND:=5," +
+                "CALL _Nuten_X_V5(VAL NB:=8.25,NT:=10,EBENE:=0,ARAND:=10," +
                 "ALINKS:=0,ARECHTS:=0,RK:=0,ESMD:=1)",
             }));
         }
 
         [Test]
-        public void Groove_NegativeEdgeDistClampedToZero()
+        public void Groove_EbeneFlagAndShortening()
         {
             var input = new SlotLogic.GrooveInput
             {
                 IsXGroove = true,
-                Positions = new[] { new SlotLogic.GroovePosition { SurfaceZ = 0 } },
-                Width = 8, Depth = 8, EdgeDist = -10,
+                Positions = new[] { new SlotLogic.GroovePosition { Y = 7.5, SurfaceZ = 0 } },
+                Width = 4, Depth = 10, Ebene = 1,
+                ShortenStart = 20, ShortenEnd = 20,
+                ToolNr = 4,
+            };
+            var lines = SlotLogic.GenerateGroove(input);
+            Assert.That(lines[1], Does.Contain("EBENE:=1"));
+            Assert.That(lines[1], Does.Contain("ARAND:=7.5"));
+            Assert.That(lines[1], Does.Contain("ALINKS:=20"));
+            Assert.That(lines[1], Does.Contain("ARECHTS:=20"));
+        }
+
+        [Test]
+        public void Groove_NegativePositionClampedToZero()
+        {
+            var input = new SlotLogic.GrooveInput
+            {
+                IsXGroove = true,
+                Positions = new[] { new SlotLogic.GroovePosition { Y = -10, SurfaceZ = 0 } },
+                Width = 8, Depth = 8,
                 ToolNr = 4,
             };
             var lines = SlotLogic.GenerateGroove(input);
