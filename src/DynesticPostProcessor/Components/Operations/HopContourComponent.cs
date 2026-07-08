@@ -141,7 +141,14 @@ namespace WallabyHop.Components.Operations
             // 3. INPUT DEFAULTS
             // ---------------------------------------------------------------
             if (tolerance    <= 0) tolerance    = 0.1;
-            if (depth        <= 0) depth        = 1.0;
+            if (depth <= 0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "Depth must be > 0 (got " + depth.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    + ") -- refusing to guess a machining depth");
+                DA.SetDataList(0, new List<string>());
+                return;
+            }
             if (toolDiameter <= 0) toolDiameter = 8.0;
             if (passes       <  1) passes       = 1;
             if (leadIn        < 0) leadIn        = 0.0;
@@ -212,8 +219,37 @@ namespace WallabyHop.Components.Operations
                 }
                 else
                 {
-                    cuttingCurve = offsets.Length == 1 ? offsets[0]
-                        : Curve.JoinCurves(offsets, tol)[0];
+                    if (offsets.Length == 1)
+                    {
+                        cuttingCurve = offsets[0];
+                    }
+                    else
+                    {
+                        // Multiple offset pieces: join them; if the join yields
+                        // several disjoint curves the offset has split (concave
+                        // shape + large tool) — cutting only one piece would
+                        // silently skip material, so refuse loudly instead.
+                        Curve[] joinedOffsets = Curve.JoinCurves(offsets, tol);
+                        if (joinedOffsets == null || joinedOffsets.Length == 0)
+                        {
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                                "Kerf offset produced pieces that could not be joined — "
+                                + "reduce tool diameter or use side=0 (center path)");
+                            DA.SetDataList(0, new List<string>());
+                            return;
+                        }
+                        if (joinedOffsets.Length > 1)
+                        {
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                                "Kerf offset split the contour into " + joinedOffsets.Length
+                                + " disjoint pieces (tool diameter " + toolDiameter.ToString(CultureInfo.InvariantCulture)
+                                + " mm too large for a concave region). Machining only one piece "
+                                + "would silently skip material — reduce the tool diameter or use side=0.");
+                            DA.SetDataList(0, new List<string>());
+                            return;
+                        }
+                        cuttingCurve = joinedOffsets[0];
+                    }
 
                     // POST-OFFSET SANITY CHECK — detect self-intersecting / collapsed offset
                     // via area ratio: if offset area < 10% or > 10x original, geometry is suspect.

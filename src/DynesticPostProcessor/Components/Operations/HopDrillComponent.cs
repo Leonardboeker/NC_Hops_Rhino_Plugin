@@ -110,7 +110,14 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // 3. INPUT DEFAULTS -- fallback for disconnected optional inputs
             // ---------------------------------------------------------------
-            if (depth <= 0) depth = 1.0;
+            if (depth <= 0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "Depth must be > 0 (got " + depth.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    + ") -- refusing to guess a machining depth");
+                DA.SetDataList(0, new List<string>());
+                return;
+            }
             if (diameter <= 0) diameter = 8.0;
 
             // Minimum distance check: warn if any two points are closer than the tool diameter

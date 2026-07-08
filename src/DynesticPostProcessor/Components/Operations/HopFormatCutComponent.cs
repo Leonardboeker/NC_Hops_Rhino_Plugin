@@ -144,7 +144,14 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // DEFAULTS
             // ---------------------------------------------------------------
-            if (thickness <= 0) thickness = 19.0;
+            if (thickness <= 0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "Thickness must be > 0 (got " + thickness.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    + ") -- refusing to guess a machining depth");
+                DA.SetDataList(0, new List<string>());
+                return;
+            }
             bool isXCut = (direction == 0);
 
             double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;

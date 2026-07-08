@@ -149,7 +149,14 @@ namespace WallabyHop.Components.Operations
 
             if (distance <= 0) distance = 22.5;
             if (cupDiameter <= 0) cupDiameter = 35.0;
-            if (cupDepth <= 0) cupDepth = 12.8;
+            if (cupDepth <= 0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "CupDepth must be > 0 (got " + cupDepth.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    + ") -- refusing to guess a machining depth");
+                DA.SetDataList(0, new List<string>());
+                return;
+            }
 
             double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
 

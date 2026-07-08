@@ -17,7 +17,7 @@ namespace DynesticPostProcessor.Tests
         private static SawLogic.SawInput Input(
             IList<SawLogic.LineSegment> segments,
             double[] angles = null,
-            double length = 600.0,
+            double length = 0.0,
             double sawKerf = 3.2,
             double depth = 19.0,
             int side = 0,
@@ -43,10 +43,10 @@ namespace DynesticPostProcessor.Tests
         [Test]
         public void HorizontalCut_CenterSide_NoExtend_Snapshot()
         {
-            // Length=600 (default) → use actual segment length (1000)
+            // Length=0 (auto) → use actual segment length (1000)
             var input = Input(
                 new[] { Seg(0, 50, 1000, 50) },
-                length: 600.0, sawKerf: 3.2, depth: 19.0, side: 0, toolNr: 2);
+                length: 0.0, sawKerf: 3.2, depth: 19.0, side: 0, toolNr: 2);
             var result = SawLogic.Generate(input);
 
             Assert.That(result.Lines.Count, Is.EqualTo(2));
@@ -109,7 +109,7 @@ namespace DynesticPostProcessor.Tests
             // segment 0..100, extend=20 → cut endpoints become -20 and 120
             var input = Input(
                 new[] { Seg(0, 0, 100, 0) },
-                length: 600.0, extend: 20.0);
+                length: 0.0, extend: 20.0);
             var result = SawLogic.Generate(input);
 
             Assert.That(result.Segments[0].CutP1X, Is.EqualTo(-20).Within(1e-9));
@@ -120,13 +120,25 @@ namespace DynesticPostProcessor.Tests
         // CUT LENGTH DEFAULT-DETECTION — at length=600 use actual seg length
         // -------------------------------------------------------------
         [Test]
-        public void Length600_UsesActualSegmentLength()
+        public void LengthZeroSentinel_UsesActualSegmentLength()
         {
+            // length <= 0 = auto (per-segment). Replaces the old magic
+            // "600.0 means auto" which made an explicit 600 mm impossible.
             var input = Input(
                 new[] { Seg(0, 0, 250, 0) },  // segment length = 250
-                length: 600.0);
+                length: 0.0);
             var result = SawLogic.Generate(input);
             Assert.That(result.Segments[0].CutLength, Is.EqualTo(250).Within(1e-9));
+        }
+
+        [Test]
+        public void ExplicitLength600_IsNowRespected()
+        {
+            var input = Input(
+                new[] { Seg(0, 0, 250, 0) },
+                length: 600.0);
+            var result = SawLogic.Generate(input);
+            Assert.That(result.Segments[0].CutLength, Is.EqualTo(600).Within(1e-9));
         }
 
         [Test]

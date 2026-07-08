@@ -20,7 +20,7 @@ namespace WallabyHop.Logic
         {
             public IReadOnlyList<LineSegment> Segments;
             public IReadOnlyList<double> BladeAngles;  // single value or matching list; one entry minimum
-            public double Length;       // 600 default → use actual segment length when at default
+            public double Length;       // <= 0 = use each segment's actual length (auto)
             public double SawKerf;
             public double Depth;
             public int Side;            // -1 left, 0 center, +1 right
@@ -59,7 +59,7 @@ namespace WallabyHop.Logic
             if (side > 1) side = 1;
             if (side < -1) side = -1;
 
-            double length = input.Length > 0 ? input.Length : 600.0;
+            double length = input.Length; // <= 0 means per-segment auto
             double depth = input.Depth > 0 ? input.Depth : 19.0;
             double extend = input.Extend < 0 ? 0 : input.Extend;
             double kerf = input.SawKerf;
@@ -108,12 +108,14 @@ namespace WallabyHop.Logic
                     perpY /= perpLen;
                 }
 
-                // Cut length: default-detection — if length is at the 600 default, use actual segment length
+                // Cut length: explicit value wins; length <= 0 = use the
+                // segment's actual length (sentinel, replaces the old magic
+                // "600.0 means auto" which made an explicit 600 mm impossible)
                 double cutLength = length;
-                if (Math.Abs(length - 600.0) < 0.001)
+                if (length <= 0)
                 {
                     double segLen3D = Math.Sqrt(dx * dx + dy * dy + dz * dz);
-                    if (segLen3D > 1.0) cutLength = segLen3D;
+                    cutLength = segLen3D > 1.0 ? segLen3D : 1.0;
                 }
 
                 // Side offset

@@ -196,6 +196,15 @@ namespace WallabyHop.Components.Korpus
             Dictionary<string, object> feetDict     = feetWrap?.Value as Dictionary<string, object>;
             Dictionary<string, object> doorDict     = doorWrap?.Value as Dictionary<string, object>;
 
+            // H2: schema checks — wiring the wrong config dict into an input
+            // previously threw a raw KeyNotFoundException deep in the solve.
+            // Each config dict has a marker key; missing marker = wrong wiring.
+            if (!CheckConfigSchema(ref backDict,    "type",          "Back",       "HopCabinetBack")) return;
+            if (!CheckConfigSchema(ref connDict,    "drillDiameter", "Connectors", "HopConnector")) return;
+            if (!CheckConfigSchema(ref shelvesDict, "count",         "Shelves",    "HopShelves")) return;
+            if (!CheckConfigSchema(ref feetDict,    "drillDiameter", "Feet",       "HopFeet")) return;
+            if (!CheckConfigSchema(ref doorDict,    "count",         "Door",       "HopCabinetDoor")) return;
+
             // 2. Guards
             string err = CabinetPlanner.ValidateDimensions(B, H, T, MS);
             if (err != null)
@@ -726,6 +735,28 @@ namespace WallabyHop.Components.Korpus
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                 "HopKorpus: " + allPanels.Count + " panels, " + cabinetType
                 + " " + B + "x" + H + "x" + T + " t=" + MS);
+        }
+
+
+        // -----------------------------------------------------------------
+        // H2: schema gate for config-dict inputs. Wiring the wrong dict into
+        // a config input used to throw a raw KeyNotFoundException deep in the
+        // solve; now the user gets a message naming the input, the expected
+        // source component, and the missing marker key. Returns false (and
+        // errors) only for a present-but-wrong dict; a null dict is fine
+        // (input not wired).
+        // -----------------------------------------------------------------
+        private bool CheckConfigSchema(ref Dictionary<string, object> dict,
+            string markerKey, string inputName, string expectedSource)
+        {
+            if (dict == null) return true; // optional input not wired — fine
+            if (dict.ContainsKey(markerKey)) return true;
+
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                "Input '" + inputName + "' expects the dict produced by " + expectedSource
+                + " — the connected dict has no key '" + markerKey
+                + "'. Did you wire the wrong config component?");
+            return false;
         }
 
         // -----------------------------------------------------------------

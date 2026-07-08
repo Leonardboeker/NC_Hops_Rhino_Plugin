@@ -61,8 +61,8 @@ namespace WallabyHop.Components.Operations
             // 2 -- cut length
             pManager.AddNumberParameter("Length", "length",
                 "Total length of the saw cut in mm, centered on the midpoint of dirLine. " +
-                "Should be at least as wide as the panel. Default: 600.",
-                GH_ParamAccess.item, 600.0);
+                "0 = use each dirLine's own length (auto). Default: 0.",
+                GH_ParamAccess.item, 0.0);
             pManager[2].Optional = true;
 
             // 3 -- kerf
@@ -131,7 +131,7 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             List<Curve>  dirCurves   = new List<Curve>();
             List<double> bladeAngles = new List<double>();
-            double length  = 600.0;
+            double length  = 0.0;
             double sawKerf = 3.2;
             double depth   = 19.0;
             int    side    = 0;
@@ -176,8 +176,15 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // INPUT DEFAULTS + CLAMP
             // ---------------------------------------------------------------
-            if (length <= 0) length = 600.0;
-            if (depth  <= 0) depth  = 19.0;
+            // length <= 0 = auto (per-segment length) — handled in SawLogic
+            if (depth <= 0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "Depth must be > 0 (got " + depth.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    + ") -- refusing to guess a machining depth");
+                DA.SetDataList(0, new List<string>());
+                return;
+            }
             if (extend <  0) extend =  0.0;
             if (side   >  1) side   =  1;
             if (side   < -1) side   = -1;
@@ -201,6 +208,17 @@ namespace WallabyHop.Components.Operations
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Null curve at index " + i + " — skipped");
                     continue;
+                }
+                // A saw cut is a straight line. Arcs/polylines would silently
+                // become the chord between their endpoints — refuse instead.
+                if (!dirCurve.IsLinear(0.01))
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                        "DirLine " + i + " is not a straight line — a saw can only cut straight. "
+                        + "The curve would silently become its start-to-end chord. "
+                        + "Explode polylines / replace arcs with lines.");
+                    DA.SetDataList(0, new List<string>());
+                    return;
                 }
                 Point3d s = dirCurve.PointAtStart;
                 Point3d e = dirCurve.PointAtEnd;
@@ -345,7 +363,7 @@ namespace WallabyHop.Components.Operations
             {
                 WallabyHop.AutoWire.Spec.Curve(),
                 WallabyHop.AutoWire.Spec.Float("-90<0<90"),
-                WallabyHop.AutoWire.Spec.Float("10<600<3000"),
+                WallabyHop.AutoWire.Spec.Float("0<0<3000"),
                 WallabyHop.AutoWire.Spec.Float("1<3.2<20"),
                 WallabyHop.AutoWire.Spec.Float("1<19<100"),
                 WallabyHop.AutoWire.Spec.ValueList(

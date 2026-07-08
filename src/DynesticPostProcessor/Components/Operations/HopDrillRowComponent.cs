@@ -139,7 +139,14 @@ namespace WallabyHop.Components.Operations
                 return;
             }
 
-            if (depth <= 0) depth = 13.0;
+            if (depth <= 0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "Depth must be > 0 (got " + depth.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    + ") -- refusing to guess a machining depth");
+                DA.SetDataList(0, new List<string>());
+                return;
+            }
             if (diameter <= 0) diameter = 5.0;
 
             // Pad spacings to 4 values

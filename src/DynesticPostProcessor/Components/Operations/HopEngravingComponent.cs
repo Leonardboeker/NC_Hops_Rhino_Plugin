@@ -126,7 +126,14 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // DEFAULTS
             // ---------------------------------------------------------------
-            if (depth     <= 0) depth     = 0.5;
+            if (depth <= 0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "Depth must be > 0 (got " + depth.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    + ") -- refusing to guess a machining depth");
+                DA.SetDataList(0, new List<string>());
+                return;
+            }
             if (tolerance <= 0) tolerance = 0.05;
 
             double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;

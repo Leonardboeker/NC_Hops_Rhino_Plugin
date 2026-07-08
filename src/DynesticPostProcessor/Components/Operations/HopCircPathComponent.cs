@@ -122,7 +122,14 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // 3. INPUT DEFAULTS
             // ---------------------------------------------------------------
-            if (depth <= 0) depth = 1.0;
+            if (depth <= 0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "Depth must be > 0 (got " + depth.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    + ") -- refusing to guess a machining depth");
+                DA.SetDataList(0, new List<string>());
+                return;
+            }
             if (angle <= 0) angle = 360.0;
 
             // PREVIEW: cylinder at the circular path -- extrude the path circle downward by depth
