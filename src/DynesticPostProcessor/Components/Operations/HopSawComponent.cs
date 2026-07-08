@@ -198,7 +198,7 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // BUILD PURE INPUT (drop null/zero-length up front)
             // ---------------------------------------------------------------
-            string sideLabel = side == 0 ? "Center" : (side < 0 ? "Left" : "Right");
+            string sideLabel = side == 0 ? "Center" : (side > 0 ? "Left" : "Right");  // +1 = Left (plugin standard)
 
             var segments = new List<SawLogic.LineSegment>();
             var componentIndex = new List<int>(); // pure-segment index → original component index
