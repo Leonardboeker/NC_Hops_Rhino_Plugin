@@ -157,6 +157,7 @@ Vorlage: copy an existing minimal one like `HopDrillComponent` + `DrillLogic`.
 | HopToolDB | `c4e2f851-7b3d-4a9c-b602-3e91f7d8a043` |
 | HopBackplot | `3b67e27b-cb16-476e-886e-4a6412db5ac9` |
 | HopJob | `095bc845-202b-4834-9698-c057bbfee2b2` |
+| HopStockSim | `23b83e31-31b4-4b1f-9cf3-48c43cf0c5c4` |
 
 These are immutable. Do not change them.
 

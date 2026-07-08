@@ -30,5 +30,6 @@
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\HopAnalyzer.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\OpLineTransformer.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\BackplotLogic.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\StockSimLogic.cs" />
   </ItemGroup>
 </Project>
