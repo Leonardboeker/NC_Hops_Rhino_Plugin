@@ -27,7 +27,7 @@ namespace WallabyHop.Components.Utility
             "HopToolDB", "HopToolDB",
             "Reads the NC-HOPS .too tool database and provides a drop-down for tool selection. " +
             "Outputs tool number, diameter, and feedrate to wire into operation components.",
-            "Wallaby Hop", "Utility") { }
+            "Wallaby Hop", "8 | Utility") { }
 
         public override Guid ComponentGuid =>
             new Guid("c4e2f851-7b3d-4a9c-b602-3e91f7d8a043");

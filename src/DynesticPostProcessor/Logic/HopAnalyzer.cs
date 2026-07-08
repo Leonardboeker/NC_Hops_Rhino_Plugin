@@ -301,6 +301,22 @@ namespace WallabyHop.Logic
                 }
             }
 
+            // M7: Z-convention sanity. Every emitter writes cut depths as
+            // absolute Z going DOWN from the plate surface — if the deepest
+            // machined Z never reaches below the surface region, the geometry
+            // is almost certainly not modelled in plate coordinates and the
+            // machine would cut air (or the wrong depth).
+            if (deepestZ < double.MaxValue && deepestZ > 0.5 && headerDZ > 0
+                && deepestZ > headerDZ - 0.5)
+            {
+                zWarnings.Add("Deepest machined Z is " 
+                    + deepestZ.ToString("F1", CultureInfo.InvariantCulture)
+                    + " mm but the plate is only DZ=" 
+                    + headerDZ.ToString("F1", CultureInfo.InvariantCulture)
+                    + " mm thick — is the geometry modelled in plate coordinates"
+                    + " (surface at Z=DZ, machine bed at Z=0)?");
+            }
+
             int toolChangeCount = toolCalls.Count;
             bool isValid = errors.Count == 0 && fixchipWarnings.Count == 0;
 

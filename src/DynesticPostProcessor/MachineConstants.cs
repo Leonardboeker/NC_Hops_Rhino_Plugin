@@ -1,3 +1,5 @@
+using System.Drawing;
+
 namespace WallabyHop
 {
     /// <summary>
@@ -94,5 +96,13 @@ namespace WallabyHop
         /// only after measuring an actual clamp on the bed.
         /// </summary>
         internal const double FixchipClampRadiusMm = 25.0;
+
+        // -------------------------------------------------------------
+        // BACKPLOT COLORS (per tool type)
+        // -------------------------------------------------------------
+
+        internal static readonly Color BackplotDrillColor = Color.Red;         // WZB
+        internal static readonly Color BackplotMillColor  = Color.Gold;        // WZF
+        internal static readonly Color BackplotSawColor   = Color.DeepSkyBlue; // WZS
     }
 }

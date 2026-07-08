@@ -20,15 +20,16 @@ namespace WallabyHop.Components.Operations
     public class HopFixchipComponent : GH_Component
     {
         private static readonly Color _defaultColor = Color.Gold;
-        private List<Line> _approachLines = new List<Line>();
-        private Color      _drawColor     = Color.Gold;
+        private List<Line>   _approachLines = new List<Line>();
+        private List<Circle> _clampCircles  = new List<Circle>();
+        private Color        _drawColor     = Color.Gold;
 
         public HopFixchipComponent() : base(
             "HopFixchip", "HopFixchip",
             "Generates fixing clamp positions (Fixchip_K) for the DYNESTIC CNC.\n\n" +
             "Fixchips hold the workpiece to the nesting board during cutting.\n" +
             "Each input point defines one clamp position (SPX, SPY, SPZ).",
-            "Wallaby Hop", "Hardware") { }
+            "Wallaby Hop", "4 | Hardware") { }
 
         public override Guid ComponentGuid => new Guid("7e2f5061-8293-0123-ef01-234567890123");
 
@@ -70,11 +71,13 @@ namespace WallabyHop.Components.Operations
         {
             base.ClearData();
             _approachLines.Clear();
+            _clampCircles.Clear();
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             _approachLines.Clear();
+            _clampCircles.Clear();
 
             var positions = new List<Point3d>();
             double angle = 0.0;
@@ -99,6 +102,10 @@ namespace WallabyHop.Components.Operations
                 _approachLines.Add(new Line(
                     new Point3d(pt.X, pt.Y, pt.Z + MachineConstants.PreviewSafeZOffset),
                     new Point3d(pt.X, pt.Y, pt.Z)));
+                // Danger-zone disc: the radius HopAnalyzer flags collisions in
+                _clampCircles.Add(new Circle(
+                    new Plane(new Point3d(pt.X, pt.Y, pt.Z), Vector3d.ZAxis),
+                    MachineConstants.FixchipClampRadiusMm));
                 purePositions.Add(new DrillLogic.Point2dz(pt.X, pt.Y, pt.Z));
             }
 
@@ -124,6 +131,7 @@ namespace WallabyHop.Components.Operations
             {
                 BoundingBox bb = BoundingBox.Empty;
                 foreach (Line l in _approachLines) bb.Union(l.BoundingBox);
+                foreach (Circle c in _clampCircles) bb.Union(c.BoundingBox);
                 return bb;
             }
         }
@@ -133,6 +141,12 @@ namespace WallabyHop.Components.Operations
         public override void DrawViewportWires(IGH_PreviewArgs args)
         {
             PreviewHelper.DrawWires(args, new List<Brep>(), _approachLines, _drawColor);
+            // Clamp collision zone (matches MachineConstants.FixchipClampRadiusMm)
+            foreach (Circle c in _clampCircles)
+            {
+                args.Display.DrawCircle(c, _drawColor, 2);
+                args.Display.DrawDot(c.Center, "CLAMP", _drawColor, Color.Black);
+            }
         }
 
         public override void AddedToDocument(GH_Document doc)

@@ -11,7 +11,7 @@ namespace WallabyHop.Components.Korpus
         public HopShelvesComponent()
             : base("HopShelves", "HopShelves",
                 "Adjustable shelves with System-32 hole rows in side panels. Shelves are distributed evenly in the cabinet interior. Wire into HopKorpus 'shelves' input.",
-                "Wallaby Hop", "Cabinet")
+                "Wallaby Hop", "5 | Cabinet")
         {
         }
 

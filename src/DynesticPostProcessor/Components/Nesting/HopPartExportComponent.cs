@@ -17,7 +17,7 @@ namespace WallabyHop.Components.Nesting
             : base("HopPartExport", "HopPartExport",
                 "Exports one .hop file per part from a list of HopPart or HopKorpus panel dictionaries. " +
                 "When CabinetData is connected, automatically creates a subfolder named Korpus_{Nr}_{W}x{H}x{D}.",
-                "Wallaby Hop", "Nesting")
+                "Wallaby Hop", "6 | Nest")
         {
         }
 

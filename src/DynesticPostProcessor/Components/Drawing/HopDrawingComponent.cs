@@ -34,7 +34,7 @@ namespace WallabyHop.Components.Drawing
                 "Generates a Rhino layout page with three-view orthographic (Top/Front/Side/Iso), " +
                 "title block from a .3dm template, outer dimensions, and material list. " +
                 "Wire HopKorpus 'AssembledBreps' → 'geo', and optionally 'Panels' → 'parts'.",
-                "Wallaby Hop", "Drawing")
+                "Wallaby Hop", "9 | Drawing")
         {
         }
 

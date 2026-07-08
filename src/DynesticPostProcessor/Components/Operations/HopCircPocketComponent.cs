@@ -25,7 +25,7 @@ namespace WallabyHop.Components.Operations
         public HopCircPocketComponent() : base(
             "HopCircPocket", "HopCircPocket",
             "Generates circular pocket operations (Kreistasche_V5 macro) for the DYNESTIC CNC. Creates a cylindrical pocket at the specified center point, radius, and depth.",
-            "Wallaby Hop", "Milling") { }
+            "Wallaby Hop", "2 | Mill") { }
 
         public override Guid ComponentGuid => new Guid("795d39f9-23ad-4499-966e-583a3e17439e");
 

@@ -25,7 +25,7 @@ namespace WallabyHop.Components.Operations
         public HopCircPathComponent() : base(
             "HopCircPath", "HopCircPath",
             "Generates circular profile path operations (Kreisbahn_V5 macro) for the DYNESTIC CNC. Cuts along a circular path with optional radius correction and arc angle.",
-            "Wallaby Hop", "Milling") { }
+            "Wallaby Hop", "2 | Mill") { }
 
         public override Guid ComponentGuid => new Guid("7beb0809-a67e-485b-913f-ebae9bd50294");
 
@@ -208,7 +208,10 @@ namespace WallabyHop.Components.Operations
             {
                 WallabyHop.AutoWire.Spec.Point(),
                 WallabyHop.AutoWire.Spec.Float("1<25<500"),
-                WallabyHop.AutoWire.Spec.Int("-5<0<5"),
+                WallabyHop.AutoWire.Spec.ValueList(
+                    ("Inside",  "1"),
+                    ("Center",  "0"),
+                    ("Outside", "-1")),
                 WallabyHop.AutoWire.Spec.Float("1<10<100"),
                 WallabyHop.AutoWire.Spec.Float("0<0<50"),
                 WallabyHop.AutoWire.Spec.Float("0<0<360"),

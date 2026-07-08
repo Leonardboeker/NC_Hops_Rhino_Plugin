@@ -11,7 +11,7 @@ namespace WallabyHop.Components.Korpus
         public HopConnectorComponent()
             : base("HopConnector", "HopConnector",
                 "Cabinet corner connector options. Generates corner drill/routing operations for the panels. Wire into HopKorpus 'connectors' input.",
-                "Wallaby Hop", "Cabinet")
+                "Wallaby Hop", "5 | Cabinet")
         {
         }
 

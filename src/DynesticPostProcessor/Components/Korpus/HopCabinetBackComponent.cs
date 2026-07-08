@@ -11,7 +11,7 @@ namespace WallabyHop.Components.Korpus
         public HopCabinetBackComponent()
             : base("HopCabinetBack", "HopCabinetBack",
                 "Cabinet back panel options. Wire into HopKorpus 'back' input.",
-                "Wallaby Hop", "Cabinet")
+                "Wallaby Hop", "5 | Cabinet")
         {
         }
 

@@ -16,7 +16,7 @@ namespace WallabyHop.Components.Drawing
             : base("HopMaterialList", "HopMaterialList",
                 "Calculates total material area (m²) per board thickness from HopKorpus panel dictionaries. " +
                 "Outputs a formatted cut list suitable for ordering material.",
-                "Wallaby Hop", "Drawing")
+                "Wallaby Hop", "9 | Drawing")
         {
         }
 

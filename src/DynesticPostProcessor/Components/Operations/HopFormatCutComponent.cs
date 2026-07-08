@@ -34,7 +34,7 @@ namespace WallabyHop.Components.Operations
             "Direction X: saw travels in X, positioned at Y coordinate.\n" +
             "Direction Y: saw travels in Y, positioned at X coordinate.\n" +
             "KW (wedge angle) sets the bevel/miter angle. 0 = straight cut.",
-            "Wallaby Hop", "Sawing") { }
+            "Wallaby Hop", "3 | Saw") { }
 
         public override Guid ComponentGuid => new Guid("3a8b1c2d-4e5f-6789-abcd-ef0123456789");
 

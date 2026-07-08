@@ -25,7 +25,7 @@ namespace WallabyHop.Components.Nesting
         public HopPartComponent()
             : base("HopPart", "HopPart",
                 "Bundles a closed part outline curve with operation lines into a single part object for OpenNest nesting. Supports grain direction and coloured preview.",
-                "Wallaby Hop", "Nesting")
+                "Wallaby Hop", "6 | Nest")
         {
         }
 

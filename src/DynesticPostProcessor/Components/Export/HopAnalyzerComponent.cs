@@ -21,7 +21,7 @@ namespace WallabyHop.Components.Export
             "Checks: SP/EP pairing, moves outside SP/EP blocks, duplicate tool calls, " +
             "and negative Z values (drill cutZ, SP plunge Z below machine table). " +
             "Wire in HopContent from HopExport so the check runs on the fully assembled output.",
-            "Wallaby Hop", "Export") { }
+            "Wallaby Hop", "7 | Export") { }
 
         public override Guid ComponentGuid => new Guid("9e4f1a2b-c3d5-4e6f-8a7b-0c1d2e3f4a5b");
 

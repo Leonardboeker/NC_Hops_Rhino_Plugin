@@ -30,7 +30,7 @@ namespace WallabyHop.Components.Utility
         public HopLayerScanComponent() : base(
             "HopLayerScan", "HopLayerScan",
             "Scans the DYNESTIC layer tree for geometry and outputs one list per occupied sub-layer. Drop on canvas to auto-create the DYNESTIC layer structure in Rhino.",
-            "Wallaby Hop", "Utility") { }
+            "Wallaby Hop", "8 | Utility") { }
 
         public override Guid ComponentGuid => new Guid("b3f1a042-9c7e-4d85-a631-2f80e5c6d917");
 

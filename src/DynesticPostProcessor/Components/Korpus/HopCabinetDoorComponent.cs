@@ -11,7 +11,7 @@ namespace WallabyHop.Components.Korpus
         public HopCabinetDoorComponent()
             : base("HopCabinetDoor", "HopCabinetDoor",
                 "Cabinet door with cup hinge hole layout. Computes door dimensions from overlay type and generates hinge cup holes. Wire into HopKorpus 'door' input.",
-                "Wallaby Hop", "Cabinet")
+                "Wallaby Hop", "5 | Cabinet")
         {
         }
 

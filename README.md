@@ -15,7 +15,7 @@
 
 </div>
 
-Design furniture and panel parts parametrically in Rhino/Grasshopper, wire components together, and export production-ready `.hop` files directly. The plugin emits the macro language interpreted by the **HOLZHER CAMPUS** controller (drilling, milling, sawing, pocketing, hinge cups, fixing clamps, full cabinet carcasses, OpenNest-based nesting). 119 snapshot tests on the NC-output formatter make sure a tested machine program stays a tested machine program.
+Design furniture and panel parts parametrically in Rhino/Grasshopper, wire components together, and export production-ready `.hop` files directly. The plugin emits the macro language interpreted by the **HOLZHER CAMPUS** controller (drilling, milling, sawing, pocketing, hinge cups, fixing clamps, full cabinet carcasses, OpenNest-based nesting). 152 snapshot tests on the NC-output formatter make sure a tested machine program stays a tested machine program.
 
 Built for the **HOLZ-HER DYNESTIC 7535** controlled via **HOPS 7.7** + **HOLZHER CAMPUS**, but the macro emitters are isolated — porting to another HOPS-compatible machine is an afternoon of renaming, not a rewrite.
 
@@ -53,7 +53,7 @@ Built for the **HOLZ-HER DYNESTIC 7535** controlled via **HOPS 7.7** + **HOLZHER
 
 If you've ever sat in front of HOPS trying to click-build a cabinet program by hand, you already know. The macro language is powerful but documented mostly through CAMPUS examples. The GUI is fine for one-offs and miserable for parametric variants — change a dimension and you click the same fifty buttons again.
 
-**Wallaby Hop moves the design step into Grasshopper.** You author parts as Rhino geometry + GH parameters, the plugin emits the exact same `Bohrung()`, `CALL _RechteckTasche_V5()`, `WZB/WZF/WZS` macro calls CAMPUS expects, and you skip the GUI entirely. A `HopKorpus` component generates a full carcass from `W × H × D`; an OpenNest pipeline emits one `.hop` per nested part; a `HopAnalyzer` checks SP/EP structural correctness before you walk the file to the machine.
+**Wallaby Hop moves the design step into Grasshopper.** You author parts as Rhino geometry + GH parameters, the plugin emits the exact same `Bohrung()`, `CALL _Rechteck_V7()`, `WZB/WZF/WZS` macro calls CAMPUS expects, and you skip the GUI entirely. A `HopKorpus` component generates a full carcass from `W × H × D`; an OpenNest pipeline emits one `.hop` per nested part; a `HopAnalyzer` checks SP/EP structural correctness before you walk the file to the machine.
 
 ---
 
@@ -71,7 +71,7 @@ If you've ever sat in front of HOPS trying to click-build a cabinet program by h
 
 Each operation component (`HopDrill`, `HopContour`, etc.) takes Grasshopper geometry as input and outputs a `List<string>` — a list of NC-Hops macro call strings. **HopExport** collects these lists, sorts them by tool type (WZB → WZF → WZS), assembles the file header, VARS block, and START section, then writes a syntactically valid `.hop` file. **HopAnalyzer** can validate the final output before machining.
 
-The `.hop` format is not G-code. It is a macro language interpreted by the HOLZHER CAMPUS controller. Each line like `Bohrung(...)` or `CALL _RechteckTasche_V5(...)` is a machine-side subroutine call — the controller handles feed rates, Z-homing, and tool approach internally.
+The `.hop` format is not G-code. It is a macro language interpreted by the HOLZHER CAMPUS controller. Each line like `Bohrung(...)` or `CALL _Rechteck_V7(...)` is a machine-side subroutine call — the controller handles feed rates, Z-homing, and tool approach internally.
 
 ---
 
@@ -129,16 +129,16 @@ Bohrung (100.0,200.0,19.0,2.0,8.0,0,0,0,0,0,0,0)   ← Operation macro
 | `Bohrung(x,y,surfZ,cutZ,dia,...)` | Vertical drill | HopDrill |
 | `CALL _Bohgx_V5(...)` / `_Bohgy_V5(...)` | Drill row (X/Y) | HopDrillRow |
 | `SP(...)` / `G01(...)` / `G02M(...)` / `G03M(...)` / `EP(...)` | Contour / engraving path | HopContour, HopEngraving |
-| `CALL _RechteckTasche_V5(...)` | Rectangular pocket | HopRectPocket |
+| `CALL _Rechteck_V7(...)` | Rectangular pocket | HopRectPocket |
 | `CALL _Kreistasche_V5(...)` | Circular pocket | HopCircPocket |
 | `CALL _Kreisbahn_V5(...)` | Circular path | HopCircPath |
 | `CALL _nuten_frei_v5(...)` | Free slot | HopFreeSlot |
 | `CALL _Nuten_X_V5(...)` / `_Nuten_Y_V5(...)` | Groove slot (X/Y axis) | HopGrooveSlot |
 | `CALL _saege_x_V7(...)` / `_saege_y_V7(...)` | Format saw cut | HopFormatCut |
-| `WZS(...)` + saw path | Circular saw path | HopSaw |
+| `WZS(...)` + `_nuten_frei_v5(...)` | Freeform/miter saw cut | HopSaw |
 | `CALL _Topf_V5(...)` | Blum hinge cup drill | HopBlumHinge |
-| `Fixchip_K(...)` | Fixing clamp | HopFixchip |
-| `B2Punkte_V7(...)` | Dimension line markup | HopDimension |
+| `/CALL Fixchip_K ( VAL SPX:=..,SPY:=..,SPZ:=..,WKLXY:=..)` | Fixing clamp | HopFixchip |
+| `CALL B2Punkte_V7(...)` | Dimension line markup | HopDimension |
 | `WZB(...)` | Drill tool call | All WZB ops |
 | `WZF(...)` | Milling tool call | All WZF ops |
 | `WZS(...)` | Saw tool call | All WZS ops |
@@ -181,18 +181,18 @@ Converts a list of 3D points into vertical drilling operations.
 
 #### HopDrillRow
 
-Generates a parametric row of equally spaced holes along the X or Y axis using the `_Bohgx_V5` / `_Bohgy_V5` macros.
+Generates a parametric row of holes along the X or Y axis using the `_Bohgx_V5` / `_Bohgy_V5` macros. The row is defined by a start point plus up to 4 incremental spacings (`BIX..BIIIIX` / `BIY..BIIIIY`).
 
 **NC macro:** `CALL _Bohgx_V5(...)` or `CALL _Bohgy_V5(...)`
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `startPoint` | Point3d | First hole position |
-| `count` | int | Number of holes in the row |
-| `spacing` | float | Distance between holes in mm |
-| `axis` | int | 0 = X-axis row, 1 = Y-axis row |
-| `depth` | float | Drilling depth in mm |
-| `diameter` | float | Drill diameter in mm |
+| `direction` | int | 0 = X-row (`_Bohgx_V5`), 1 = Y-row (`_Bohgy_V5`) |
+| `startPoint` | Point3d | First hole position. Z = surface height. |
+| `spacings` | float list | 1-4 incremental spacings between holes in mm. Unused = 0 (disabled). |
+| `depth` | float | Drilling depth in mm. Default: 13 |
+| `diameter` | float | Drill diameter in mm. Default: 5 |
+| `mirror` | bool | Mirror the drill row (SPIEGELN). Default: false |
 | `toolNr` | int | Tool magazine position |
 | `colour` | Color | Viewport preview color |
 
@@ -210,18 +210,22 @@ Converts a planar curve into a 2D contour cutting path using `SP/G01/G02M/G03M/E
 |-------|------|-------------|
 | `curve` | Curve | Planar closed or open curve. Must lie in or near World XY. |
 | `depth` | float | Cutting depth in mm. Default: 1.0 |
-| `plungeZ` | float | First-pass plunge depth override. 0 = same as depth. |
+| `leadIn` | float | Lead-in length in mm — approach from outside the contour. Default: 0 |
 | `tolerance` | float | NURBS → polyline/arc conversion tolerance in mm. Default: 0.1 |
 | `toolNr` | int | Tool magazine position |
 | `toolDiameter` | float | Tool diameter for kerf offset. Default: 8.0 |
-| `side` | int | Kerf compensation: -1 = inside, 0 = center, +1 = outside |
-| `stepdown` | float | Depth per pass for multi-pass cutting. 0 = single pass. |
+| `side` | int | Kerf compensation: +1 = left of travel, 0 = center, -1 = right of travel |
+| `passes` | int | Number of passes for multi-pass cutting. Default: 1 |
+| `overcut` | float | Extra depth in mm added as a final pass (e.g. 0.2 for full cut-through). Default: 0 |
+| `leadOut` | float | Lead-out length in mm past the end point. Default: 0 |
+| `autoFlip` | bool | Auto-reverse closed curves so the kerf offset lands on the outer side. Default: false |
+| `cornerStyle` | int | Offset corner style: 0 = Sharp, 1 = Round, 2 = Smooth |
 | `colour` | Color | Viewport preview color |
 
 **Notes:**
 - Lines → `G01`, arcs → `G02M`/`G03M` (CW/CCW from arc normal).
 - Kerf compensation is geometric pre-offset — no machine-side G41/G42.
-- With `stepdown`, multiple full contour passes are generated.
+- With `passes > 1`, multiple full contour passes are generated.
 - Renders a shaded toolpath volume in the viewport.
 
 ---
@@ -244,9 +248,9 @@ Generates engraving paths for one or more curves. Follows the input curve exactl
 
 #### HopRectPocket
 
-Generates a rectangular pocket using the `_RechteckTasche_V5` macro. Dimensions from the input curve's bounding box.
+Generates a rectangular pocket using the `_Rechteck_V7` macro. Dimensions from the input curve's bounding box.
 
-**NC macro:** `CALL _RechteckTasche_V5(...)`
+**NC macro:** `CALL _Rechteck_V7(...)`
 
 | Input | Type | Description |
 |-------|------|-------------|
@@ -315,19 +319,25 @@ Generates a free slot between two points using the `_nuten_frei_v5` macro.
 
 #### HopGrooveSlot
 
-Generates axis-aligned groove operations using `_Nuten_X_V5` (horizontal) or `_Nuten_Y_V5` (vertical) macros. Designed for through-slot or stopped-slot dado cuts.
+Generates axis-aligned groove operations using `_Nuten_X_V5` (runs in X) or `_Nuten_Y_V5` (runs in Y) macros. Typical use: shelf dado grooves, back panel grooves.
 
 **NC macro:** `CALL _Nuten_X_V5(...)` or `CALL _Nuten_Y_V5(...)`
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `startPoint` | Point3d | Slot start position |
-| `length` | float | Slot length in mm |
-| `axis` | int | 0 = X-axis groove, 1 = Y-axis groove |
-| `width` | float | Groove width in mm |
-| `depth` | float | Groove depth in mm |
+| `direction` | int | 0 = X-groove (`_Nuten_X_V5`), 1 = Y-groove (`_Nuten_Y_V5`) |
+| `position` | Point3d list | Points on the groove center line, one groove per point. The edge distance (ARAND) is derived from the point: Y coordinate for an X-groove, X coordinate for a Y-groove. Panel origin must be at (0,0). |
+| `width` | float | Groove width in mm (NB). Default: 8 |
+| `depth` | float | Groove depth in mm (NT). Default: 8 |
+| `ebene` | int | Reference plane flag (EBENE), 0 or 1. Default: 0 |
+| `shortenStart` | float | Shorten the groove at its start in mm (ALINKS). Default: 0 = full length |
+| `shortenEnd` | float | Shorten the groove at its end in mm (ARECHTS). Default: 0 = full length |
 | `toolNr` | int | Tool magazine position |
 | `colour` | Color | Viewport preview color |
+
+**Notes:**
+- The groove runs the full panel length minus `shortenStart`/`shortenEnd` — the position point only sets the edge distance (ARAND) and surface Z.
+- The 600 mm preview length in the viewport is illustrative; the actual groove spans the panel.
 
 ---
 
@@ -335,15 +345,17 @@ Generates axis-aligned groove operations using `_Nuten_X_V5` (horizontal) or `_N
 
 #### HopFormatCut
 
-Generates format saw cuts using the `_saege_x_V7` / `_saege_y_V7` macros. Used for straight trim cuts along X or Y axis.
+Generates format saw cuts using the `_saege_x_V7` / `_saege_y_V7` macros. Used for straight trim cuts along X or Y axis, optionally with a miter/bevel angle (KW).
 
 **NC macro:** `CALL _saege_x_V7(...)` or `CALL _saege_y_V7(...)`
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `position` | float | Cut position (X or Y coordinate) |
-| `axis` | int | 0 = cut along X, 1 = cut along Y |
-| `depth` | float | Saw depth in mm |
+| `direction` | int | 0 = X-cut (`_saege_x_V7`, saw travels in X at fixed Y), 1 = Y-cut (`_saege_y_V7`, travels in Y at fixed X) |
+| `position` | Point3d list | Points on the cut lines, one cut per point. X-cut uses the Y coordinate, Y-cut uses the X coordinate. Z = surface height. |
+| `thickness` | float | Material thickness = cut depth in mm. Default: 19 |
+| `kw` | float | Bevel/miter angle in degrees (wedge angle). 0 = straight cut. Default: 0 |
+| `length` | float | Saw travel length override in mm. 0 = use plate DX/DY. Default: 0 |
 | `toolNr` | int | Saw tool magazine position |
 | `colour` | Color | Viewport preview color |
 
@@ -351,14 +363,19 @@ Generates format saw cuts using the `_saege_x_V7` / `_saege_y_V7` macros. Used f
 
 #### HopSaw
 
-Generates a freeform saw path (WZS tool call + contour sequence). For non-axis-aligned saw cuts or curved saw paths.
+Generates freeform saw cuts (WZS tool call + `_nuten_frei_v5`). For non-axis-aligned straight saw cuts, including tilted-blade miter cuts. Direction line and blade tilt are independent parameters.
 
-**NC macro:** `WZS(...)` + `SP`/`G01`/`EP`
+**NC macro:** `WZS(...)` + `CALL _nuten_frei_v5(...)`
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `curve` | Curve | Saw path curve |
-| `depth` | float | Saw depth in mm |
+| `dirLine` | Curve list | Straight lines defining the XY travel path — one cut per line. Non-linear curves are refused. |
+| `bladeAngle` | float list | Physical blade tilt in degrees (-90 to +90). 0 = vertical. Single value applies to all cuts, or supply a list matching `dirLine`. |
+| `length` | float | Total cut length in mm, centered on each line's midpoint. 0 = use each line's own length (auto). Default: 0 |
+| `sawKerf` | float | Blade kerf (cut width) in mm. Default: 3.2 |
+| `depth` | float | Cut depth in mm from the plate surface. Default: 19 |
+| `side` | int | Kerf placement (plugin standard, same as HopContour): +1 = left of dirLine, 0 = centered, -1 = right |
+| `extend` | float | Extend the cut past both endpoints in mm (lets miter cuts exit the panel edge). Default: 0 |
 | `toolNr` | int | Saw tool magazine position |
 | `colour` | Color | Viewport preview color |
 
@@ -368,15 +385,19 @@ Generates a freeform saw path (WZS tool call + contour sequence). For non-axis-a
 
 #### HopBlumHinge
 
-Generates Blum cup hinge drilling operations using the `_Topf_V5` macro. Handles standard 35mm cup bore with face-frame or inset mounting.
+Generates Blum cup hinge drilling operations (cup bore + mounting dowel holes) using the `_Topf_V5` macro.
 
 **NC macro:** `CALL _Topf_V5(...)`
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `positions` | Point3d list | Hinge center positions |
-| `cupDiameter` | float | Cup bore diameter in mm. Default: 35.0 |
-| `depth` | float | Cup bore depth in mm. Default: 13.0 |
+| `positions` | Point3d list | Hinge center positions. Y = hinge position along board, Z = surface height. |
+| `distance` | float | Distance from board edge to cup center in mm (DISTANCE). Default: 22.5 |
+| `side` | int | Reference edge: 0 = front (SEITE:=0), 1 = back (SEITE:=1). Default: 0 |
+| `cupDiameter` | float | Cup bore diameter in mm (TOPF_D). Default: 35.0 |
+| `cupDepth` | float | Cup bore depth in mm (TOPF_T). Default: 12.8 |
+| `dowelDiameter` | float | Mounting dowel diameter in mm (DUEBEL_D). 0 = skip dowel holes. Default: 8 |
+| `dowelDepth` | float | Mounting dowel depth in mm (DUEBEL_T). 0 = skip dowel holes. Default: 13 |
 | `toolNr` | int | Tool magazine position |
 | `colour` | Color | Viewport preview color |
 
@@ -384,14 +405,18 @@ Generates Blum cup hinge drilling operations using the `_Topf_V5` macro. Handles
 
 #### HopFixchip
 
-Generates fixing clamp positions using the `Fixchip_K` macro. Used to define clamping points that secure the workpiece during machining.
+Generates fixing clamp positions using the `Fixchip_K` macro. Used to define clamping points that secure the workpiece during machining. No tool call — clamps are hardware, not cutters.
 
-**NC macro:** `Fixchip_K(...)`
+**NC macro:** `/CALL Fixchip_K ( VAL SPX:=..,SPY:=..,SPZ:=..,WKLXY:=..)`
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `positions` | Point3d list | Clamp center positions |
-| `toolNr` | int | Tool magazine position |
+| `positions` | Point3d list | Clamp center positions (SPX/SPY). Z = clamp height (SPZ) — machine files typically use HALF the plate thickness (e.g. 9.5 for 19 mm). |
+| `angle` | float | Clamp rotation angle in degrees (WKLXY). Default: 0 |
+| `skippable` | bool | Emit with a leading `/` so the operator can toggle the clamp block at the machine. Default: true |
+
+**Notes:**
+- HopAnalyzer flags any operation within `MachineConstants.FixchipClampRadiusMm` (25 mm) of a clamp position — see [Gotchas](#gotchas-read-before-changing-anything).
 
 ---
 
@@ -405,12 +430,13 @@ Assembles all operation lines into a complete `.hop` file and writes it to disk.
 |-------|------|-------------|
 | `folder` | string | Output directory path. Must exist. |
 | `fileName` | string | File name without `.hop` extension. |
-| `export` | bool | Toggle to trigger file write. False = no output. |
+| `export` | bool | Write trigger — fires on the **rising edge** (false → true) only. |
 | `dx` | float | Sheet width in mm. Default: 800 |
 | `dy` | float | Sheet height in mm. Default: 400 |
 | `dz` | float | Material thickness in mm. Default: 19 |
 | `wzgv` | string | Tool preset ID for the header. Default: `7023K_681` |
 | `operationLines` | string list | All NC macro strings from operation components. |
+| `labelVars` | string list | Optional VP variable lines from HopLabel, injected into the VARS block for the EasyTronic label printer. |
 
 | Output | Type | Description |
 |--------|------|-------------|
@@ -421,7 +447,9 @@ Assembles all operation lines into a complete `.hop` file and writes it to disk.
 - Merge multiple operation components using a Grasshopper **Merge** component before wiring into `operationLines`.
 - Operations are automatically sorted: **WZB → WZF → WZS → rest**. Sorting is block-based — each tool call with all its following SP/EP/G01 lines moves together as a unit.
 - File is written with ASCII encoding and CRLF line endings (required by CAMPUS controller).
-- `export = false` means no accidental file writes.
+- **Rising-edge trigger:** the file is written once when `export` flips false → true. A toggle left on `true` cannot silently rewrite files on every solve; the last content/status are re-emitted so downstream components keep their data.
+- **Pre-write validation gate:** HopAnalyzer runs before the write. Structural errors and fixchip collisions block the file (content is still emitted on `hopContent` for inspection); depth warnings are surfaced but do not block.
+- **Atomic write:** content goes to a `.tmp` file first, then moves into place — a locked file or disk-full mid-write can never leave a truncated `.hop` behind.
 
 **Generated file structure:**
 
@@ -458,12 +486,16 @@ Validates the final `.hop` file content for SP/EP structural correctness. Wire `
 | `errorCount` | int | Total number of errors. |
 | `errors` | string list | Error messages with line numbers. |
 | `summary` | string | One-line summary: SP/EP counts, move count, error count. |
+| `stats` | string | Detailed statistics text. |
 
 **Checks performed:**
 - Every `SP` has a matching `EP`
 - No moves (`G01`/`G02M`/`G03M`) outside an `SP/EP` block
 - No empty `SP/EP` blocks
 - No duplicate tool numbers (same `WZB`/`WZF`/`WZS` called twice)
+- Depth overshoot warnings (plunge below `DZ` + spoilboard allowance) and fixchip collision checks — see [Gotchas](#gotchas-read-before-changing-anything)
+
+The same analysis also runs automatically inside HopExport / HopPartExport / HopSheetExport as a pre-write gate.
 
 ---
 
@@ -489,9 +521,13 @@ Parametric cabinet body generator. Takes outer dimensions and produces all flat 
 | `connectors` | dict | Connector config from HopConnector (optional) |
 | `shelves` | dict | Shelf config from HopShelves (optional) |
 | `feet` | dict | Feet config from HopFeet (optional) |
+| `door` | dict | Door config from HopCabinetDoor (optional) |
+| `tool` | int | Drill tool magazine number |
+| `router` | int | Router tool magazine number |
 
 | Output | Type | Description |
 |--------|------|-------------|
+| `CabinetData` | dict | Cabinet metadata → wire into HopPartExport for auto subfolders. |
 | `Panels` | dict list | One dict per panel → wire into HopPart for nesting. |
 | `AssembledBreps` | Brep list | 3D assembled model for visualization and HopDrawing. |
 
@@ -503,7 +539,7 @@ Parametric cabinet body generator. Takes outer dimensions and produces all flat 
 
 Configures the back panel type for HopKorpus.
 
-**Options:** Surface-mounted (screwed on), grooved (rabbet), or full inset.
+**Options:** 1 = Rabbeted (rabbet groove in the sides), 2 = Grooved (slot groove in the sides). Inputs: `type`, `thickness` (default 8 — also sets rabbet/groove width = thickness + 0.5 mm play), `depth` (cut depth, default 10), `setback` (grooved only, default 19).
 
 ---
 
@@ -575,27 +611,45 @@ Extracts sheet dimensions from a curve or Brep for use with HopExport and OpenNe
 
 #### HopSheetExport
 
-After OpenNest has placed parts on a sheet, applies nesting transforms to each part's operation lines and exports one `.hop` file per part.
+After OpenNest has placed parts on a sheet, rewrites each part's operation coordinates into sheet coordinates and exports one `.hop` file per **sheet**.
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `Parts` | dict list | Part objects from HopPart |
-| `Transforms` | Transform list | Placement transforms from OpenNest |
-| `folder` | string | Output directory |
-| `export` | bool | Toggle to trigger export |
-| `dx`, `dy`, `dz` | float | Sheet dimensions for hop header |
+| `parts` | dict list | Part objects from HopPart (OpenNest transformed output) |
+| `ids` | int list | OpenNest sheet assignment indices (parallel to parts, -1 = unfitted) |
+| `transforms` | Transform list | Per-part placement transforms from OpenNest (required, parallel to parts) |
+| `sheetCurve` | Curve | Sheet boundary curve from OpenNest — dx/dy from its bounding box |
+| `sheetIndex` | int | Which sheet to export (0-based) |
+| `folder` | string | Output directory. Must exist. |
+| `fileName` | string | File name without `.hop` extension |
+| `wzgv` | string | Tool preset ID for the header. Default: `7023K_681` |
+| `dz` | float | Material thickness in mm (cannot be derived from the 2D sheet curve). Default: 19 |
+| `export` | bool | Write trigger — rising edge only |
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `hopContent` | string | Generated file content for inspection |
+| `statusMsg` | string | Export status with file path and part count |
+
+**Limitations & behavior:**
+- **Unrotated placements only** (so far): lock rotation in OpenNest (Rotations=1 / grain direction). Rotated parts with axis-bound macros (`_Bohgx/_Bohgy`, `_Nuten_X/Y`, `_saege_x/y`) are refused with an error instead of producing silently wrong coordinates.
+- Same safety pipeline as HopExport: rising-edge trigger, HopAnalyzer pre-write gate (errors block the file), atomic `.tmp` + move write.
 
 ---
 
 #### HopPartExport
 
-Exports a single part (without nesting) directly to a `.hop` file. Use when parts are machined one at a time rather than nested on a sheet.
+Exports one `.hop` file per part (without nesting) from HopPart or HopKorpus panel dicts. Use when parts are machined one at a time rather than nested on a sheet.
+
+Inputs: `parts` (dict list), `folder`, optional `cabinet` (CabinetData from HopKorpus — auto-creates a `Korpus_{Nr}_{W}x{H}x{D}` subfolder), `nr` (corpus number), `wzgv`, `dz`, `export`. Outputs: `filePaths` (written files), `statusMsg`.
+
+Same safety pipeline as HopExport: rising-edge trigger, per-part HopAnalyzer pre-write gate, atomic writes. Duplicate panel names get a numeric suffix so two panels named "Shelf" cannot overwrite each other.
 
 ---
 
 #### HopNesting
 
-Generates the nesting system block (nested sheet layout metadata) in the `.hop` header. Required when using OpenNest-based workflows.
+Generates the nesting system operation lines (label position/angle, park mode) for nested sheet programs. Inputs: `labelPosX`, `labelPosY`, `labelAngle`, `parkMode`, `includeLabel`. Output: `operationLines`.
 
 ---
 
@@ -614,6 +668,13 @@ Generates a Rhino layout page (three-view orthographic — Top/Front/Side/Iso) w
 | `drawBy` | string | Author name for the title block |
 | `scale` | int | Scale denominator: 10 = 1:10, 20 = 1:20 |
 | `layoutName` | string | Name of the Rhino layout page to create or update |
+| `folder` | string | Output directory for the PDF export |
+| `generate` | bool | Toggle to build the layout |
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `matList` | string list | Formatted material list rows |
+| `status` | string | Generation status message |
 
 ---
 
@@ -627,55 +688,52 @@ Extracts panel data from HopKorpus and outputs a formatted material list (part n
 
 #### HopToolDB
 
-Loads tool definitions from a JSON tool database file. Outputs tool number, diameter, and name for use in operation components.
+Reads the NC-HOPS `.too` tool database (INI-style format, not JSON) and auto-wires a Value List drop-down for tool selection on canvas drop.
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `filePath` | string | Path to tool database JSON file. Defaults to `reference-hops/` directory. |
-| `toolNr` | int | Tool number to look up |
+| `toolFile` | string | Path to the `.too` file. If empty: `WALLABYHOP_TOOLDB_PATH` env var → config file → default (see `PluginConfig.cs`). |
+| `toolId` | int | Tool EdgeID to look up. A Value List is auto-wired on canvas drop. |
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `toolNr` | int | Tool magazine number |
-| `diameter` | float | Tool diameter in mm |
-| `name` | string | Tool name/description |
+| `toolNr` | int | Tool number (EdgeID) — wire into `toolNr` of operation components |
+| `diameter` | float | Cutting diameter in mm |
+| `feedrate` | float | Feedrate in mm/min |
+| `name` | string | Tool name from the database |
 
 ---
 
 #### HopLayerScan
 
-Scans the current Rhino document layers and returns matching geometry for use in operation components. Enables layer-based workflow where drawing geometry drives machining.
+Scans the **Wallaby Hop** layer tree in the Rhino document and outputs one geometry list per occupied sub-layer (dynamic outputs). Dropping the component on the canvas auto-creates the layer structure (one layer per operation type: HopContour, HopDrill, HopSaw, ...). Enables a layer-based workflow where drawing geometry drives machining.
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `layerName` | string | Layer name to scan (exact match) |
-| `run` | bool | Toggle to trigger scan |
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `curves` | Curve list | All curves found on the specified layer |
-| `points` | Point3d list | All points found on the specified layer |
+| `toggle` | bool | Set True to scan the sub-layers. Each occupied sub-layer becomes its own output. |
 
 ---
 
 #### HopLabel
 
-Generates a label/tag object for use in HopDrawing layouts. Outputs formatted text with position for placement in Rhino layout space.
+Generates VP variable lines (job metadata: order, reference number, position, material, extra vars) for the EasyTronic label printer. Wire the `labelVars` output into HopExport's `labelVars` input — the lines are injected into the VARS block of the `.hop` file.
 
 ---
 
 #### HopDimension
 
-Generates dimension line markup using the `B2Punkte_V7` macro. Used for adding measurement annotations to the `.hop` file.
+Generates dimension line markup using the `B2Punkte_V7` macro. Used for adding measurement annotations to the `.hop` file. No tool number — dimensions are display-only, nothing is cut.
 
-**NC macro:** `B2Punkte_V7(...)`
+**NC macro:** `CALL B2Punkte_V7(...)`
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `p1` | Point3d | Start point of dimension |
-| `p2` | Point3d | End point of dimension |
-| `offset` | float | Dimension line offset from geometry in mm |
-| `toolNr` | int | Tool magazine position |
+| `startPoint` | Point3d | First dimension point (P1) |
+| `endPoint` | Point3d | Second dimension point (P2) |
+| `offset` | float | Perpendicular offset of the dimension line in mm (ABSTAND). Default: 20 |
+| `label` | string | Optional text label (TEXT). Empty = no text. |
+| `textHeight` | float | Dimension text height in mm (TEXTHOEHE). Default: 20 |
+| `colorIndex` | int | Colour index for the dimension line (FARBE). 0 = machine default. |
 
 ---
 
@@ -724,10 +782,12 @@ When you drop a component onto the Grasshopper canvas, **AutoWire** automaticall
 ### Layer-based workflow
 
 ```
-[HopLayerScan "Drill"] → points → [HopDrill] ──┐
-[HopLayerScan "Cut"]   → curves → [HopContour] ─┼→ [Merge] → [HopExport]
-[HopToolDB]            → toolNr →──────────────-┘
+[HopLayerScan] → "HopDrill" layer points  → [HopDrill] ──┐
+               → "HopContour" layer curves → [HopContour] ─┼→ [Merge] → [HopExport]
+[HopToolDB]    → toolNr →─────────────────────────────────┘
 ```
+
+HopLayerScan creates the layer tree on canvas drop and emits one dynamic output per occupied sub-layer.
 
 ---
 
@@ -816,7 +876,7 @@ Anything machine-specific, dongle-related, or research notes lives in `LOCAL/` (
 
 ### Tests are the safety net, not Rhino
 
-Don't ship a Logic-layer change without `dotnet test` passing. The 119 snapshot tests catch any drift in the NC output format. If a test fails, the machine output would have changed too — investigate before pushing.
+Don't ship a Logic-layer change without `dotnet test` passing. The 152 snapshot tests catch any drift in the NC output format. If a test fails, the machine output would have changed too — investigate before pushing.
 
 ---
 
@@ -834,7 +894,7 @@ Run the test suite:
 dotnet test
 ```
 
-All 119 snapshot tests must pass before shipping a change to the Logic layer — they're what guarantees a tested machine program stays a tested machine program.
+All 152 snapshot tests must pass before shipping a change to the Logic layer — they're what guarantees a tested machine program stays a tested machine program.
 
 ---
 

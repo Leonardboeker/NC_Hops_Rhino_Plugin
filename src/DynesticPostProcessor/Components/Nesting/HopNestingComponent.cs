@@ -23,7 +23,7 @@ namespace WallabyHop.Components.Nesting
             "Generates the nesting system block for the DYNESTIC CNC.\n\n" +
             "Outputs Park_V7 + BN_NestKontur + BN_TrennerInnenAussen + HH_MarkLabel in the correct order.\n" +
             "Wire output into HopExport OperationLines (append after all cutting operations).",
-            "Wallaby Hop", "Nesting") { }
+            "Wallaby Hop", "6 | Nest") { }
 
         public override Guid ComponentGuid => new Guid("9041a2b3-04c5-2345-0123-456789012345");
 

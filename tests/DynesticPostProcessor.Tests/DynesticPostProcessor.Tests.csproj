@@ -29,5 +29,6 @@
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\MaterialListBuilder.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\HopAnalyzer.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\OpLineTransformer.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\BackplotLogic.cs" />
   </ItemGroup>
 </Project>

@@ -23,7 +23,7 @@ namespace WallabyHop.Logic
             public double Length;       // <= 0 = use each segment's actual length (auto)
             public double SawKerf;
             public double Depth;
-            public int Side;            // -1 left, 0 center, +1 right
+            public int Side;            // +1 left, 0 center, -1 right (plugin standard, G41-style)
             public double Extend;
             public int ToolNr;
         }
@@ -118,8 +118,9 @@ namespace WallabyHop.Logic
                     cutLength = segLen3D > 1.0 ? segLen3D : 1.0;
                 }
 
-                // Side offset
-                double sideShift = side * (kerf / 2.0);
+                // Side offset. Plugin standard: +1 = LEFT of travel direction.
+                // perp = travelDir x Z points RIGHT of travel, so negate for left.
+                double sideShift = -side * (kerf / 2.0);
                 double sideVecX = perpX * sideShift;
                 double sideVecY = perpY * sideShift;
 

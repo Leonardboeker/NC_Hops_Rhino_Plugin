@@ -21,7 +21,7 @@ namespace WallabyHop.Components.Nesting
         public HopSheetComponent()
             : base("HopSheet", "HopSheet",
                 "Extracts sheet dimensions (dx, dy, dz) from a closed curve or Brep geometry's bounding box. Wire outputs directly into HopExport dx/dy/dz inputs.",
-                "Wallaby Hop", "Nesting")
+                "Wallaby Hop", "6 | Nest")
         {
         }
 

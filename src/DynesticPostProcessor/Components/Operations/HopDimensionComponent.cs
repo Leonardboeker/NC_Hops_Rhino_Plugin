@@ -22,7 +22,7 @@ namespace WallabyHop.Components.Operations
             "Generates dimension line markup (B2Punkte_V7) for the DYNESTIC CNC.\n\n" +
             "Creates visual dimension arrows between two points, displayed on the machine controller.\n" +
             "Typical use: reference dimensions for setup verification.",
-            "Wallaby Hop", "Utility") { }
+            "Wallaby Hop", "8 | Utility") { }
 
         public override Guid ComponentGuid => new Guid("8f3061a2-93b4-1234-f012-345678901234");
 

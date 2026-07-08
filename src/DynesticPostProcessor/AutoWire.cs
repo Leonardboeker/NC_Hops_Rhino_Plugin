@@ -108,7 +108,17 @@ namespace WallabyHop
                 }
 
                 case Kind.Panel:
-                    return null;   // skipped — user fills text inputs manually
+                {
+                    // Text panel pre-filled with the default — required text
+                    // inputs (fileName!) previously got nothing wired and the
+                    // component silently refused to run until the user
+                    // discovered why.
+                    var panel = new GH_Panel();
+                    panel.CreateAttributes();
+                    panel.UserText = s.Text ?? "";
+                    panel.Attributes.Bounds = new RectangleF(0, 0, 120, 20);
+                    return (IGH_Param)panel;
+                }
 
                 case Kind.Toggle:
                 {

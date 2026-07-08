@@ -25,7 +25,7 @@ namespace WallabyHop.Components.Operations
         public HopRectPocketComponent() : base(
             "HopRectPocket", "HopRectPocket",
             "Generates rectangular pocket operations (_Rechteck_V7 macro) for the DYNESTIC CNC. Extracts center and dimensions from a rectangle curve's bounding box.",
-            "Wallaby Hop", "Milling") { }
+            "Wallaby Hop", "2 | Mill") { }
 
         public override Guid ComponentGuid => new Guid("6e2f23b6-557f-46a1-80a7-41feebc7982d");
 

@@ -40,7 +40,7 @@ namespace WallabyHop.Components.Korpus
         public HopKorpusComponent()
             : base("HopKorpus", "HopKorpus",
                 "Parametric cabinet body generator. Produces 5 flat panels (Bottom, Top, LeftSide, RightSide, BackPanel, open front) from dimension sliders. Outputs CabinetData dictionary and individual panel objects for HopPart nesting.",
-                "Wallaby Hop", "Cabinet")
+                "Wallaby Hop", "5 | Cabinet")
         {
         }
 

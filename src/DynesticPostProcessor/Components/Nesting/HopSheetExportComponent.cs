@@ -21,7 +21,7 @@ namespace WallabyHop.Components.Nesting
         public HopSheetExportComponent()
             : base("HopSheetExport", "HopSheetExport",
                 "Exports a per-sheet .hop file from nested HopPart objects. Filters parts by OpenNest sheet index, extracts sheet dimensions from curve, and writes NC-Hops format.",
-                "Wallaby Hop", "Nesting")
+                "Wallaby Hop", "6 | Nest")
         {
         }
 

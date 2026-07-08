@@ -62,42 +62,40 @@ namespace DynesticPostProcessor.Tests
         // SIDE OFFSET — kerf shifts perpendicular to travel direction
         // -------------------------------------------------------------
         [Test]
-        public void SideRight_ShiftsKerfPositiveY_HorizontalCut()
+        public void SideLeft_PlusOne_ShiftsKerfPositiveY_HorizontalCut()
         {
-            // Travel +X → perp = -Y (cross of (1,0,0) × (0,0,1) = (0,-1,0))
-            // side=+1 right shifts by +(-Y * kerf/2) = Y -1.6
+            // Plugin standard (H5): +1 = LEFT of travel. Travel +X -> left is +Y.
             var input = Input(
                 new[] { Seg(0, 0, 1000, 0) },
                 length: 600.0, sawKerf: 3.2, side: 1);
             var result = SawLogic.Generate(input);
 
-            // Y should be -1.6 (shifted to "right" of travel direction)
-            Assert.That(result.Segments[0].CutP1Y, Is.EqualTo(-1.6).Within(1e-9));
-            Assert.That(result.Segments[0].CutP2Y, Is.EqualTo(-1.6).Within(1e-9));
+            Assert.That(result.Segments[0].CutP1Y, Is.EqualTo(1.6).Within(1e-9));
+            Assert.That(result.Segments[0].CutP2Y, Is.EqualTo(1.6).Within(1e-9));
         }
 
         [Test]
-        public void SideLeft_ShiftsKerfOppositeOfRight()
+        public void SideRight_MinusOne_ShiftsKerfNegativeY()
         {
             var input = Input(
                 new[] { Seg(0, 0, 1000, 0) },
                 length: 600.0, sawKerf: 3.2, side: -1);
             var result = SawLogic.Generate(input);
 
-            Assert.That(result.Segments[0].CutP1Y, Is.EqualTo(1.6).Within(1e-9));
+            Assert.That(result.Segments[0].CutP1Y, Is.EqualTo(-1.6).Within(1e-9));
         }
 
         [Test]
         public void SideClampedToMinusOnePlusOne()
         {
-            // side=5 should clamp to 1, side=-99 to -1 (matches component's clamp)
+            // side=99 clamps to +1 (left = +Y), side=-99 to -1 (right = -Y)
             var input1 = Input(new[] { Seg(0, 0, 100, 0) }, sawKerf: 3.2, side: 99);
             var r1 = SawLogic.Generate(input1);
-            Assert.That(r1.Segments[0].CutP1Y, Is.EqualTo(-1.6).Within(1e-9));
+            Assert.That(r1.Segments[0].CutP1Y, Is.EqualTo(1.6).Within(1e-9));
 
             var input2 = Input(new[] { Seg(0, 0, 100, 0) }, sawKerf: 3.2, side: -99);
             var r2 = SawLogic.Generate(input2);
-            Assert.That(r2.Segments[0].CutP1Y, Is.EqualTo(1.6).Within(1e-9));
+            Assert.That(r2.Segments[0].CutP1Y, Is.EqualTo(-1.6).Within(1e-9));
         }
 
         // -------------------------------------------------------------

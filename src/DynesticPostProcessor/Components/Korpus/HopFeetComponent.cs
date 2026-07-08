@@ -11,7 +11,7 @@ namespace WallabyHop.Components.Korpus
         public HopFeetComponent()
             : base("HopFeet", "HopFeet",
                 "Cabinet levelling feet via mounting plate (92x79mm, 64x64mm hole grid). Generates 4 drill holes per foot corner. Wire into HopKorpus 'feet' input.",
-                "Wallaby Hop", "Cabinet")
+                "Wallaby Hop", "5 | Cabinet")
         {
         }
 

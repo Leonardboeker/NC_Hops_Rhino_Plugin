@@ -30,7 +30,7 @@ namespace WallabyHop.Components.Operations
             "These are two independent parameters: direction is where the saw goes, blade angle is how the blade is tilted.\n\n" +
             "Side: kerf placement Left / Center / Right of the direction line.\n" +
             "Extend: runs the blade past both endpoints so the kerf fully exits the panel edge.",
-            "Wallaby Hop", "Sawing") { }
+            "Wallaby Hop", "3 | Saw") { }
 
         public override Guid ComponentGuid => new Guid("c8d2f1a3-4b7e-4c9d-a1f5-2e3b6d8c0f14");
 
@@ -79,10 +79,11 @@ namespace WallabyHop.Components.Operations
 
             // 5 -- side (ValueList)
             pManager.AddIntegerParameter("Side", "side",
-                "Kerf placement relative to the direction line.\n" +
-                "-1 = Left  (kerf sits left of dirLine)\n" +
+                "Kerf placement relative to the direction line (plugin standard, same as HopContour).\n" +
+                "+1 = Left  (kerf sits left of dirLine, G41-style)\n" +
                 " 0 = Center (kerf centered on dirLine)\n" +
-                "+1 = Right (kerf sits right of dirLine)\n" +
+                "-1 = Right (kerf sits right of dirLine, G42-style)\n" +
+                "NOTE: +1/-1 swapped in this version to match HopContour.\n" +
                 "Connect a ValueList for a dropdown.",
                 GH_ParamAccess.item, 0);
             pManager[5].Optional = true;
@@ -367,9 +368,9 @@ namespace WallabyHop.Components.Operations
                 WallabyHop.AutoWire.Spec.Float("1<3.2<20"),
                 WallabyHop.AutoWire.Spec.Float("1<19<100"),
                 WallabyHop.AutoWire.Spec.ValueList(
-                    ("Left",   "-1"),
+                    ("Left",   "1"),
                     ("Center", "0"),
-                    ("Right",  "1")),
+                    ("Right",  "-1")),
                 WallabyHop.AutoWire.Spec.Float("0<0<50"),
                 WallabyHop.AutoWire.Spec.Int("1<1<20"),
                 WallabyHop.AutoWire.Spec.Skip(),
