@@ -14,11 +14,11 @@ namespace WallabyHop
         internal static string DrillLine(double x, double y, double surfaceZ, double cutZ, double diameter)
         {
             return "Bohrung ("
-                + x.ToString(CultureInfo.InvariantCulture) + ","
-                + y.ToString(CultureInfo.InvariantCulture) + ","
-                + surfaceZ.ToString(CultureInfo.InvariantCulture) + ","
-                + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                + diameter.ToString(CultureInfo.InvariantCulture)
+                + NcFmt.F(x) + ","
+                + NcFmt.F(y) + ","
+                + NcFmt.F(surfaceZ) + ","
+                + NcFmt.F(cutZ) + ","
+                + NcFmt.F(diameter)
                 + ",0,0,0,0,0,0,0)";
         }
     }
@@ -34,13 +34,13 @@ namespace WallabyHop
             double slotWidth, double depth, double bladeAngle)
         {
             return "CALL _nuten_frei_v5(VAL "
-                + "X1:=" + x1.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y1:=" + y1.ToString(CultureInfo.InvariantCulture) + ","
-                + "X2:=" + x2.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y2:=" + y2.ToString(CultureInfo.InvariantCulture) + ","
-                + "NB:=" + slotWidth.ToString(CultureInfo.InvariantCulture) + ","
-                + "Tiefe:=" + depth.ToString(CultureInfo.InvariantCulture) + ","
-                + "LAGE:=" + bladeAngle.ToString(CultureInfo.InvariantCulture)
+                + "X1:=" + NcFmt.F(x1) + ","
+                + "Y1:=" + NcFmt.F(y1) + ","
+                + "X2:=" + NcFmt.F(x2) + ","
+                + "Y2:=" + NcFmt.F(y2) + ","
+                + "NB:=" + NcFmt.F(slotWidth) + ","
+                + "Tiefe:=" + NcFmt.F(depth) + ","
+                + "LAGE:=" + NcFmt.F(bladeAngle)
                 + ",RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)";
         }
     }

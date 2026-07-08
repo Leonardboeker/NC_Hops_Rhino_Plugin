@@ -176,9 +176,9 @@ namespace WallabyHop.Components.Export
             // 7. BUILD VARS BLOCK -- 3-space indent, InvariantCulture decimals
             // ---------------------------------------------------------------
             lines.Add("VARS");
-            lines.Add("   DX := " + dx.ToString(CultureInfo.InvariantCulture) + ";*VAR*Dimension X");
-            lines.Add("   DY := " + dy.ToString(CultureInfo.InvariantCulture) + ";*VAR*Dimension Y");
-            lines.Add("   DZ := " + dz.ToString(CultureInfo.InvariantCulture) + ";*VAR*Dimension Z");
+            lines.Add("   DX := " + NcFmt.F(dx) + ";*VAR*Dimension X");
+            lines.Add("   DY := " + NcFmt.F(dy) + ";*VAR*Dimension Y");
+            lines.Add("   DZ := " + NcFmt.F(dz) + ";*VAR*Dimension Z");
 
             // Inject label metadata (VP18–VP21 etc.) from HopLabel component
             if (labelVars != null)

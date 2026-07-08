@@ -83,19 +83,18 @@ namespace WallabyHop.Logic
                 + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
                 + ",_VA,_SD,0,'')");
 
-            // Note: existing component uses raw .ToString here, not Fmt — preserved for output stability
             lines.Add("CALL _Kreistasche_V5(VAL "
-                + "X_Mitte:=" + input.CenterX.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y_Mitte:=" + input.CenterY.ToString(CultureInfo.InvariantCulture) + ","
-                + "Radius:=" + input.Radius.ToString(CultureInfo.InvariantCulture) + ","
-                + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                + "Zustellung:=" + stepdownVal.ToString(CultureInfo.InvariantCulture) + ","
+                + "X_Mitte:=" + NcFmt.F(input.CenterX) + ","
+                + "Y_Mitte:=" + NcFmt.F(input.CenterY) + ","
+                + "Radius:=" + NcFmt.F(input.Radius) + ","
+                + "Tiefe:=" + NcFmt.F(cutZ) + ","
+                + "Zustellung:=" + NcFmt.F(stepdownVal) + ","
                 + "AB:=2,ABF:=_ANF,Interpol:=0,umkehren:=0,esxy:=0,esmd:=0,laser:=0)");
 
             return lines;
         }
 
-        private static string Fmt(double v) =>
-            Math.Round(v, 4).ToString(CultureInfo.InvariantCulture);
+        // Single plugin-wide formatter — see NcFmt.F
+        private static string Fmt(double v) => NcFmt.F(v);
     }
 }

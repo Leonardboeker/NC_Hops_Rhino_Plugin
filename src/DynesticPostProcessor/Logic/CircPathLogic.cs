@@ -38,16 +38,15 @@ namespace WallabyHop.Logic
                 + ",_VE,_V*" + feedFactor.ToString(CultureInfo.InvariantCulture)
                 + ",_VA,_SD,0,'')");
 
-            // Note: existing component uses raw .ToString — preserved
             lines.Add("CALL _Kreisbahn_V5(VAL "
-                + "X_Mitte:=" + input.CenterX.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y_Mitte:=" + input.CenterY.ToString(CultureInfo.InvariantCulture) + ","
-                + "Tiefe:=" + cutZ.ToString(CultureInfo.InvariantCulture) + ","
-                + "ZuTiefe:=" + stepdownVal.ToString(CultureInfo.InvariantCulture) + ","
-                + "Radius:=" + input.Radius.ToString(CultureInfo.InvariantCulture) + ","
+                + "X_Mitte:=" + NcFmt.F(input.CenterX) + ","
+                + "Y_Mitte:=" + NcFmt.F(input.CenterY) + ","
+                + "Tiefe:=" + NcFmt.F(cutZ) + ","
+                + "ZuTiefe:=" + NcFmt.F(stepdownVal) + ","
+                + "Radius:=" + NcFmt.F(input.Radius) + ","
                 + "Radiuskorrektur:=" + input.RadiusCorr.ToString(CultureInfo.InvariantCulture) + ","
                 + "AB:=1,Aufmass:=0,Bearb_umkehren:=1,"
-                + "Winkel:=" + angle.ToString(CultureInfo.InvariantCulture) + ","
+                + "Winkel:=" + NcFmt.F(angle) + ","
                 + "ANF:=_ANF,ABF:=_ANF,Rampe:=1,Interpol:=0,esxy:=0,esmd:=0,laser:=0)");
 
             return lines;

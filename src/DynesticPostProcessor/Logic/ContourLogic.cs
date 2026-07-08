@@ -186,8 +186,8 @@ namespace WallabyHop.Logic
         }
 
         // Round to 4 decimals to prevent FP noise (3e-15) from showing up
-        // as scientific notation in .hop files.
-        internal static string Fmt(double v) =>
-            Math.Round(v, 4).ToString(CultureInfo.InvariantCulture);
+        // as scientific notation in .hop files. Delegates to the single
+        // plugin-wide formatter.
+        internal static string Fmt(double v) => NcFmt.F(v);
     }
 }

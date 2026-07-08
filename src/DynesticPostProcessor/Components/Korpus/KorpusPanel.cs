@@ -100,14 +100,8 @@ namespace WallabyHop.Components.Korpus
         {
             var group = new List<string>();
             group.Add("WZF (" + toolNr + ",_VE,_V*1,_VA,_SD,0,'')");
-            group.Add("CALL _nuten_frei_v5(VAL "
-                + "X1:=" + x1.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y1:=" + y1.ToString(CultureInfo.InvariantCulture) + ","
-                + "X2:=" + x2.ToString(CultureInfo.InvariantCulture) + ","
-                + "Y2:=" + y2.ToString(CultureInfo.InvariantCulture) + ","
-                + "NB:=" + width.ToString(CultureInfo.InvariantCulture) + ","
-                + "Tiefe:=" + (-Math.Abs(depth)).ToString(CultureInfo.InvariantCulture) + ","
-                + "LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)");
+            // Re-use the tested emitter (single formatter, sci-notation safe)
+            group.Add(NcSaw.FreeSlotLine(x1, y1, x2, y2, width, -Math.Abs(depth), 0.0));
             OperationGroups.Add(group);
         }
 
@@ -118,9 +112,9 @@ namespace WallabyHop.Components.Korpus
         /// </summary>
         public void AddFormattingContour(int toolNr)
         {
-            string w  = Width.ToString(CultureInfo.InvariantCulture);
-            string h  = Height.ToString(CultureInfo.InvariantCulture);
-            string dz = (-Math.Abs(Thickness)).ToString(CultureInfo.InvariantCulture);
+            string w  = NcFmt.F(Width);
+            string h  = NcFmt.F(Height);
+            string dz = NcFmt.F(-Math.Abs(Thickness));
 
             var group = new List<string>();
             group.Add("WZF (" + toolNr + ",_VE,_V*1,_VA,_SD,0,'')");
@@ -142,14 +136,8 @@ namespace WallabyHop.Components.Korpus
         public void AddDrillGroup(double x, double y, double diameter, double depth, int toolNr)
         {
             var group = new List<string>();
-            group.Add("WZB (" + toolNr + ",_VE,_V*1,_VA,_SD,0,'')");
-            group.Add("Bohrung ("
-                + x.ToString(CultureInfo.InvariantCulture) + ","
-                + y.ToString(CultureInfo.InvariantCulture) + ","
-                + "0,"   // surfaceZ = 0 (flat panel at Z=0)
-                + (-depth).ToString(CultureInfo.InvariantCulture) + ","
-                + diameter.ToString(CultureInfo.InvariantCulture)
-                + ",0,0,0,0,0,0,0)");
+            group.Add(NcDrill.ToolCall(toolNr));
+            group.Add(NcDrill.DrillLine(x, y, 0.0, -depth, diameter));
             OperationGroups.Add(group);
         }
     }

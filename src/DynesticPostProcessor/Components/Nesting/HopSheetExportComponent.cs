@@ -286,9 +286,9 @@ namespace WallabyHop.Components.Nesting
             // 9. BUILD VARS BLOCK -- 3-space indent, InvariantCulture decimals
             // ---------------------------------------------------------------
             lines.Add("VARS");
-            lines.Add("   DX := " + sheetDx.ToString(CultureInfo.InvariantCulture) + ";*VAR*Dimension X");
-            lines.Add("   DY := " + sheetDy.ToString(CultureInfo.InvariantCulture) + ";*VAR*Dimension Y");
-            lines.Add("   DZ := " + dz.ToString(CultureInfo.InvariantCulture) + ";*VAR*Dimension Z");
+            lines.Add("   DX := " + NcFmt.F(sheetDx) + ";*VAR*Dimension X");
+            lines.Add("   DY := " + NcFmt.F(sheetDy) + ";*VAR*Dimension Y");
+            lines.Add("   DZ := " + NcFmt.F(dz) + ";*VAR*Dimension Z");
 
             // ---------------------------------------------------------------
             // 10. BUILD START SECTION -- Fertigteil + HH_Park
