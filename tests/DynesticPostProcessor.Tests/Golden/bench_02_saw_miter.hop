@@ -1,0 +1,30 @@
+;MAKROTYP=0
+;INSTVERSION=
+;EXEVERSION=
+;BILD=
+;INFO=
+;WZGV=7023K_681
+;WZGVCONFIG=
+;MASCHINE=HOLZHER
+;NCNAME=bench_saw_miter
+;KOMMENTAR=
+;DX=800.000
+;DY=400.000
+;DZ=19.000
+;DIALOGDLL=Dialoge.Dll
+;DIALOGPROC=StandardFormAnzeigen
+;AUTOSCRIPTSTART=1
+;BUTTONBILD=
+;DIMENSION_UNIT=0
+VARS
+   DX := 800;*VAR*Dimension X
+   DY := 400;*VAR*Dimension Y
+   DZ := 19;*VAR*Dimension Z
+START
+Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)
+CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (400,200,19,9,8,0,0,0,0,0,0,0)
+WZS (10,_VE,_V*0.3,_VA,_SD,0,'')
+CALL _nuten_frei_v5(VAL X1:=-20,Y1:=100,X2:=820,Y2:=100,NB:=3.2,Tiefe:=0,LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)
+CALL _nuten_frei_v5(VAL X1:=-20,Y1:=300,X2:=820,Y2:=300,NB:=3.2,Tiefe:=0,LAGE:=45,RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)

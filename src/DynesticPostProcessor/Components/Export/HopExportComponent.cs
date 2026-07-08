@@ -176,52 +176,20 @@ namespace WallabyHop.Components.Export
             }
 
             // ---------------------------------------------------------------
-            // 6. BUILD HEADER -- match Muster_DXF_Import.hop order exactly
+            // 6-9. ASSEMBLE FILE — one tested pure function builds header,
+            // VARS, START and the sorted operation lines (golden-file covered)
             // ---------------------------------------------------------------
             string ncName = stem;
-
-            List<string> lines = NcExport.BuildHeader(ncName, dx, dy, dz, wzgv);
-
-            // ---------------------------------------------------------------
-            // 7. BUILD VARS BLOCK -- 3-space indent, InvariantCulture decimals
-            // ---------------------------------------------------------------
-            lines.Add("VARS");
-            lines.Add("   DX := " + NcFmt.F(dx) + ";*VAR*Dimension X");
-            lines.Add("   DY := " + NcFmt.F(dy) + ";*VAR*Dimension Y");
-            lines.Add("   DZ := " + NcFmt.F(dz) + ";*VAR*Dimension Z");
-
-            // Inject label metadata (VP18–VP21 etc.) from HopLabel component
-            if (labelVars != null)
-                foreach (string lv in labelVars)
-                    if (!string.IsNullOrWhiteSpace(lv))
-                        lines.Add(lv);
+            string content = NcExport.AssembleFile(
+                ncName, dx, dy, dz, wzgv, labelVars, operationLines);
 
             // ---------------------------------------------------------------
-            // 8. BUILD START SECTION -- Fertigteil + HH_Park
-            // ---------------------------------------------------------------
-            lines.Add("START");
-            lines.Add("Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)");
-            lines.Add("CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)");
-
-            // ---------------------------------------------------------------
-            // 9. INSERT OPERATION LINES -- Phase 3+ integration point
-            // ---------------------------------------------------------------
-            // Sort operationLines: WZB first, WZF second, WZS third, rest last
-            // Lines come in pairs: WZx call + CALL _macro
-            List<string> sorted = NcExport.SortOperationLines(operationLines);
-            for (int i = 0; i < sorted.Count; i++)
-            {
-                lines.Add(sorted[i]);
-            }
-
-            // ---------------------------------------------------------------
-            // 10. ASSEMBLE + PRE-WRITE VALIDATION GATE
+            // 10. PRE-WRITE VALIDATION GATE
             // The analyzer runs BEFORE the file is written. Structural errors
             // and fixchip collisions block the write (the content is still
             // emitted on the HopContent output for inspection); depth warnings
             // are surfaced but do not block.
             // ---------------------------------------------------------------
-            string content = string.Join("\r\n", lines) + "\r\n";
 
             var analysis = Logic.HopAnalyzer.Analyze(content);
             foreach (string zw in analysis.ZWarnings)

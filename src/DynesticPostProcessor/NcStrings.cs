@@ -78,6 +78,37 @@ namespace WallabyHop
             return lines;
         }
 
+        /// <summary>
+        /// Assembles a complete .hop file: header + VARS + START + sorted
+        /// operation lines, CRLF-joined. This is THE file format — every
+        /// exporter routes through it so golden-file tests cover the real
+        /// output byte-for-byte.
+        /// </summary>
+        internal static string AssembleFile(
+            string ncName, double dx, double dy, double dz, string wzgv,
+            IReadOnlyList<string> labelVars, List<string> operationLines)
+        {
+            var lines = BuildHeader(ncName, dx, dy, dz, wzgv);
+
+            lines.Add("VARS");
+            lines.Add("   DX := " + NcFmt.F(dx) + ";*VAR*Dimension X");
+            lines.Add("   DY := " + NcFmt.F(dy) + ";*VAR*Dimension Y");
+            lines.Add("   DZ := " + NcFmt.F(dz) + ";*VAR*Dimension Z");
+            if (labelVars != null)
+                foreach (string lv in labelVars)
+                    if (!string.IsNullOrWhiteSpace(lv))
+                        lines.Add(lv);
+
+            lines.Add("START");
+            lines.Add("Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)");
+            lines.Add("CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)");
+
+            foreach (string line in SortOperationLines(operationLines ?? new List<string>()))
+                lines.Add(line);
+
+            return string.Join("\r\n", lines) + "\r\n";
+        }
+
         internal static List<string> SortOperationLines(List<string> lines)
         {
             // Group lines into operation blocks: each block starts at a WZx line

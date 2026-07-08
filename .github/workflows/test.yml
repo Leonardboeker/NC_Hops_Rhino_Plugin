@@ -30,3 +30,20 @@ jobs:
 
       - name: Run tests
         run: dotnet test tests/DynesticPostProcessor.Tests/DynesticPostProcessor.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+
+      # Round-trip validation: parse every golden .hop with the independent
+      # nc-hops library (github.com/apers0/nc-hops, MIT) — a second .hop
+      # implementation written without knowledge of this plugin. If it can't
+      # read our output, our format drifted from what the machine expects.
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install nc-hops parser
+        run: |
+          pip install nc-hops --no-deps
+          pip install chardet smbprotocol
+
+      - name: Round-trip golden files
+        run: python tools/roundtrip_check.py

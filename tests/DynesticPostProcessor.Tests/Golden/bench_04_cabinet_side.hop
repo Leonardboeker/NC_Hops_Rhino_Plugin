@@ -1,0 +1,72 @@
+;MAKROTYP=0
+;INSTVERSION=
+;EXEVERSION=
+;BILD=
+;INFO=
+;WZGV=7535D_250
+;WZGVCONFIG=
+;MASCHINE=HOLZHER
+;NCNAME=bench_cabinet_side
+;KOMMENTAR=
+;DX=560.000
+;DY=720.000
+;DZ=19.000
+;DIALOGDLL=Dialoge.Dll
+;DIALOGPROC=StandardFormAnzeigen
+;AUTOSCRIPTSTART=1
+;BUTTONBILD=
+;DIMENSION_UNIT=0
+VARS
+   DX := 560;*VAR*Dimension X
+   DY := 720;*VAR*Dimension Y
+   DZ := 19;*VAR*Dimension Z
+START
+Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)
+CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)
+WZB (1,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (37,37,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,37,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,69,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,69,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,101,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,101,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,133,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,133,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,165,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,165,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,197,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,197,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,229,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,229,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,261,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,261,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,293,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,293,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,325,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,325,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,357,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,357,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,389,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,389,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,421,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,421,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,453,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,453,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,485,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,485,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,517,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,517,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,549,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,549,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,581,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,581,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,613,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,613,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,645,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,645,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (37,677,0,-13,5,0,0,0,0,0,0,0)
+Bohrung (505,677,0,-13,5,0,0,0,0,0,0,0)
+WZF (12,_VE,_V*1,_VA,_SD,0,'')
+CALL _Nuten_X_V5(VAL NB:=8.2,NT:=10,EBENE:=0,ARAND:=10,ALINKS:=0,ARECHTS:=0,RK:=0,ESMD:=1)
+/CALL Fixchip_K ( VAL SPX:=0,SPY:=60,SPZ:=9.5,WKLXY:=0)
+/CALL Fixchip_K ( VAL SPX:=0,SPY:=660,SPZ:=9.5,WKLXY:=0)
