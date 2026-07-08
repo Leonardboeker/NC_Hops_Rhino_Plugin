@@ -157,6 +157,64 @@ namespace DynesticPostProcessor.Tests
             Assert.That(r.CallCount, Is.EqualTo(1));
         }
 
+        [Test]
+        public void CallMacro_MixedCaseTiefe_SawSlotCircFamily_NoLongerBlind()
+        {
+            // C6 regression: _nuten_frei_v5 / _Kreisbahn_V5 / _Kreistasche_V5
+            // emit "Tiefe:=" (mixed case) — the old case-sensitive scan missed
+            // every saw cut, slot and circular pocket.
+            var content = string.Join("\n", new[]
+            {
+                "WZS (2,_VE,_V*0.3,_VA,_SD,0,'')",
+                "CALL _nuten_frei_v5(VAL X1:=0,Y1:=0,X2:=100,Y2:=0,NB:=3.2,Tiefe:=-22,LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)",
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.DeepestZ, Is.EqualTo(-22).Within(1e-9));
+        }
+
+        [Test]
+        public void CallMacro_ZUTIEFE_DoesNotFalseMatchTIEFE()
+        {
+            // ZUTIEFE:=0 must not clobber the real TIEFE:=-10 reading
+            var content = "CALL _Rechteck_V7(VAL ZUTIEFE:=0,TIEFE:=-10,RADIUS:=0)";
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.DeepestZ, Is.EqualTo(-10).Within(1e-9));
+        }
+
+        [Test]
+        public void GrooveNT_ContributesToDeepestZ_AsNegative()
+        {
+            var content = "CALL _Nuten_X_V5(VAL NB:=8,NT:=10,EBENE:=0,ARAND:=10,ALINKS:=0,ARECHTS:=0,RK:=0,ESMD:=1)";
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.DeepestZ, Is.EqualTo(-10).Within(1e-9));
+        }
+
+        // -------------------------------------------------------------
+        // DZ FROM VARS BLOCK (machine files have ;DZ=0 header + VARS value)
+        // -------------------------------------------------------------
+
+        [Test]
+        public void VarsDZ_OverridesZeroHeaderDZ()
+        {
+            // Mirrors reference-hops/files/HZK_Boden_Deckel_602x278.hop:
+            // header says ;DZ=0, the truth is in VARS.
+            var content = string.Join("\n", new[]
+            {
+                ";DZ=0",
+                "VARS",
+                "   DX := 902;*VAR*Breite X",
+                "   DY := 278;*VAR*Breite Y",
+                "   DZ := 19;Dicke Z",
+                "START",
+                "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
+                "Bohrung (0,0,0,-30,8,0,0,0,0,0,0,0)",  // 30mm deep into 19mm plate
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.HeaderDZ, Is.EqualTo(19).Within(1e-9));
+            Assert.That(r.ZWarnings.Count, Is.EqualTo(1),
+                "depth check must fire — VARS DZ=19 + 5 allowance < 30");
+        }
+
         // -------------------------------------------------------------
         // STATS
         // -------------------------------------------------------------

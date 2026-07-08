@@ -28,5 +28,6 @@
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\CabinetPlanner.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\MaterialListBuilder.cs" />
     <Compile Include="..\..\src\DynesticPostProcessor\Logic\HopAnalyzer.cs" />
+    <Compile Include="..\..\src\DynesticPostProcessor\Logic\OpLineTransformer.cs" />
   </ItemGroup>
 </Project>

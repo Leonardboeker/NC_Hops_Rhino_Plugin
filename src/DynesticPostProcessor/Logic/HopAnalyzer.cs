@@ -78,16 +78,32 @@ namespace WallabyHop.Logic
             double prevY      = double.NaN;
             double deepestZ   = double.MaxValue;
 
-            // Pass 1 — extract DZ from header (";DZ=19.000")
+            // Pass 1 — extract plate thickness DZ.
+            // Machine-generated files put ;DZ=0 in the HEADER and the real
+            // value in the VARS block ("DZ := 19;Dicke Z") — reference:
+            // reference-hops/files/HZK_Boden_Deckel_602x278.hop. Check the
+            // VARS form first; header value is the fallback.
             double headerDZ = 0;
             foreach (string raw in lines)
             {
                 string h = (raw ?? "").Trim();
-                if (h.StartsWith(";DZ="))
+                if (h.StartsWith("DZ ", StringComparison.OrdinalIgnoreCase)
+                    || h.StartsWith("DZ:", StringComparison.OrdinalIgnoreCase))
+                {
+                    // VARS syntax: "DZ := 19;comment" or "DZ:=19"
+                    var m = Regex.Match(h, @"^DZ\s*:=\s*([-\d.]+)", RegexOptions.IgnoreCase);
+                    if (m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Any,
+                        CultureInfo.InvariantCulture, out double varsDz) && varsDz > 0)
+                    {
+                        headerDZ = varsDz;
+                        break; // VARS value wins
+                    }
+                }
+                if (h.StartsWith(";DZ=") && headerDZ <= 0)
                 {
                     double.TryParse(h.Substring(4), NumberStyles.Any,
                         CultureInfo.InvariantCulture, out headerDZ);
-                    break;
+                    // no break — keep scanning in case a VARS DZ follows
                 }
             }
 
@@ -220,8 +236,9 @@ namespace WallabyHop.Logic
                     }
                 }
 
-                // CALL named-param scan: depth + XY for fixchip check
-                if (s.StartsWith("CALL "))
+                // CALL named-param scan: depth + XY for fixchip check.
+                // Also matches "/CALL ..." (operator-skippable blocks).
+                if (s.StartsWith("CALL ") || s.StartsWith("/CALL "))
                 {
                     // X_Mitte / Y_Mitte (rect pocket, circ pocket, circ path)
                     var xyMatch = _callXYRegex.Match(s);
@@ -231,12 +248,22 @@ namespace WallabyHop.Logic
                     {
                         operations.Add(new OpXY { LineNum = lineNum, X = cmx, Y = cmy, Kind = "CALL" });
                     }
-                    foreach (string paramName in new[] { "TIEFE", "SZ", "TOPF_T", "DUEBEL_T" })
+                    // Depth params across all macro families. Case-insensitive
+                    // (files contain both TIEFE:= and Tiefe:=) and word-boundary
+                    // anchored so TIEFE never matches inside ZUTIEFE. "Tiefe"
+                    // covers _nuten_frei_v5 / _Kreisbahn_V5 / _Kreistasche_V5 —
+                    // the saw/slot/circ family the old scan was blind to.
+                    foreach (string paramName in new[] { "TIEFE", "SZ", "TOPF_T", "DUEBEL_T", "NT" })
                     {
-                        var m = Regex.Match(s, paramName + @":=([-\d.]+)");
+                        var m = Regex.Match(s, @"(?<![A-Za-z_])" + paramName + @"\s*:=\s*(-?[\d.]+)",
+                            RegexOptions.IgnoreCase);
                         if (m.Success && double.TryParse(m.Groups[1].Value,
                             NumberStyles.Any, CultureInfo.InvariantCulture, out double pz))
+                        {
+                            // NT (groove depth) is positive-down; others are absolute Z
+                            if (paramName == "NT") pz = -Math.Abs(pz);
                             deepestZ = Math.Min(deepestZ, pz);
+                        }
                     }
                 }
             }

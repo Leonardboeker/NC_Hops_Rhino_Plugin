@@ -74,19 +74,24 @@ namespace WallabyHop.Components.Utility
             EnsureLayerTree();
         }
 
+        // Single source of truth for the root layer name. EnsureLayerTree and
+        // ScanLayers previously used two different names ("Wallaby Hop" vs
+        // "DYNESTIC") which made the scan permanently blind on fresh documents.
+        private const string RootLayerName = "Wallaby Hop";
+
         // ---------------------------------------------------------------
-        // EnsureLayerTree — create DYNESTIC root + 8 op layers + 3 sub-layers each
+        // EnsureLayerTree — create root + 8 op layers + 3 sub-layers each
         // ---------------------------------------------------------------
         private void EnsureLayerTree()
         {
             RhinoDoc rhinoDoc = RhinoDoc.ActiveDoc;
             if (rhinoDoc == null) return;
 
-            // 1. Ensure root "Wallaby Hop"
-            int rootIdx = rhinoDoc.Layers.FindByFullPath("Wallaby Hop", RhinoMath.UnsetIntIndex);
+            // 1. Ensure root layer
+            int rootIdx = rhinoDoc.Layers.FindByFullPath(RootLayerName, RhinoMath.UnsetIntIndex);
             if (rootIdx == RhinoMath.UnsetIntIndex)
             {
-                var root = new Rhino.DocObjects.Layer { Name = "Wallaby Hop" };
+                var root = new Rhino.DocObjects.Layer { Name = RootLayerName };
                 rootIdx = rhinoDoc.Layers.Add(root);
             }
             Guid rootId = rhinoDoc.Layers[rootIdx].Id;
@@ -94,7 +99,7 @@ namespace WallabyHop.Components.Utility
             // 2. Each operation type
             foreach (var op in _opTypes)
             {
-                string opPath = "DYNESTIC::" + op.OpName;
+                string opPath = RootLayerName + "::" + op.OpName;
                 int opIdx = rhinoDoc.Layers.FindByFullPath(opPath, RhinoMath.UnsetIntIndex);
                 if (opIdx == RhinoMath.UnsetIntIndex)
                 {
@@ -251,7 +256,7 @@ namespace WallabyHop.Components.Utility
 
             foreach (var op in _opTypes)
             {
-                string opPath = "DYNESTIC::" + op.OpName;
+                string opPath = RootLayerName + "::" + op.OpName;
                 int opIdx = rhinoDoc.Layers.FindByFullPath(opPath, RhinoMath.UnsetIntIndex);
                 if (opIdx == RhinoMath.UnsetIntIndex) continue;
 

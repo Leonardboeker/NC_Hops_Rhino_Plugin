@@ -112,9 +112,12 @@ namespace WallabyHop.Components.Nesting
             DA.GetData(6, ref export);
 
             // ---------------------------------------------------------------
-            // 3. EXPORT GUARD
+            // 3. EXPORT GUARD -- rising edge only (matches HopExport), so a
+            // toggle left on TRUE cannot silently rewrite files on every solve.
             // ---------------------------------------------------------------
-            if (!export) return;
+            bool risingEdge = export && !_lastExport;
+            _lastExport = export;
+            if (!risingEdge) return;
 
             // ---------------------------------------------------------------
             // 4. VALIDATE BASE FOLDER
@@ -173,6 +176,7 @@ namespace WallabyHop.Components.Nesting
             // 7. EXPORT ONE FILE PER PART
             // ---------------------------------------------------------------
             var writtenPaths = new List<string>();
+            var usedStems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             int successCount = 0;
 
             for (int i = 0; i < parts.Count; i++)
@@ -206,15 +210,48 @@ namespace WallabyHop.Components.Nesting
                     ? Convert.ToDouble(dict["thickness"])
                     : dz;
 
-                // -- Sanitise filename (strip reserved chars) --
+                // -- Sanitise filename; suffix duplicates so two panels named
+                //    "Shelf" cannot silently overwrite each other --
                 string stem = SanitiseFileName(panelName);
-                string fullPath = Path.Combine(outputDir, stem + ".hop");
+                string uniqueStem = stem;
+                int dupIdx = 2;
+                while (usedStems.Contains(uniqueStem))
+                    uniqueStem = stem + "_" + (dupIdx++);
+                usedStems.Add(uniqueStem);
+                string fullPath = Path.Combine(outputDir, uniqueStem + ".hop");
 
                 // -- Build .hop content --
-                string content = BuildHopContent(stem, partDx, partDy, partDz, wzgv, opLineGroups);
+                string content = BuildHopContent(uniqueStem, partDx, partDy, partDz, wzgv, opLineGroups);
 
-                // -- Write file --
-                File.WriteAllText(fullPath, content, Encoding.ASCII);
+                // -- Pre-write validation gate --
+                var analysis = Logic.HopAnalyzer.Analyze(content);
+                foreach (string zw in analysis.ZWarnings)
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, uniqueStem + ": " + zw);
+                if (!analysis.IsValid)
+                {
+                    foreach (string err in analysis.Errors)
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Error, uniqueStem + ": " + err);
+                    foreach (string fc in analysis.FixchipWarnings)
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Error, uniqueStem + ": " + fc);
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                        uniqueStem + ".hop NOT written — fix errors above");
+                    continue;
+                }
+
+                // -- Atomic write --
+                try
+                {
+                    string tmpPath = fullPath + ".tmp";
+                    File.WriteAllText(tmpPath, content, Encoding.ASCII);
+                    if (File.Exists(fullPath)) File.Delete(fullPath);
+                    File.Move(tmpPath, fullPath);
+                }
+                catch (Exception ex)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                        uniqueStem + ".hop write failed: " + ex.Message);
+                    continue;
+                }
                 writtenPaths.Add(fullPath);
                 successCount++;
             }
@@ -300,6 +337,9 @@ namespace WallabyHop.Components.Nesting
                 sb.Append(Array.IndexOf(_invalidChars, c) >= 0 ? '_' : c);
             return sb.Length > 0 ? sb.ToString() : "part";
         }
+
+        // Rising-edge memory for the export toggle
+        private bool _lastExport = false;
 
         protected override System.Drawing.Bitmap Icon => IconHelper.Load("HopPartExport");
 

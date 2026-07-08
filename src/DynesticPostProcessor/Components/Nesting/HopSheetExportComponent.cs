@@ -12,6 +12,8 @@ using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
 
+using WallabyHop.Logic;
+
 namespace WallabyHop.Components.Nesting
 {
     public class HopSheetExportComponent : GH_Component
@@ -30,6 +32,12 @@ namespace WallabyHop.Components.Nesting
                 GH_ParamAccess.list);
             pManager.AddIntegerParameter("IDS", "ids",
                 "OpenNest sheet assignment indices. Each entry maps a part to a sheet number. -1 = unfitted.",
+                GH_ParamAccess.list);
+            pManager.AddTransformParameter("Transforms", "transforms",
+                "OpenNest per-part placement transforms (parallel to Parts/IDS). Each part's " +
+                "operation coordinates are moved by its transform before export. Only " +
+                "UNROTATED placements are supported so far -- lock rotation in OpenNest " +
+                "(Rotations=1 / grain direction) or the part is refused with an error.",
                 GH_ParamAccess.list);
             pManager.AddCurveParameter("SheetCurve", "sheetCurve",
                 "Sheet boundary curve from OpenNest. Used to extract sheet dx/dy dimensions via bounding box.",
@@ -84,31 +92,45 @@ namespace WallabyHop.Components.Nesting
             List<int> ids = new List<int>();
             DA.GetDataList(1, ids);
 
+            List<Transform> transforms = new List<Transform>();
+            DA.GetDataList(2, transforms);
+
             Curve sheetCurve = null;
-            if (!DA.GetData(2, ref sheetCurve)) return;
+            if (!DA.GetData(3, ref sheetCurve)) return;
 
             int sheetIndex = 0;
-            if (!DA.GetData(3, ref sheetIndex)) return;
+            if (!DA.GetData(4, ref sheetIndex)) return;
 
             string folder = null;
-            if (!DA.GetData(4, ref folder)) return;
+            if (!DA.GetData(5, ref folder)) return;
 
             string fileName = null;
-            if (!DA.GetData(5, ref fileName)) return;
+            if (!DA.GetData(6, ref fileName)) return;
 
             string wzgv = null;
-            DA.GetData(6, ref wzgv);
+            DA.GetData(7, ref wzgv);
 
             double dz = 19.0;
-            DA.GetData(7, ref dz);
+            DA.GetData(8, ref dz);
 
             bool export = false;
-            DA.GetData(8, ref export);
+            DA.GetData(9, ref export);
 
             // ---------------------------------------------------------------
-            // 3. EXPORT GUARD -- silent return when not exporting
+            // 3. EXPORT GUARD -- rising edge only; re-emit cached content on
+            // non-edge solves so downstream components keep their data.
             // ---------------------------------------------------------------
-            if (!export) return;
+            bool risingEdge = export && !_lastExport;
+            _lastExport = export;
+            if (!risingEdge)
+            {
+                if (_lastContent != null)
+                {
+                    DA.SetData(0, _lastContent);
+                    DA.SetData(1, _lastStatus);
+                }
+                return;
+            }
 
             // ---------------------------------------------------------------
             // 4. INPUT DEFAULTS -- fallback for disconnected inputs
@@ -175,6 +197,24 @@ namespace WallabyHop.Components.Nesting
                 return;
             }
 
+            if (transforms.Count == 0)
+            {
+                AddRuntimeMessage(
+                    GH_RuntimeMessageLevel.Error,
+                    "HopSheetExport: no Transforms connected. Wire OpenNest's Transform "
+                    + "output -- without it every part would machine at its local origin.");
+                return;
+            }
+
+            if (transforms.Count != parts.Count)
+            {
+                AddRuntimeMessage(
+                    GH_RuntimeMessageLevel.Error,
+                    "HopSheetExport: transforms count (" + transforms.Count
+                    + ") != parts count (" + parts.Count + ") -- lists must match");
+                return;
+            }
+
             if (sheetCurve == null)
             {
                 AddRuntimeMessage(
@@ -205,6 +245,7 @@ namespace WallabyHop.Components.Nesting
             List<string> allOpLines = new List<string>();
             int partsOnSheet = 0;
             int unfittedCount = 0;
+            bool exportBlocked = false;
 
             for (int i = 0; i < ids.Count; i++)
             {
@@ -217,21 +258,54 @@ namespace WallabyHop.Components.Nesting
 
                 // Unwrap HopPart dictionary
                 var wrapper = parts[i] as GH_ObjectWrapper;
-                if (wrapper == null) continue;
+                if (wrapper == null)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                        "Part " + i + " is not a HopPart wrapper -- skipped");
+                    continue;
+                }
                 var dict = wrapper.Value as Dictionary<string, object>;
-                if (dict == null) continue;
+                if (dict == null)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                        "Part " + i + " does not contain a part dictionary -- skipped");
+                    continue;
+                }
+                if (!dict.ContainsKey("operationLines"))
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                        "Part " + i + " has no 'operationLines' key (is this a HopPart dict?) -- skipped");
+                    continue;
+                }
+
+                string partLabel = dict.ContainsKey("panelName")
+                    ? (dict["panelName"] as string ?? ("part " + i))
+                    : ("part " + i);
 
                 var opLineGroups = dict["operationLines"] as List<List<string>>;
+                var partLines = new List<string>();
                 if (opLineGroups != null)
-                {
                     foreach (var group in opLineGroups)
-                    {
                         foreach (string line in group)
-                        {
-                            allOpLines.Add(line);
-                        }
-                    }
+                            partLines.Add(line);
+
+                // C2: rewrite part-local coordinates into sheet coordinates.
+                Transform xf = transforms[i];
+                var placement = new OpLineTransformer.Placement
+                {
+                    Tx = xf.M03,
+                    Ty = xf.M13,
+                    RotationDeg = RotationDegreesOf(xf),
+                };
+                var tr = OpLineTransformer.Apply(partLines, placement);
+                if (tr.Error != null)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                        "HopSheetExport: " + partLabel + " " + tr.Error);
+                    exportBlocked = true;
+                    continue;
                 }
+                allOpLines.AddRange(tr.Lines);
                 partsOnSheet++;
             }
 
@@ -240,6 +314,14 @@ namespace WallabyHop.Components.Nesting
                 AddRuntimeMessage(
                     GH_RuntimeMessageLevel.Warning,
                     unfittedCount + " part(s) did not fit on any sheet (IDS=-1)");
+            }
+
+            if (exportBlocked)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "HopSheetExport: file NOT written -- one or more parts could not "
+                    + "be placed (see errors above)");
+                return;
             }
 
             if (partsOnSheet == 0)
@@ -298,28 +380,72 @@ namespace WallabyHop.Components.Nesting
             lines.Add("CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)");
 
             // ---------------------------------------------------------------
-            // 11. INSERT OPERATION LINES -- all parts on this sheet
+            // 11. INSERT OPERATION LINES -- bucket-sorted so duplicate tool
+            // calls from different parts merge (same as HopExport)
             // ---------------------------------------------------------------
-            for (int i = 0; i < allOpLines.Count; i++)
+            foreach (string line in NcExport.SortOperationLines(allOpLines))
+                lines.Add(line);
+
+            // ---------------------------------------------------------------
+            // 12. ASSEMBLE + PRE-WRITE VALIDATION GATE
+            // ---------------------------------------------------------------
+            string content = string.Join("\r\n", lines) + "\r\n";
+
+            var analysis = Logic.HopAnalyzer.Analyze(content);
+            foreach (string zw in analysis.ZWarnings)
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, zw);
+            if (!analysis.IsValid)
             {
-                lines.Add(allOpLines[i]);
+                foreach (string err in analysis.Errors)
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, err);
+                foreach (string fc in analysis.FixchipWarnings)
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, fc);
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "HopSheetExport: file NOT written -- fix the errors above ("
+                    + analysis.Summary + ")");
+                _lastContent = content;
+                _lastStatus = "BLOCKED: " + analysis.Summary;
+                DA.SetData(0, content);
+                DA.SetData(1, _lastStatus);
+                return;
             }
 
             // ---------------------------------------------------------------
-            // 12. ASSEMBLE AND WRITE -- CRLF line endings, ASCII encoding
+            // 13. ATOMIC WRITE + SUCCESS OUTPUT
             // ---------------------------------------------------------------
-            string content = string.Join("\r\n", lines) + "\r\n";
-            File.WriteAllText(fullPath, content, Encoding.ASCII);
+            try
+            {
+                string tmpPath = fullPath + ".tmp";
+                File.WriteAllText(tmpPath, content, Encoding.ASCII);
+                if (File.Exists(fullPath)) File.Delete(fullPath);
+                File.Move(tmpPath, fullPath);
+            }
+            catch (Exception ex)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "HopSheetExport: write failed: " + ex.Message);
+                return;
+            }
 
-            // ---------------------------------------------------------------
-            // 13. SUCCESS OUTPUT
-            // ---------------------------------------------------------------
-            AddRuntimeMessage(
-                GH_RuntimeMessageLevel.Remark,
-                "HopSheetExport: exported sheet " + sheetIndex
-                + " (" + partsOnSheet + " parts, " + allOpLines.Count + " op lines) -> " + fullPath);
+            string status = "Exported sheet " + sheetIndex + " (" + partsOnSheet
+                + " parts) -> " + fullPath + "  [" + analysis.Summary + "]";
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, status);
+            _lastContent = content;
+            _lastStatus = status;
             DA.SetData(0, content);
-            DA.SetData(1, "Exported sheet " + sheetIndex + ": " + fullPath);
+            DA.SetData(1, status);
+        }
+
+        // Rising-edge memory + content cache
+        private bool _lastExport = false;
+        private string _lastContent = null;
+        private string _lastStatus = null;
+
+        // Rotation angle (degrees) of an XY-plane transform. Pure translations
+        // return 0.
+        private static double RotationDegreesOf(Transform xf)
+        {
+            return Math.Atan2(xf.M10, xf.M00) * 180.0 / Math.PI;
         }
 
         protected override System.Drawing.Bitmap Icon => IconHelper.Load("HopSheetExport");
@@ -333,6 +459,7 @@ namespace WallabyHop.Components.Nesting
             {
                 WallabyHop.AutoWire.Spec.Skip(),
                 WallabyHop.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.Skip(),   // Transforms
                 WallabyHop.AutoWire.Spec.Curve(),
                 WallabyHop.AutoWire.Spec.Int("0<0<20"),
                 WallabyHop.AutoWire.Spec.FilePath(),

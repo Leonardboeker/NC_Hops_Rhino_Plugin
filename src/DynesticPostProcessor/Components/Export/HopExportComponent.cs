@@ -113,11 +113,21 @@ namespace WallabyHop.Components.Export
             DA.GetDataList(8, labelVars);
 
             // ---------------------------------------------------------------
-            // 3. EXPORT GUARD -- fire only on rising edge (false -> true)
+            // 3. EXPORT GUARD -- fire only on rising edge (false -> true).
+            // On non-edge solves re-emit the cached content so a downstream
+            // HopAnalyzer keeps its data instead of starving after one solve.
             // ---------------------------------------------------------------
             bool risingEdge = export && !_lastExport;
             _lastExport = export;
-            if (!risingEdge) return;
+            if (!risingEdge)
+            {
+                if (_lastContent != null)
+                {
+                    DA.SetData(0, _lastContent);
+                    DA.SetData(1, _lastStatus);
+                }
+                return;
+            }
 
             // ---------------------------------------------------------------
             // 4. INPUT DEFAULTS -- fallback for disconnected inputs
@@ -205,19 +215,72 @@ namespace WallabyHop.Components.Export
             }
 
             // ---------------------------------------------------------------
-            // 10. ASSEMBLE AND WRITE -- CRLF line endings, ASCII encoding
+            // 10. ASSEMBLE + PRE-WRITE VALIDATION GATE
+            // The analyzer runs BEFORE the file is written. Structural errors
+            // and fixchip collisions block the write (the content is still
+            // emitted on the HopContent output for inspection); depth warnings
+            // are surfaced but do not block.
             // ---------------------------------------------------------------
             string content = string.Join("\r\n", lines) + "\r\n";
-            File.WriteAllText(fullPath, content, Encoding.ASCII);
+
+            var analysis = Logic.HopAnalyzer.Analyze(content);
+            foreach (string zw in analysis.ZWarnings)
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, zw);
+
+            if (!analysis.IsValid)
+            {
+                foreach (string err in analysis.Errors)
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, err);
+                foreach (string fc in analysis.FixchipWarnings)
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, fc);
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "File NOT written — fix the errors above. ("
+                    + analysis.Summary + ")");
+                _lastContent = content;
+                _lastStatus = "BLOCKED: " + analysis.Summary;
+                DA.SetData(0, content);
+                DA.SetData(1, _lastStatus);
+                return;
+            }
 
             // ---------------------------------------------------------------
-            // 11. SUCCESS OUTPUT
+            // 11. ATOMIC WRITE -- temp file + move so a locked file or a
+            // disk-full mid-write can never leave a truncated .hop behind.
+            // CRLF line endings, ASCII encoding.
             // ---------------------------------------------------------------
-            AddRuntimeMessage(
-                GH_RuntimeMessageLevel.Remark, "Exported: " + fullPath);
+            try
+            {
+                string tmpPath = fullPath + ".tmp";
+                File.WriteAllText(tmpPath, content, Encoding.ASCII);
+                if (File.Exists(fullPath)) File.Delete(fullPath);
+                File.Move(tmpPath, fullPath);
+            }
+            catch (Exception ex)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "Write failed: " + ex.Message + " (" + fullPath + ")");
+                _lastContent = content;
+                _lastStatus = "WRITE FAILED: " + ex.Message;
+                DA.SetData(0, content);
+                DA.SetData(1, _lastStatus);
+                return;
+            }
+
+            // ---------------------------------------------------------------
+            // 12. SUCCESS OUTPUT
+            // ---------------------------------------------------------------
+            string status = "Exported: " + fullPath + "  [" + analysis.Summary + "]";
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, status);
+            _lastContent = content;
+            _lastStatus = status;
             DA.SetData(0, content);
-            DA.SetData(1, "Exported: " + fullPath);
+            DA.SetData(1, status);
         }
+
+        // Cache so downstream components (HopAnalyzer panels etc.) keep
+        // receiving data on solves where the rising-edge guard skips the write.
+        private string _lastContent = null;
+        private string _lastStatus = null;
 
         protected override System.Drawing.Bitmap Icon => IconHelper.Load("HopExport");
 
