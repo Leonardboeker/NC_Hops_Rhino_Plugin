@@ -48,8 +48,9 @@ namespace WallabyHop.Components.Operations
 
             // 1 - StartPoint
             pManager.AddPointParameter("StartPoint", "startPoint",
-                "Start point of the first hole. Y used for X-row, X used for Y-row. Z = surface height.",
-                GH_ParamAccess.item);
+                "Start points — each point becomes one drill row (first hole of that row). " +
+                "Y used for X-row, X used for Y-row. Z = surface height.",
+                GH_ParamAccess.list);
 
             // 2 - Spacings (up to 4)
             pManager.AddNumberParameter("Spacings", "spacings",
@@ -107,7 +108,7 @@ namespace WallabyHop.Components.Operations
             _approachLines.Clear();
 
             int direction = 0;
-            Point3d startPoint = Point3d.Origin;
+            var startPoints = new List<Point3d>();
             var spacings = new List<double>();
             double depth = 13.0;
             double diameter = 5.0;
@@ -116,7 +117,7 @@ namespace WallabyHop.Components.Operations
             Color colour = Color.Empty;
 
             DA.GetData(0, ref direction);
-            if (!DA.GetData(1, ref startPoint)) return;
+            if (!DA.GetDataList(1, startPoints) || startPoints.Count == 0) return;
             if (!DA.GetDataList(2, spacings)) return;
             DA.GetData(3, ref depth);
             DA.GetData(4, ref diameter);
@@ -153,60 +154,71 @@ namespace WallabyHop.Components.Operations
             while (spacings.Count < 4) spacings.Add(0.0);
 
             bool isXRow = (direction == 0);
-            double surfaceZ = startPoint.Z;
-            double cutZ = surfaceZ - Math.Abs(depth);
             double radius = diameter / 2.0;
-            double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
 
-            // Compute hole positions for preview
-            var holePositions = new List<Point3d>();
-            holePositions.Add(startPoint);
-            double cursor = isXRow ? startPoint.X : startPoint.Y;
-            for (int s = 0; s < 4; s++)
+            // ---------------------------------------------------------------
+            // ONE TOOL CALL + ONE ROW MACRO PER START POINT (list input)
+            // ---------------------------------------------------------------
+            var lines = new List<string>();
+            int totalHoles = 0;
+            foreach (Point3d startPoint in startPoints)
             {
-                if (spacings[s] > 0)
+                double surfaceZ = startPoint.Z;
+
+                // Compute hole positions for preview
+                var holePositions = new List<Point3d>();
+                holePositions.Add(startPoint);
+                double cursor = isXRow ? startPoint.X : startPoint.Y;
+                for (int s = 0; s < 4; s++)
                 {
-                    cursor += spacings[s];
-                    if (isXRow)
-                        holePositions.Add(new Point3d(cursor, startPoint.Y, startPoint.Z));
-                    else
-                        holePositions.Add(new Point3d(startPoint.X, cursor, startPoint.Z));
+                    if (spacings[s] > 0)
+                    {
+                        cursor += spacings[s];
+                        if (isXRow)
+                            holePositions.Add(new Point3d(cursor, startPoint.Y, startPoint.Z));
+                        else
+                            holePositions.Add(new Point3d(startPoint.X, cursor, startPoint.Z));
+                    }
                 }
-            }
 
-            foreach (Point3d hp in holePositions)
-            {
-                Point3d topPt = new Point3d(hp.X, hp.Y, surfaceZ);
-                Plane cylPlane = new Plane(topPt, Vector3d.ZAxis);
-                Cylinder cyl = new Cylinder(new Circle(cylPlane, radius), -Math.Abs(depth));
-                Brep cylBrep = cyl.ToBrep(true, true);
-                if (cylBrep != null) _previewVolumes.Add(cylBrep);
-            }
-            _approachLines.Add(new Line(
-                new Point3d(startPoint.X, startPoint.Y, surfaceZ + MachineConstants.PreviewSafeZOffset),
-                new Point3d(startPoint.X, startPoint.Y, surfaceZ)));
+                foreach (Point3d hp in holePositions)
+                {
+                    Point3d topPt = new Point3d(hp.X, hp.Y, surfaceZ);
+                    Plane cylPlane = new Plane(topPt, Vector3d.ZAxis);
+                    Cylinder cyl = new Cylinder(new Circle(cylPlane, radius), -Math.Abs(depth));
+                    Brep cylBrep = cyl.ToBrep(true, true);
+                    if (cylBrep != null) _previewVolumes.Add(cylBrep);
+                }
+                _approachLines.Add(new Line(
+                    new Point3d(startPoint.X, startPoint.Y, surfaceZ + MachineConstants.PreviewSafeZOffset),
+                    new Point3d(startPoint.X, startPoint.Y, surfaceZ)));
 
-            // NC macro — delegate to pure logic
-            var result = DrillRowLogic.Generate(new DrillRowLogic.DrillRowInput
-            {
-                IsXRow = isXRow,
-                StartX = startPoint.X,
-                StartY = startPoint.Y,
-                StartZ = startPoint.Z,
-                Spacings = spacings,
-                Depth = depth,
-                Diameter = diameter,
-                Mirror = mirror,
-                ToolNr = toolNr,
-            });
+                // NC macro — delegate to pure logic
+                var result = DrillRowLogic.Generate(new DrillRowLogic.DrillRowInput
+                {
+                    IsXRow = isXRow,
+                    StartX = startPoint.X,
+                    StartY = startPoint.Y,
+                    StartZ = startPoint.Z,
+                    Spacings = spacings,
+                    Depth = depth,
+                    Diameter = diameter,
+                    Mirror = mirror,
+                    ToolNr = toolNr,
+                });
+                totalHoles += result.HoleCount;
+                // Logic emits [tool call, macro] — keep the tool call once
+                var opLines = new List<string>(result.Lines);
+                lines.AddRange(lines.Count == 0 ? (IEnumerable<string>)opLines : opLines.GetRange(1, opLines.Count - 1));
+            }
 
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
                 (isXRow ? "X-row" : "Y-row")
-                + "  " + result.HoleCount + " holes"
-                + "  D=" + NcFmt.F(diameter)
-                + "  T=" + NcFmt.F(cutZ));
+                + "  " + startPoints.Count + " row" + (startPoints.Count == 1 ? "" : "s")
+                + "  " + totalHoles + " holes"
+                + "  D=" + NcFmt.F(diameter));
 
-            DA.SetDataList(0, new List<string>(result.Lines));
+            DA.SetDataList(0, lines);
         }
 
         public override BoundingBox ClippingBox

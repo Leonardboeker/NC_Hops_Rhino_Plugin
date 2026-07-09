@@ -35,7 +35,7 @@ namespace WallabyHop.Components.Operations
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddCurveParameter("RectCurve", "rectCurve", "Closed rectangle curve defining the pocket boundary. Center and dimensions are extracted from its bounding box.", GH_ParamAccess.item);
+            pManager.AddCurveParameter("RectCurve", "rectCurve", "Closed rectangle curves — each becomes one pocket. Center and dimensions are extracted from each curve's bounding box.", GH_ParamAccess.list);
             pManager.AddNumberParameter("CornerRadius", "cornerRadius", "Fillet radius for pocket corners in mm. 0 = sharp corners. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddNumberParameter("Angle", "angle", "Rotation angle of the pocket in degrees. 0 = axis-aligned. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddNumberParameter("Depth", "depth", "Pocket depth in mm, measured downward from the curve's Z. Default 1.0.", GH_ParamAccess.item, 1.0);
@@ -76,7 +76,7 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // GET INPUTS
             // ---------------------------------------------------------------
-            Curve rectCurve = null;
+            var rectCurves = new List<Curve>();
             double cornerRadius = 0.0;
             double angle = 0.0;
             double depth = 1.0;
@@ -84,7 +84,7 @@ namespace WallabyHop.Components.Operations
             int toolNr = 0;
             Color colour = Color.Empty;
 
-            if (!DA.GetData(0, ref rectCurve)) return;
+            if (!DA.GetDataList(0, rectCurves)) return;
             DA.GetData(1, ref cornerRadius);
             DA.GetData(2, ref angle);
             DA.GetData(3, ref depth);
@@ -97,7 +97,8 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // 2. GUARDS
             // ---------------------------------------------------------------
-            if (rectCurve == null)
+            rectCurves.RemoveAll(c => c == null);
+            if (rectCurves.Count == 0)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "No rectangle curve connected");
                 DA.SetDataList(0, new List<string>());
@@ -125,85 +126,82 @@ namespace WallabyHop.Components.Operations
             }
 
             // ---------------------------------------------------------------
-            // 4. EXTRACT DIMENSIONS from BoundingBox
+            // 4. ONE TOOL CALL + ONE MACRO PER CURVE (list input)
             // ---------------------------------------------------------------
-            BoundingBox bb = rectCurve.GetBoundingBox(true);
-            double cx = (bb.Min.X + bb.Max.X) / 2.0;
-            double cy = (bb.Min.Y + bb.Max.Y) / 2.0;
-            double width  = bb.Max.X - bb.Min.X;
-            double height = bb.Max.Y - bb.Min.Y;
-
-            // PREVIEW: box from bounding rect at surface down to -depth
             double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
-            double topZ  = bb.Max.Z;
-            double botZ  = topZ - Math.Abs(depth);
-
-            // Build rotated box: create base rect at topZ, extrude down
-            double previewZ = topZ;
-            Rectangle3d previewBounds = new Rectangle3d(
-                new Plane(new Point3d(cx, cy, previewZ), Vector3d.XAxis, Vector3d.YAxis),
-                new Interval(-width / 2.0, width / 2.0),
-                new Interval(-height / 2.0, height / 2.0));
-            Curve baseCurve = previewBounds.ToNurbsCurve();
-
-            if (cornerRadius > 0)
+            var lines = new List<string>();
+            foreach (Curve rectCurve in rectCurves)
             {
-                Curve filleted = Curve.CreateFilletCornersCurve(baseCurve, cornerRadius, 1e-6, 1e-6);
-                if (filleted != null) baseCurve = filleted;
-            }
+                BoundingBox bb = rectCurve.GetBoundingBox(true);
+                double cx = (bb.Min.X + bb.Max.X) / 2.0;
+                double cy = (bb.Min.Y + bb.Max.Y) / 2.0;
+                double width  = bb.Max.X - bb.Min.X;
+                double height = bb.Max.Y - bb.Min.Y;
 
-            if (angle != 0)
-            {
-                double angleRad = angle * Math.PI / 180.0;
-                Point3d centerPoint = new Point3d(cx, cy, previewZ);
-                baseCurve.Transform(Transform.Rotation(angleRad, Vector3d.ZAxis, centerPoint));
-            }
+                // PREVIEW: box from bounding rect at surface down to -depth
+                double topZ = bb.Max.Z;
+                double botZ = topZ - Math.Abs(depth);
 
-            // Extrude the closed base curve downward
-            if (baseCurve.IsClosed)
-            {
-                Vector3d extDir = new Vector3d(0, 0, -(topZ - botZ));
-                Surface extSrf = Surface.CreateExtrusion(baseCurve, extDir);
-                if (extSrf != null)
+                Rectangle3d previewBounds = new Rectangle3d(
+                    new Plane(new Point3d(cx, cy, topZ), Vector3d.XAxis, Vector3d.YAxis),
+                    new Interval(-width / 2.0, width / 2.0),
+                    new Interval(-height / 2.0, height / 2.0));
+                Curve baseCurve = previewBounds.ToNurbsCurve();
+
+                if (cornerRadius > 0)
                 {
-                    Brep extBrep = extSrf.ToBrep();
-                    if (extBrep != null)
+                    Curve filleted = Curve.CreateFilletCornersCurve(baseCurve, cornerRadius, 1e-6, 1e-6);
+                    if (filleted != null) baseCurve = filleted;
+                }
+
+                if (angle != 0)
+                {
+                    double angleRad = angle * Math.PI / 180.0;
+                    Point3d centerPoint = new Point3d(cx, cy, topZ);
+                    baseCurve.Transform(Transform.Rotation(angleRad, Vector3d.ZAxis, centerPoint));
+                }
+
+                if (baseCurve.IsClosed)
+                {
+                    Vector3d extDir = new Vector3d(0, 0, -(topZ - botZ));
+                    Surface extSrf = Surface.CreateExtrusion(baseCurve, extDir);
+                    if (extSrf != null)
                     {
-                        Brep capped = extBrep.CapPlanarHoles(tol);
-                        _previewVolumes.Add(capped != null ? capped : extBrep);
+                        Brep extBrep = extSrf.ToBrep();
+                        if (extBrep != null)
+                        {
+                            Brep capped = extBrep.CapPlanarHoles(tol);
+                            _previewVolumes.Add(capped != null ? capped : extBrep);
+                        }
                     }
                 }
+
+                // PREVIEW: approach line from safeZ to bottom-left corner
+                double safeZ = topZ + MachineConstants.PreviewSafeZOffset;
+                _approachLines.Add(new Line(new Point3d(bb.Min.X, bb.Min.Y, safeZ),
+                    new Point3d(bb.Min.X, bb.Min.Y, topZ)));
+
+                var opLines = PocketLogic.GenerateRect(new PocketLogic.RectPocketInput
+                {
+                    CenterX = cx, CenterY = cy, SurfaceZ = bb.Min.Z,
+                    Width = width, Height = height,
+                    CornerRadius = cornerRadius,
+                    Angle = angle,
+                    Depth = depth,
+                    Stepdown = stepdown,
+                    ToolNr = toolNr,
+                    ToolType = toolType,
+                    FeedFactor = feedFactor,
+                });
+                // Logic emits [tool call, macro] — keep the tool call once
+                lines.AddRange(lines.Count == 0 ? (IEnumerable<string>)opLines : opLines.GetRange(1, opLines.Count - 1));
             }
-
-            // PREVIEW: approach line from safeZ to bottom-left corner
-            double safeZ = rectCurve.GetBoundingBox(true).Max.Z + MachineConstants.PreviewSafeZOffset;
-            Point3d startPt = new Point3d(bb.Min.X, bb.Min.Y, topZ);
-            _approachLines.Add(new Line(new Point3d(startPt.X, startPt.Y, safeZ), startPt));
-
-            // ---------------------------------------------------------------
-            // 5-6. DELEGATE TO PURE PocketLogic
-            // ---------------------------------------------------------------
-            var lines = PocketLogic.GenerateRect(new PocketLogic.RectPocketInput
-            {
-                CenterX = cx, CenterY = cy, SurfaceZ = bb.Min.Z,
-                Width = width, Height = height,
-                CornerRadius = cornerRadius,
-                Angle = angle,
-                Depth = depth,
-                Stepdown = stepdown,
-                ToolNr = toolNr,
-                ToolType = toolType,
-                FeedFactor = feedFactor,
-            });
 
             // ---------------------------------------------------------------
             // 7. OUTPUT
             // ---------------------------------------------------------------
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                "RectPocket: " + width.ToString(CultureInfo.InvariantCulture)
-                + " x " + height.ToString(CultureInfo.InvariantCulture)
-                + " at (" + cx.ToString(CultureInfo.InvariantCulture)
-                + ", " + cy.ToString(CultureInfo.InvariantCulture) + ")");
+                "RectPocket: " + rectCurves.Count + " pocket" + (rectCurves.Count == 1 ? "" : "s"));
 
             DA.SetDataList(0, lines);
         }

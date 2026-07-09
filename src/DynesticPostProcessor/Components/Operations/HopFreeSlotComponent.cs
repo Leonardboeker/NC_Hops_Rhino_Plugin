@@ -35,8 +35,8 @@ namespace WallabyHop.Components.Operations
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddPointParameter("P1", "p1", "Slot start point. Z coordinate contributes to surface height (max of P1.Z and P2.Z).", GH_ParamAccess.item);
-            pManager.AddPointParameter("P2", "p2", "Slot end point. Z coordinate contributes to surface height (max of P1.Z and P2.Z).", GH_ParamAccess.item);
+            pManager.AddPointParameter("P1", "p1", "Slot start points — paired 1:1 with P2, each pair becomes one slot. A single P2 is reused for all P1. Z contributes to surface height (max of the pair).", GH_ParamAccess.list);
+            pManager.AddPointParameter("P2", "p2", "Slot end points — paired 1:1 with P1. Z contributes to surface height (max of the pair).", GH_ParamAccess.list);
             pManager.AddNumberParameter("SlotWidth", "slotWidth", "Slot width in mm. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddNumberParameter("Depth", "depth", "Slot depth in mm, measured downward from the higher endpoint Z. Default 1.0.", GH_ParamAccess.item, 1.0);
             pManager.AddIntegerParameter("ToolNr", "toolNr", "Tool magazine position number. Must be greater than 0.", GH_ParamAccess.item);
@@ -72,15 +72,15 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // GET INPUTS
             // ---------------------------------------------------------------
-            Point3d p1 = Point3d.Unset;
-            Point3d p2 = Point3d.Unset;
+            var p1s = new List<Point3d>();
+            var p2s = new List<Point3d>();
             double slotWidth = 0.0;
             double depth = 1.0;
             int toolNr = 0;
             Color colour = Color.Empty;
 
-            if (!DA.GetData(0, ref p1)) return;
-            if (!DA.GetData(1, ref p2)) return;
+            if (!DA.GetDataList(0, p1s) || p1s.Count == 0) return;
+            if (!DA.GetDataList(1, p2s) || p2s.Count == 0) return;
             if (!DA.GetData(2, ref slotWidth)) return;
             DA.GetData(3, ref depth);
             if (!DA.GetData(4, ref toolNr)) return;
@@ -122,74 +122,89 @@ namespace WallabyHop.Components.Operations
                 return;
             }
 
-            // PREVIEW: box along slot centerline at surface level, extruded downward by depth
-            double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
-            double topZ = Math.Max(p1.Z, p2.Z);
-            Point3d a = new Point3d(p1.X, p1.Y, topZ);
-            Point3d b = new Point3d(p2.X, p2.Y, topZ);
-
-            Vector3d dir = b - a;
-            if (dir.Length > 0.001)
+            // P1/P2 pairing: 1:1 lists, or a single point on one side reused
+            // for every point on the other. Anything else is ambiguous — error.
+            int slotCount = Math.Max(p1s.Count, p2s.Count);
+            if (p1s.Count != p2s.Count && p1s.Count != 1 && p2s.Count != 1)
             {
-                dir.Unitize();
-                // Perpendicular in XY
-                Vector3d perp = Vector3d.CrossProduct(dir, Vector3d.ZAxis);
-                perp.Unitize();
-                double halfW = slotWidth / 2.0;
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                    "P1 (" + p1s.Count + ") and P2 (" + p2s.Count + ") counts must match "
+                    + "(or one side is a single point reused for all pairs)");
+                DA.SetDataList(0, new List<string>());
+                return;
+            }
 
-                // Four corner points of slot rectangle at topZ
-                Point3d c0 = a + perp * halfW;
-                Point3d c1 = b + perp * halfW;
-                Point3d c2 = b - perp * halfW;
-                Point3d c3 = a - perp * halfW;
+            // ---------------------------------------------------------------
+            // 4. ONE TOOL CALL + ONE MACRO PER SLOT (paired list input)
+            // ---------------------------------------------------------------
+            double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
+            var lines = new List<string>();
+            for (int i = 0; i < slotCount; i++)
+            {
+                Point3d p1 = p1s[Math.Min(i, p1s.Count - 1)];
+                Point3d p2 = p2s[Math.Min(i, p2s.Count - 1)];
 
-                // Build closed polyline as slot base
-                Polyline slotPoly = new Polyline(new Point3d[] { c0, c1, c2, c3, c0 });
-                Curve slotCurve = slotPoly.ToNurbsCurve();
+                // PREVIEW: box along slot centerline at surface level, extruded downward by depth
+                double topZ = Math.Max(p1.Z, p2.Z);
+                Point3d a = new Point3d(p1.X, p1.Y, topZ);
+                Point3d b = new Point3d(p2.X, p2.Y, topZ);
 
-                if (slotCurve != null && slotCurve.IsClosed)
+                Vector3d dir = b - a;
+                if (dir.Length > 0.001)
                 {
-                    Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
-                    Surface extSrf = Surface.CreateExtrusion(slotCurve, extDir);
-                    if (extSrf != null)
+                    dir.Unitize();
+                    Vector3d perp = Vector3d.CrossProduct(dir, Vector3d.ZAxis);
+                    perp.Unitize();
+                    double halfW = slotWidth / 2.0;
+
+                    Point3d c0 = a + perp * halfW;
+                    Point3d c1 = b + perp * halfW;
+                    Point3d c2 = b - perp * halfW;
+                    Point3d c3 = a - perp * halfW;
+
+                    Polyline slotPoly = new Polyline(new Point3d[] { c0, c1, c2, c3, c0 });
+                    Curve slotCurve = slotPoly.ToNurbsCurve();
+
+                    if (slotCurve != null && slotCurve.IsClosed)
                     {
-                        Brep extBrep = extSrf.ToBrep();
-                        if (extBrep != null)
+                        Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
+                        Surface extSrf = Surface.CreateExtrusion(slotCurve, extDir);
+                        if (extSrf != null)
                         {
-                            Brep capped = extBrep.CapPlanarHoles(tol);
-                            _previewVolumes.Add(capped != null ? capped : extBrep);
+                            Brep extBrep = extSrf.ToBrep();
+                            if (extBrep != null)
+                            {
+                                Brep capped = extBrep.CapPlanarHoles(tol);
+                                _previewVolumes.Add(capped != null ? capped : extBrep);
+                            }
                         }
                     }
                 }
+
+                // PREVIEW: approach line from safeZ to p1
+                double safeZVal = topZ + MachineConstants.PreviewSafeZOffset;
+                _approachLines.Add(new Line(new Point3d(a.X, a.Y, safeZVal), a));
+
+                var opLines = SlotLogic.GenerateFreeSlot(new SlotLogic.FreeSlotInput
+                {
+                    P1X = p1.X, P1Y = p1.Y, P1Z = p1.Z,
+                    P2X = p2.X, P2Y = p2.Y, P2Z = p2.Z,
+                    SlotWidth = slotWidth,
+                    Depth = depth,
+                    ToolNr = toolNr,
+                    ToolType = toolType,
+                    FeedFactor = feedFactor,
+                });
+                // Logic emits [tool call, macro] — keep the tool call once
+                lines.AddRange(lines.Count == 0 ? (IEnumerable<string>)opLines : opLines.GetRange(1, opLines.Count - 1));
             }
-
-            // PREVIEW: approach line from safeZ to p1
-            double safeZVal = Math.Max(p1.Z, p2.Z) + MachineConstants.PreviewSafeZOffset;
-            _approachLines.Add(new Line(new Point3d(a.X, a.Y, safeZVal), a));
-
-            // ---------------------------------------------------------------
-            // 4. DELEGATE TO PURE SlotLogic
-            // ---------------------------------------------------------------
-            var lines = SlotLogic.GenerateFreeSlot(new SlotLogic.FreeSlotInput
-            {
-                P1X = p1.X, P1Y = p1.Y, P1Z = p1.Z,
-                P2X = p2.X, P2Y = p2.Y, P2Z = p2.Z,
-                SlotWidth = slotWidth,
-                Depth = depth,
-                ToolNr = toolNr,
-                ToolType = toolType,
-                FeedFactor = feedFactor,
-            });
 
             // ---------------------------------------------------------------
             // 5. OUTPUT
             // ---------------------------------------------------------------
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                "FreeSlot: (" + p1.X.ToString(CultureInfo.InvariantCulture)
-                + "," + p1.Y.ToString(CultureInfo.InvariantCulture)
-                + ") to (" + p2.X.ToString(CultureInfo.InvariantCulture)
-                + "," + p2.Y.ToString(CultureInfo.InvariantCulture)
-                + ") W=" + slotWidth.ToString(CultureInfo.InvariantCulture));
+                "FreeSlot: " + slotCount + " slot" + (slotCount == 1 ? "" : "s")
+                + " W=" + slotWidth.ToString(CultureInfo.InvariantCulture));
 
             DA.SetDataList(0, lines);
         }

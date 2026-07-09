@@ -35,7 +35,7 @@ namespace WallabyHop.Components.Operations
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddPointParameter("Center", "center", "Center point of the circular pocket. Z coordinate defines the plate surface height.", GH_ParamAccess.item);
+            pManager.AddPointParameter("Center", "center", "Center points — each point becomes one circular pocket. Z coordinate defines the plate surface height.", GH_ParamAccess.list);
             pManager.AddNumberParameter("Radius", "radius", "Pocket radius in mm. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddNumberParameter("Depth", "depth", "Pocket depth in mm, measured downward from center Z. Default 1.0.", GH_ParamAccess.item, 1.0);
             pManager.AddNumberParameter("Stepdown", "stepdown", "Depth per pass in mm (stepdown). 0 = single pass. Default 0.", GH_ParamAccess.item, 0.0);
@@ -73,14 +73,14 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // GET INPUTS
             // ---------------------------------------------------------------
-            Point3d center = Point3d.Unset;
+            var centers = new List<Point3d>();
             double radius = 0.0;
             double depth = 1.0;
             double stepdown = 0.0;
             int toolNr = 0;
             Color colour = Color.Empty;
 
-            if (!DA.GetData(0, ref center)) return;
+            if (!DA.GetDataList(0, centers) || centers.Count == 0) return;
             if (!DA.GetData(1, ref radius)) return;
             DA.GetData(2, ref depth);
             DA.GetData(3, ref stepdown);
@@ -123,41 +123,46 @@ namespace WallabyHop.Components.Operations
                 return;
             }
 
-            // PREVIEW: cylinder from center surface downward by depth
-            Plane cylPlane = new Plane(center, Vector3d.ZAxis);
-            Circle cylCircle = new Circle(cylPlane, radius);
-            Cylinder cyl = new Cylinder(cylCircle, -Math.Abs(depth));
-            Brep cylBrep = cyl.ToBrep(true, true);
-            if (cylBrep != null)
-                _previewVolumes.Add(cylBrep);
-
-            // PREVIEW: approach line from safeZ to circle center
-            double safeZ = center.Z + MachineConstants.PreviewSafeZOffset;
-            _approachLines.Add(new Line(new Point3d(center.X, center.Y, safeZ), center));
-
             // ---------------------------------------------------------------
-            // 4. DELEGATE TO PURE PocketLogic
+            // 4. ONE TOOL CALL + ONE MACRO PER CENTER (list input)
             // ---------------------------------------------------------------
-            var lines = PocketLogic.GenerateCirc(new PocketLogic.CircPocketInput
+            var lines = new List<string>();
+            foreach (Point3d center in centers)
             {
-                CenterX = center.X,
-                CenterY = center.Y,
-                SurfaceZ = center.Z,
-                Radius = radius,
-                Depth = depth,
-                Stepdown = stepdown,
-                ToolNr = toolNr,
-                ToolType = toolType,
-                FeedFactor = feedFactor,
-            });
+                // PREVIEW: cylinder from center surface downward by depth
+                Plane cylPlane = new Plane(center, Vector3d.ZAxis);
+                Circle cylCircle = new Circle(cylPlane, radius);
+                Cylinder cyl = new Cylinder(cylCircle, -Math.Abs(depth));
+                Brep cylBrep = cyl.ToBrep(true, true);
+                if (cylBrep != null)
+                    _previewVolumes.Add(cylBrep);
+
+                // PREVIEW: approach line from safeZ to circle center
+                double safeZ = center.Z + MachineConstants.PreviewSafeZOffset;
+                _approachLines.Add(new Line(new Point3d(center.X, center.Y, safeZ), center));
+
+                var opLines = PocketLogic.GenerateCirc(new PocketLogic.CircPocketInput
+                {
+                    CenterX = center.X,
+                    CenterY = center.Y,
+                    SurfaceZ = center.Z,
+                    Radius = radius,
+                    Depth = depth,
+                    Stepdown = stepdown,
+                    ToolNr = toolNr,
+                    ToolType = toolType,
+                    FeedFactor = feedFactor,
+                });
+                // Logic emits [tool call, macro] — keep the tool call once
+                lines.AddRange(lines.Count == 0 ? (IEnumerable<string>)opLines : opLines.GetRange(1, opLines.Count - 1));
+            }
 
             // ---------------------------------------------------------------
             // 5. OUTPUT
             // ---------------------------------------------------------------
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                "CircPocket: R=" + radius.ToString(CultureInfo.InvariantCulture)
-                + " at (" + center.X.ToString(CultureInfo.InvariantCulture)
-                + ", " + center.Y.ToString(CultureInfo.InvariantCulture) + ")");
+                "CircPocket: " + centers.Count + " pocket" + (centers.Count == 1 ? "" : "s")
+                + " R=" + radius.ToString(CultureInfo.InvariantCulture));
 
             DA.SetDataList(0, lines);
         }

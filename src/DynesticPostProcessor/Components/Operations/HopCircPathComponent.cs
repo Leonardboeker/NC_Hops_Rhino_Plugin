@@ -35,7 +35,7 @@ namespace WallabyHop.Components.Operations
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddPointParameter("Center", "center", "Center point of the circular path. Z coordinate defines the plate surface height.", GH_ParamAccess.item);
+            pManager.AddPointParameter("Center", "center", "Center points — each point becomes one circular path. Z coordinate defines the plate surface height.", GH_ParamAccess.list);
             pManager.AddNumberParameter("Radius", "radius", "Path radius in mm. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddIntegerParameter("RadiusCorr", "radiusCorr", "Radius correction mode: 1 = inside (tool inside path), -1 = outside, 0 = center (tool center on path). Default 0.", GH_ParamAccess.item, 0);
             pManager.AddNumberParameter("Depth", "depth", "Cut depth in mm, measured downward from center Z. Default 1.0.", GH_ParamAccess.item, 1.0);
@@ -77,7 +77,7 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // GET INPUTS
             // ---------------------------------------------------------------
-            Point3d center = Point3d.Unset;
+            var centers = new List<Point3d>();
             double radius = 0.0;
             int radiusCorr = 0;
             double depth = 1.0;
@@ -86,7 +86,7 @@ namespace WallabyHop.Components.Operations
             int toolNr = 0;
             Color colour = Color.Empty;
 
-            if (!DA.GetData(0, ref center)) return;
+            if (!DA.GetDataList(0, centers) || centers.Count == 0) return;
             if (!DA.GetData(1, ref radius)) return;
             DA.GetData(2, ref radiusCorr);
             DA.GetData(3, ref depth);
@@ -132,51 +132,56 @@ namespace WallabyHop.Components.Operations
             }
             if (angle <= 0) angle = 360.0;
 
-            // PREVIEW: cylinder at the circular path -- extrude the path circle downward by depth
-            double previewZ = center.Z;
-            Point3d circlePt = new Point3d(center.X, center.Y, previewZ);
-            Plane cylPlane = new Plane(circlePt, Vector3d.ZAxis);
-            Circle pathCircle = new Circle(cylPlane, radius);
-            Curve pathCurve = pathCircle.ToNurbsCurve();
+            // ---------------------------------------------------------------
+            // 4. ONE TOOL CALL + ONE MACRO PER CENTER (list input)
+            // ---------------------------------------------------------------
             double tol = RhinoDoc.ActiveDoc != null ? RhinoDoc.ActiveDoc.ModelAbsoluteTolerance : 0.01;
-            Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
-            Surface extSrf = Surface.CreateExtrusion(pathCurve, extDir);
-            if (extSrf != null)
+            var lines = new List<string>();
+            foreach (Point3d center in centers)
             {
-                Brep extBrep = extSrf.ToBrep();
-                if (extBrep != null)
+                // PREVIEW: extrude the path circle downward by depth
+                Plane cylPlane = new Plane(center, Vector3d.ZAxis);
+                Circle pathCircle = new Circle(cylPlane, radius);
+                Curve pathCurve = pathCircle.ToNurbsCurve();
+                Vector3d extDir = new Vector3d(0, 0, -Math.Abs(depth));
+                Surface extSrf = Surface.CreateExtrusion(pathCurve, extDir);
+                if (extSrf != null)
                 {
-                    Brep capped = extBrep.CapPlanarHoles(tol);
-                    _previewVolumes.Add(capped != null ? capped : extBrep);
+                    Brep extBrep = extSrf.ToBrep();
+                    if (extBrep != null)
+                    {
+                        Brep capped = extBrep.CapPlanarHoles(tol);
+                        _previewVolumes.Add(capped != null ? capped : extBrep);
+                    }
                 }
+
+                // PREVIEW: approach line from safeZ to the 3 o'clock entry point
+                double safeZ = center.Z + MachineConstants.PreviewSafeZOffset;
+                Point3d entryPt = new Point3d(center.X + radius, center.Y, center.Z);
+                _approachLines.Add(new Line(new Point3d(entryPt.X, entryPt.Y, safeZ), entryPt));
+
+                var opLines = CircPathLogic.Generate(new CircPathLogic.CircPathInput
+                {
+                    CenterX = center.X, CenterY = center.Y, SurfaceZ = center.Z,
+                    Radius = radius,
+                    RadiusCorr = radiusCorr,
+                    Depth = depth,
+                    Stepdown = stepdown,
+                    Angle = angle,
+                    ToolNr = toolNr,
+                    ToolType = toolType,
+                    FeedFactor = feedFactor,
+                });
+                // Logic emits [tool call, macro] — keep the tool call once
+                lines.AddRange(lines.Count == 0 ? (IEnumerable<string>)opLines : opLines.GetRange(1, opLines.Count - 1));
             }
-
-            // PREVIEW: approach line from safeZ to the 3 o'clock entry point
-            double safeZ = center.Z + MachineConstants.PreviewSafeZOffset;
-            Point3d entryPt = new Point3d(center.X + radius, center.Y, previewZ);
-            _approachLines.Add(new Line(new Point3d(entryPt.X, entryPt.Y, safeZ), entryPt));
-
-            // ---------------------------------------------------------------
-            // 4. DELEGATE TO PURE CircPathLogic
-            // ---------------------------------------------------------------
-            var lines = CircPathLogic.Generate(new CircPathLogic.CircPathInput
-            {
-                CenterX = center.X, CenterY = center.Y, SurfaceZ = center.Z,
-                Radius = radius,
-                RadiusCorr = radiusCorr,
-                Depth = depth,
-                Stepdown = stepdown,
-                Angle = angle,
-                ToolNr = toolNr,
-                ToolType = toolType,
-                FeedFactor = feedFactor,
-            });
 
             // ---------------------------------------------------------------
             // 5. OUTPUT
             // ---------------------------------------------------------------
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                "CircPath: R=" + radius.ToString(CultureInfo.InvariantCulture)
+                "CircPath: " + centers.Count + " path" + (centers.Count == 1 ? "" : "s")
+                + " R=" + radius.ToString(CultureInfo.InvariantCulture)
                 + " corr=" + radiusCorr.ToString()
                 + " angle=" + angle.ToString(CultureInfo.InvariantCulture));
 

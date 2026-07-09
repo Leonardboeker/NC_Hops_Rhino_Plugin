@@ -35,7 +35,7 @@ namespace WallabyHop.Components.Operations
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddCurveParameter("Curve", "curve", "Planar closed or open curve defining the contour cutting path. Must lie in or near the World XY plane.", GH_ParamAccess.item);
+            pManager.AddCurveParameter("Curve", "curve", "Planar closed or open curves — each curve becomes one contour cutting path (one SP…EP block). Must lie in or near the World XY plane.", GH_ParamAccess.list);
             pManager.AddNumberParameter("Depth", "depth", "Cutting depth in mm, measured downward from the curve's Z position. Default 1.0.", GH_ParamAccess.item, 1.0);
             pManager.AddNumberParameter("LeadIn", "leadIn", "Lead-in length in mm. Tool approaches from outside the contour by this distance before cutting. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddNumberParameter("Tolerance", "tolerance", "NURBS to polyline/arc conversion tolerance in mm. Smaller = more segments, higher accuracy. Default 0.1.", GH_ParamAccess.item, 0.1);
@@ -86,7 +86,7 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // GET INPUTS
             // ---------------------------------------------------------------
-            Curve curve = null;
+            var curves = new List<Curve>();
             double depth = 1.0;
             double leadIn = 0.0;
             double overcut = 0.0;
@@ -100,7 +100,7 @@ namespace WallabyHop.Components.Operations
             int passes = 1;
             Color colour = Color.Empty;
 
-            if (!DA.GetData(0, ref curve)) return;
+            if (!DA.GetDataList(0, curves)) return;
             DA.GetData(1, ref depth);
             DA.GetData(2, ref leadIn);
             DA.GetData(8, ref overcut);
@@ -124,7 +124,8 @@ namespace WallabyHop.Components.Operations
             // ---------------------------------------------------------------
             // 2. GUARDS
             // ---------------------------------------------------------------
-            if (curve == null)
+            curves.RemoveAll(c => c == null);
+            if (curves.Count == 0)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "No curve connected");
                 DA.SetDataList(0, new List<string>());
@@ -159,14 +160,59 @@ namespace WallabyHop.Components.Operations
             if (side < 0)  side = -1;
 
             // ---------------------------------------------------------------
+            // 4-9. ONE TOOL CALL + ONE SP…EP BLOCK PER CURVE (list input).
+            // A fatal problem on ANY curve blocks the whole output — machining
+            // a partial set would silently skip material.
+            // ---------------------------------------------------------------
+            var allLines = new List<string>();
+            int totalPieces = 0, totalSegmentsAll = 0;
+            foreach (Curve inputCurve in curves)
+            {
+                var opLines = ProcessOneCurve(inputCurve, depth, leadIn, leadOut, overcut,
+                    autoFlip, cornerStyle, tolerance, toolNr, toolDiameter, side, passes,
+                    toolType, feedFactor, ref totalPieces, ref totalSegmentsAll);
+                if (opLines == null)
+                {
+                    DA.SetDataList(0, new List<string>());
+                    return;
+                }
+                // Logic emits [tool call, blocks…] — keep the tool call once
+                allLines.AddRange(allLines.Count == 0 ? (IEnumerable<string>)opLines : opLines.GetRange(1, opLines.Count - 1));
+            }
+
+            // ---------------------------------------------------------------
+            // REMARK + OUTPUT
+            // ---------------------------------------------------------------
+            string sideLabel = side == 0 ? "center" : (side > 0 ? "left" : "right");
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
+                "Contour: " + curves.Count + " curve" + (curves.Count == 1 ? "" : "s")
+                + ", " + totalPieces + " pieces, " + totalSegmentsAll + " segments"
+                + "  depth=" + (-Math.Abs(depth)).ToString(CultureInfo.InvariantCulture)
+                + "  side=" + sideLabel
+                + "  toolD=" + toolDiameter.ToString(CultureInfo.InvariantCulture));
+
+            DA.SetDataList(0, allLines);
+        }
+
+        /// <summary>
+        /// Full per-curve pipeline: planarity check, direction check/AutoFlip,
+        /// side-guaranteed kerf offset, preview volume, arc/line decomposition,
+        /// pure ContourLogic generation. Returns the NC lines (tool call first)
+        /// or NULL on a fatal problem (caller blocks the whole output).
+        /// </summary>
+        private List<string> ProcessOneCurve(Curve curve, double depth, double leadIn,
+            double leadOut, double overcut, bool autoFlip, int cornerStyle, double tolerance,
+            int toolNr, double toolDiameter, int side, int passes,
+            string toolType, double feedFactor, ref int pieceCount, ref int segmentCount)
+        {
+            // ---------------------------------------------------------------
             // 4. PLANARITY CHECK
             // ---------------------------------------------------------------
             if (!curve.IsPlanar())
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
                     "Curve is not planar -- cannot use for 2D contour");
-                DA.SetDataList(0, new List<string>());
-                return;
+                return null;
             }
 
             // ---------------------------------------------------------------
@@ -237,8 +283,7 @@ namespace WallabyHop.Components.Operations
                             AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
                                 "Kerf offset produced pieces that could not be joined — "
                                 + "reduce tool diameter or use side=0 (center path)");
-                            DA.SetDataList(0, new List<string>());
-                            return;
+                            return null;
                         }
                         if (joinedOffsets.Length > 1)
                         {
@@ -247,8 +292,7 @@ namespace WallabyHop.Components.Operations
                                 + " disjoint pieces (tool diameter " + toolDiameter.ToString(CultureInfo.InvariantCulture)
                                 + " mm too large for a concave region). Machining only one piece "
                                 + "would silently skip material — reduce the tool diameter or use side=0.");
-                            DA.SetDataList(0, new List<string>());
-                            return;
+                            return null;
                         }
                         cuttingCurve = joinedOffsets[0];
                     }
@@ -351,23 +395,22 @@ namespace WallabyHop.Components.Operations
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
                     "Curve conversion to arcs and lines failed");
-                DA.SetDataList(0, new List<string>());
-                return;
+                return null;
             }
 
             // ---------------------------------------------------------------
             // 8. BUILD NC OUTPUT — convert Rhino segments to ContourSegments,
             //    then delegate to pure ContourLogic
             // ---------------------------------------------------------------
-            int totalSegments = 0;
             var pureP = new List<IReadOnlyList<ContourLogic.ContourSegment>>();
             foreach (List<Curve> pieceSegs in allPieces)
             {
-                totalSegments += pieceSegs.Count;
+                segmentCount += pieceSegs.Count;
                 pureP.Add(ToContourSegments(pieceSegs));
             }
+            pieceCount += allPieces.Count;
 
-            var lines = ContourLogic.Generate(new ContourLogic.ContourInput
+            return ContourLogic.Generate(new ContourLogic.ContourInput
             {
                 Pieces = pureP,
                 SurfaceZ = surfaceZ,
@@ -381,18 +424,6 @@ namespace WallabyHop.Components.Operations
                 ToolType = toolType,
                 FeedFactor = feedFactor,
             });
-
-            // ---------------------------------------------------------------
-            // 9. REMARK + OUTPUT
-            // ---------------------------------------------------------------
-            string sideLabel = side == 0 ? "center" : (side > 0 ? "left" : "right");
-            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                "Contour: " + allPieces.Count + " pieces, " + totalSegments + " segments"
-                + "  depth=" + (-Math.Abs(depth)).ToString(CultureInfo.InvariantCulture)
-                + "  side=" + sideLabel
-                + "  toolD=" + toolDiameter.ToString(CultureInfo.InvariantCulture));
-
-            DA.SetDataList(0, lines);
         }
 
         // ---------------------------------------------------------------
