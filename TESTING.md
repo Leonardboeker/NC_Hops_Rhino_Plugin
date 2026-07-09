@@ -363,7 +363,7 @@ Standard proveout sequence (industry practice, do not skip steps):
 
 ---
 
-## Part 4 — Current open verification debt (honest list, 2026-07-09)
+## Part 4 — Current open verification debt (honest list, updated 2026-07-09 after the first full L0+L1 sweep)
 
 | # | Item | Layer | Risk |
 |---|---|---|---|
@@ -374,10 +374,43 @@ Standard proveout sequence (industry practice, do not skip steps):
 | 5 | Fixchip SPZ=half-thickness + `/` skippability at the terminal | 3 | MED |
 | 6 | HOPS/CAMPUS opens our files (L2.1 never formally done for the new emitters) | 2 | MED |
 | 7 | Real clamp footprint vs 25mm constant | 3/4 | LOW-MED |
-| 8 | bench.gh canonical canvas does not exist yet | 1 | LOW (build it once, reuse forever) |
+| 8 | ~~bench.gh canonical canvas~~ ✅ created 2026-07-09 (`bench/bench.gh`) | 1 | done |
 | 9 | Label-var content validation (ASCII mangling, E1) | 0 | LOW |
 | 10 | Version stamp in ;KOMMENTAR (stale-file defense) | 0 | LOW |
-| 11 | HopBackplot visual re-check after IsPreviewCapable fix | 1 | pending next Rhino restart |
+| 11 | ~~HopBackplot visual re-check~~ ✅ 2026-07-09 — draws (paths, colors, plunge markers) | 1 | done |
+| 12 | **Contour/Engraving arc-direction + offset-side fix: live re-verify** (circle → all G03M, side=+1 → R−r/2 offset) | 1 | HIGH until verified — fix built, .gha reinstall pending |
+| 13 | HopKorpus dict-schema guards never exercised live | 1 | LOW (unit-tested) |
+| 14 | HopDrillRow description says default depth 13, auto-slider wires 6 | 1 | cosmetic |
 
 Items 1–5 are one machine session (~2 hours with material). Until then,
 every green checkmark in this repo is a Layer-0/1 statement only.
+
+---
+
+## Sweep log
+
+**2026-07-09 — first full Layer-0 + Layer-1 acceptance sweep (via Rhino MCP)**
+
+- **Layer 0:** 166 tests green; 5/5 golden files round-trip clean through the
+  independent nc-hops parser.
+- **L1.0:** installed .gha == built .gha (hash-verified before any testing).
+- **L1.1:** 35 components load — and exposed that the DEVELOPMENT.md GUID
+  registry only listed 19. Registry completed the same day.
+- **L1.2/1.3:** FreeSlot, CircPocket, CircPath, DrillRow, FormatCut, BlumHinge,
+  Contour dropped + happy-pathed; all emit reference-shaped macros
+  (_Bohgx_V5 SPY from point, _saege_x_V7, _Topf_V5 negative cup depth, …).
+- **L1.4:** depth=0 → hard error with actionable message, output emptied ✓.
+- **L1.5:** all preview volumes drew (slot, pocket cylinder, path ring, cup
+  circles, row markers, format-cut line); Backplot + StockSim verified earlier
+  the same day (StockSim correctly split the stock when a through-cut freed a part).
+- **L1.7:** every read output had branch_count 1 ✓.
+- **FINDINGS (both invisible to all 166 unit tests — exactly classes A1/A3):**
+  1. `HopContour`/`HopEngraving` derived arc direction from `arcSeg.Arc` (the
+     struct), which ignores curve reversal → a plain circle emitted
+     G03M + G02M: the machine would retrace the first half and never cut the
+     second. Fixed: direction from curve-level tangent × to-center cross.
+  2. `HopContour` kerf offset used `side * radius` with Rhino's raw sign
+     convention → side=+1 (Left) offset OUTWARD on a CCW circle (right).
+     The H5 side-unification had fixed SawLogic but missed this glue. Fixed:
+     `OffsetOnSide` offsets, MEASURES which side the result landed on, and
+     re-offsets if wrong — no trust in the convention.

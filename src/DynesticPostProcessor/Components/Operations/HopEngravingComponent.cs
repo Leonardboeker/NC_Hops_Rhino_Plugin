@@ -249,14 +249,14 @@ namespace WallabyHop.Components.Operations
                 ArcCurve arcSeg = seg as ArcCurve;
                 if (arcSeg != null)
                 {
-                    Arc arc = arcSeg.Arc;
-                    Point3d sp = arc.StartPoint;
-                    Point3d ep = arc.EndPoint;
-                    Point3d cp = arc.Center;
-                    Point3d mid = arc.PointAt(arc.Angle * 0.5);
-                    Vector3d toStart = arc.StartPoint - cp;
-                    Vector3d toMid = mid - cp;
-                    bool isCCW = (toStart.X * toMid.Y - toStart.Y * toMid.X) > 0;
+                    // Direction from the curve, not arcSeg.Arc — the Arc struct
+                    // ignores curve reversal (same fix as HopContourComponent).
+                    Point3d sp = arcSeg.PointAtStart;
+                    Point3d ep = arcSeg.PointAtEnd;
+                    Point3d cp = arcSeg.Arc.Center;
+                    Vector3d ts = arcSeg.TangentAtStart; ts.Unitize();
+                    Vector3d toCenter = cp - sp;
+                    bool isCCW = (ts.X * toCenter.Y - ts.Y * toCenter.X) > 0;
                     result.Add(ContourLogic.ContourSegment.Arc(
                         sp.X, sp.Y, ep.X, ep.Y, cp.X, cp.Y, isCCW, 0, 0, 0, 0));
                 }

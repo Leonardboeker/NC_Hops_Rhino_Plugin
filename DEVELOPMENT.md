@@ -136,28 +136,47 @@ Vorlage: copy an existing minimal one like `HopDrillComponent` + `DrillLogic`.
 
 ## Component GUIDs registry
 
+Complete list (35 components, verified against the loaded assembly 2026-07-09 —
+an earlier version of this table listed only 19; keep it COMPLETE when adding
+components):
+
 | Component | GUID |
 |---|---|
+| HopAnalyzer | `9e4f1a2b-c3d5-4e6f-8a7b-0c1d2e3f4a5b` |
+| HopBackplot | `3b67e27b-cb16-476e-886e-4a6412db5ac9` |
+| HopBlumHinge | `6d1e4f50-7182-9012-def0-123456789012` |
+| HopCabinetBack | `b2c3d4e5-f6a7-8901-bcde-f01234567890` |
+| HopCabinetDoor | `f6a7b8c9-d0e1-2345-f012-345678901234` |
+| HopCircPath | `7beb0809-a67e-485b-913f-ebae9bd50294` |
+| HopCircPocket | `795d39f9-23ad-4499-966e-583a3e17439e` |
+| HopConnector | `c3d4e5f6-a7b8-9012-cdef-012345678901` |
+| HopContour | `e2902790-ccf6-4880-b284-80e0110f1e71` |
+| HopDimension | `8f3061a2-93b4-1234-f012-345678901234` |
+| HopDrawing | `d5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a` |
 | HopDrill | `2a763260-a3c1-4231-8ed0-cd0085267c94` |
 | HopDrillRow | `5c0d3e4f-6071-8901-cdef-012345678901` |
-| HopSaw | `c8d2f1a3-4b7e-4c9d-a1f5-2e3b6d8c0f14` |
+| HopEngraving | `d3a19f7c-5b2e-4d8a-b6c1-9f0e2a4c7d83` |
+| HopExport | `4add04a3-cef7-437f-84f5-e4b13f9ceed7` |
+| HopFeet | `e5f6a7b8-c9d0-1234-ef01-234567890123` |
+| HopFixchip | `7e2f5061-8293-0123-ef01-234567890123` |
+| HopFormatCut | `3a8b1c2d-4e5f-6789-abcd-ef0123456789` |
 | HopFreeSlot | `6f5e6bd3-18f9-44e5-b90b-33be8ce95bcf` |
 | HopGrooveSlot | `4b9c2d3e-5f60-7890-bcde-f01234567890` |
-| HopContour | `e2902790-ccf6-4880-b284-80e0110f1e71` |
-| HopEngraving | `d3a19f7c-5b2e-4d8a-b6c1-9f0e2a4c7d83` |
-| HopRectPocket | `6e2f23b6-557f-46a1-80a7-41feebc7982d` |
-| HopCircPocket | `795d39f9-23ad-4499-966e-583a3e17439e` |
-| HopCircPath | `7beb0809-a67e-485b-913f-ebae9bd50294` |
-| HopBlumHinge | `6d1e4f50-7182-9012-def0-123456789012` |
-| HopFormatCut | `3a8b1c2d-4e5f-6789-abcd-ef0123456789` |
-| HopFixchip | `7e2f5061-8293-0123-ef01-234567890123` |
-| HopKorpus | `a3b7c1d2-e4f5-6789-0abc-def123456789` |
-| HopAnalyzer | `9e4f1a2b-c3d5-4e6f-8a7b-0c1d2e3f4a5b` |
-| HopLabel | `a7c3e912-5d8f-4b2e-9061-7f42d8b5c130` |
-| HopToolDB | `c4e2f851-7b3d-4a9c-b602-3e91f7d8a043` |
-| HopBackplot | `3b67e27b-cb16-476e-886e-4a6412db5ac9` |
 | HopJob | `095bc845-202b-4834-9698-c057bbfee2b2` |
+| HopKorpus | `a3b7c1d2-e4f5-6789-0abc-def123456789` |
+| HopLabel | `a7c3e912-5d8f-4b2e-9061-7f42d8b5c130` |
+| HopLayerScan | `b3f1a042-9c7e-4d85-a631-2f80e5c6d917` |
+| HopMaterialList | `c4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f` |
+| HopNesting | `9041a2b3-04c5-2345-0123-456789012345` |
+| HopPart | `2161f748-9651-46df-9c41-19da014f537b` |
+| HopPartExport | `b3c9d1e2-f4a5-4b67-8c90-de12345678ab` |
+| HopRectPocket | `6e2f23b6-557f-46a1-80a7-41feebc7982d` |
+| HopSaw | `c8d2f1a3-4b7e-4c9d-a1f5-2e3b6d8c0f14` |
+| HopSheet | `e9729b96-017f-4fc9-8e9f-5ba628a24ca7` |
+| HopSheetExport | `f9663298-da7b-432a-b38b-e0ded18ade94` |
+| HopShelves | `d4e5f6a7-b8c9-0123-def0-123456789012` |
 | HopStockSim | `23b83e31-31b4-4b1f-9cf3-48c43cf0c5c4` |
+| HopToolDB | `c4e2f851-7b3d-4a9c-b602-3e91f7d8a043` |
 
 These are immutable. Do not change them.
 

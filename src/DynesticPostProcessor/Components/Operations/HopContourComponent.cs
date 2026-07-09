@@ -182,7 +182,10 @@ namespace WallabyHop.Components.Operations
             {
                 var orient = curve.ClosedCurveOrientation(Plane.WorldXY);
                 bool isCW  = orient == CurveOrientation.Clockwise;
-                bool wrongSide = (side == 1 && isCW) || (side == -1 && !isCW);
+                // Left of CCW travel (and right of CW travel) points INTO a
+                // closed curve — that's a hole cut, usually not what an
+                // outline cut wants, so warn / AutoFlip.
+                bool wrongSide = (side == 1 && !isCW) || (side == -1 && isCW);
                 if (wrongSide)
                 {
                     if (autoFlip)
@@ -203,11 +206,10 @@ namespace WallabyHop.Components.Operations
 
             if (side != 0)
             {
-                double offsetDist = side * radius;
                 CurveOffsetCornerStyle cs = cornerStyle == 1 ? CurveOffsetCornerStyle.Round
                                           : cornerStyle == 2 ? CurveOffsetCornerStyle.Smooth
                                           : CurveOffsetCornerStyle.Sharp;
-                Curve[] offsets = curve.Offset(Plane.WorldXY, offsetDist, tol, cs);
+                Curve[] offsets = OffsetOnSide(curve, side, radius, tol, cs);
 
                 if (offsets == null || offsets.Length == 0)
                 {
@@ -398,6 +400,38 @@ namespace WallabyHop.Components.Operations
         // Arc detection mirrors the legacy CCW determination
         // (cross product of center→start × center→mid).
         // ---------------------------------------------------------------
+        /// <summary>
+        /// Offset with a GUARANTEED side. Rhino's Curve.Offset sign convention
+        /// is not dependable across curve orientations, so this offsets once
+        /// with the expected sign (+dist = right of travel, plugin +1 = left =
+        /// negated), MEASURES which side the result actually landed on, and
+        /// re-offsets negated if it landed wrong. Flipped kerf = scrapped panel
+        /// (H5) — measuring beats trusting the convention.
+        /// </summary>
+        private static Curve[] OffsetOnSide(Curve curve, int side, double radius,
+            double tol, CurveOffsetCornerStyle cs)
+        {
+            double dist = -side * radius;
+            Curve[] offsets = curve.Offset(Plane.WorldXY, dist, tol, cs);
+            if (offsets == null || offsets.Length == 0 || offsets[0] == null)
+                return offsets;
+
+            double tMid = curve.Domain.ParameterAt(0.5);
+            Point3d p = curve.PointAt(tMid);
+            Vector3d tan = curve.TangentAt(tMid);
+            double tOff;
+            if (!offsets[0].ClosestPoint(p, out tOff)) return offsets;
+            Vector3d toOff = offsets[0].PointAt(tOff) - p;
+            if (toOff.Length < tol) return offsets;
+
+            double cross = tan.X * toOff.Y - tan.Y * toOff.X;   // > 0 = LEFT of travel
+            bool landedLeft = cross > 0;
+            bool wantLeft = side == 1;
+            if (landedLeft != wantLeft)
+                return curve.Offset(Plane.WorldXY, -dist, tol, cs);
+            return offsets;
+        }
+
         private static IReadOnlyList<ContourLogic.ContourSegment> ToContourSegments(List<Curve> flat)
         {
             var result = new List<ContourLogic.ContourSegment>();
@@ -409,16 +443,18 @@ namespace WallabyHop.Components.Operations
                 ArcCurve arcSeg = seg as ArcCurve;
                 if (arcSeg != null)
                 {
-                    Arc arc = arcSeg.Arc;
-                    Point3d sp = arc.StartPoint;
-                    Point3d ep = arc.EndPoint;
-                    Point3d cp = arc.Center;
-                    Point3d mid = arc.PointAt(arc.Angle * 0.5);
-                    Vector3d toStart = arc.StartPoint - cp;
-                    Vector3d toMid = mid - cp;
-                    bool isCCW = (toStart.X * toMid.Y - toStart.Y * toMid.X) > 0;
+                    // Direction MUST come from the curve, not from arcSeg.Arc:
+                    // the Arc struct ignores curve reversal (ToArcsAndLines /
+                    // Offset can emit reversed ArcCurves), which flipped every
+                    // second arc of a plain circle to G02M — the machine would
+                    // retrace the first half instead of cutting the second.
+                    Point3d sp = arcSeg.PointAtStart;
+                    Point3d ep = arcSeg.PointAtEnd;
+                    Point3d cp = arcSeg.Arc.Center;
                     Vector3d ts = arcSeg.TangentAtStart; ts.Unitize();
                     Vector3d te = arcSeg.TangentAtEnd; te.Unitize();
+                    Vector3d toCenter = cp - sp;
+                    bool isCCW = (ts.X * toCenter.Y - ts.Y * toCenter.X) > 0;
                     result.Add(ContourLogic.ContourSegment.Arc(
                         sp.X, sp.Y, ep.X, ep.Y, cp.X, cp.Y, isCCW,
                         ts.X, ts.Y, te.X, te.Y));
