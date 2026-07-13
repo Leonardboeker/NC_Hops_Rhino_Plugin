@@ -157,7 +157,7 @@ namespace DynesticPostProcessor.Tests
         }
 
         [Test]
-        public void CircPath_TessellatesIntoMillSegments()
+        public void CircPath_FullCircle_IsOneSmoothRing()
         {
             var plan = Parse(
                 "WZF (4,_VE,_V*1,_VA,_SD,0,'')\r\n" +
@@ -165,9 +165,108 @@ namespace DynesticPostProcessor.Tests
                 "Radius:=40,Radiuskorrektur:=0,AB:=1,Aufmass:=0,Bearb_umkehren:=1," +
                 "Winkel:=360,ANF:=_ANF,ABF:=_ANF,Rampe:=1,Interpol:=0,esxy:=0,esmd:=0,laser:=0)");
 
-            Assert.That(plan.Cuts.Count, Is.GreaterThanOrEqualTo(12), "full circle tessellated");
+            var c = plan.Cuts.Single();
+            Assert.That(c.Kind, Is.EqualTo(StockSimLogic.SolidKind.Ring));
+            Assert.That(c.PathRadius, Is.EqualTo(40));
+            Assert.That(c.Z0, Is.EqualTo(9), "Tiefe is absolute cut Z");
+        }
+
+        [Test]
+        public void CircPath_PartialArc_TessellatesAt5Degrees()
+        {
+            var plan = Parse(
+                "WZF (4,_VE,_V*1,_VA,_SD,0,'')\r\n" +
+                "CALL _Kreisbahn_V5(VAL X_Mitte:=100,Y_Mitte:=100,Tiefe:=9,ZuTiefe:=0," +
+                "Radius:=40,Radiuskorrektur:=0,AB:=1,Aufmass:=0,Bearb_umkehren:=1," +
+                "Winkel:=90,ANF:=_ANF,ABF:=_ANF,Rampe:=1,Interpol:=0,esxy:=0,esmd:=0,laser:=0)");
+
+            Assert.That(plan.Cuts.Count, Is.GreaterThanOrEqualTo(18), "90° / 5° = 18 segments");
             Assert.That(plan.Cuts.All(c => c.StepIndex == 1), Is.True);
-            Assert.That(plan.Cuts.All(c => c.Z0 == 9), Is.True, "Tiefe is absolute cut Z");
+        }
+
+        [Test]
+        public void RectPocket_CornerRadius_AtLeastToolRadius()
+        {
+            var plan = Parse(
+                "WZF (4,_VE,_V*1,_VA,_SD,0,'')\r\n" +
+                "CALL _Rechteck_V7(VAL X_MITTE:=100,Y_MITTE:=100,LAENGE:=80,BREITE:=50," +
+                "RADIUS:=0,WINKEL:=0,TIEFE:=9,ZUTIEFE:=0,RADIUSKORREKTUR:=2," +
+                "AB:=2,AUFMASS:=0,ANF:=_ANF,ABF:=_ANF,UMKEHREN:=0,RAMPE:=0," +
+                "RAMPENLAENGE:=50,QUADRANT:=1,INTERPOL:=1,ESXY:=0,ESMD:=0,LASER:=0)",
+                new Dictionary<int, double> { { 4, 12.0 } });
+
+            Assert.That(plan.Cuts.Single().CornerRadius, Is.EqualTo(6.0),
+                "the machined pocket can never be sharper than the tool radius");
+        }
+
+        [Test]
+        public void DrillRow_BixIsFirstHole_IncrementsAndUseFlagsRespected()
+        {
+            var plan = Parse(
+                "WZB (1,_VE,_V*1,_VA,_SD,0,'')\r\n" +
+                "CALL _Bohgx_V5(VAL SPY:=100,BIX:=50,BIIX:=32,BIIIX:=0,BIIIIX:=32," +
+                "SPIEGELN:=0,T:=6,D:=5,TLF:=10,INKREMENT:=1,ESXY:=0,ESD:=1," +
+                "USE2:=1,USE3:=0,USE4:=1)");
+
+            var xs = plan.Cuts.Select(c => c.X1).ToArray();
+            Assert.That(xs, Is.EqualTo(new[] { 50.0, 82.0, 114.0 }), "50, +32, (skip), +32");
+            Assert.That(plan.Cuts.All(c => c.Y1 == 100), Is.True);
+            Assert.That(plan.Cuts.All(c => c.Width == 5), Is.True);
+            Assert.That(plan.Cuts.All(c => c.Z0 == 6), Is.True, "T is absolute cut Z");
+        }
+
+        [Test]
+        public void BlumHinge_CupPlusTwoDowelsPerPosition()
+        {
+            var plan = Parse(
+                "WZB (1,_VE,_V*1,_VA,_SD,0,'')\r\n" +
+                "CALL _Topf_V5(VAL SEITE:=0,DISTANCE:=22.5,POS1:=100,POS2:=0,POS3:=0,POS4:=0," +
+                "A:=9.5,B:=45,TOPF_D:=35,TOPF_T:=-12.8,DUEBEL_D:=8,DUEBEL_T:=-13," +
+                "ESX1:=0,ESX2:=0,ESX3:=0,ESX4:=0,ESY1:=0,ESY2:=0,ESY3:=0,ESY4:=0," +
+                "USE2:=0,USE3:=0,USE4:=0)");
+
+            Assert.That(plan.Cuts.Count, Is.EqualTo(3), "cup + 2 dowels");
+            var cup = plan.Cuts[0];
+            Assert.That(cup.Width, Is.EqualTo(35));
+            Assert.That(cup.X1, Is.EqualTo(22.5));
+            Assert.That(cup.Y1, Is.EqualTo(100));
+            Assert.That(cup.Z0, Is.EqualTo(19 - 12.8).Within(1e-9));
+            var dowelYs = plan.Cuts.Skip(1).Select(c => c.Y1).OrderBy(y => y).ToArray();
+            Assert.That(dowelYs, Is.EqualTo(new[] { 77.5, 122.5 }));
+            Assert.That(plan.Cuts.Skip(1).All(c => c.X1 == 32.0), Is.True, "DISTANCE + A");
+        }
+
+        [Test]
+        public void FormatCut_FullLengthKerfSlab()
+        {
+            var plan = Parse(
+                "WZS (10,_VE,_V*0.3,_VA,_SD,0,'')\r\n" +
+                "CALL _saege_x_V7(VAL SX:=0,SY:=250,SZ:=0,EX:=0,EZ:=-0.2,BL:=2," +
+                "EINPASSEN:=0,EL:=0,AL:=0,PARALLEL:=0,K:=2,KW:=0,BH:=0," +
+                "RITZVERSATZ:=0.05,ESZ:=0,ESXY1:=1,ESX:=3)");
+
+            var c = plan.Cuts.Single();
+            Assert.That(c.Kind, Is.EqualTo(StockSimLogic.SolidKind.Slab));
+            Assert.That(c.Y1, Is.EqualTo(250));
+            Assert.That(c.X1, Is.EqualTo(0));
+            Assert.That(c.X2, Is.EqualTo(600), "full panel DX");
+            Assert.That(c.Z0, Is.EqualTo(-0.2), "EZ overshoot below the plate");
+        }
+
+        [Test]
+        public void Arg_HandlesMachineExpressionsAndUnits()
+        {
+            // Machine-generated files contain "SPX:=19+41" and "D:=5mm"
+            var plan = Parse(
+                "WZB (1,_VE,_V*1,_VA,_SD,0,'')\r\n" +
+                "CALL _Bohgy_V5(VAL SPX:=19+41,BIY:=37,BIIY:=0,BIIIY:=0,BIIIIY:=0," +
+                "SPIEGELN:=0,T:=-13,D:=5mm,TLF:=10,INKREMENT:=0,ESXY:=1,ESD:=0," +
+                "USE2:=0,USE3:=0,USE4:=0)");
+
+            var c = plan.Cuts.Single();
+            Assert.That(c.X1, Is.EqualTo(60), "19+41 evaluated");
+            Assert.That(c.Width, Is.EqualTo(5), "unit 'mm' stripped");
+            Assert.That(c.Z0, Is.EqualTo(6), "T:=-13 = depth below the 19 mm top");
         }
 
         [Test]
@@ -182,10 +281,10 @@ namespace DynesticPostProcessor.Tests
         public void UnknownMacro_WarnsOnceInsteadOfSilentlyMissing()
         {
             var plan = Parse(
-                "CALL _saege_x_V7 ( VAL POSX:=100,POSY:=0)\r\n" +
-                "CALL _saege_x_V7 ( VAL POSX:=200,POSY:=0)");
+                "CALL _Fasenschnitt_V9 ( VAL POSX:=100,POSY:=0)\r\n" +
+                "CALL _Fasenschnitt_V9 ( VAL POSX:=200,POSY:=0)");
             Assert.That(plan.Cuts, Is.Empty);
-            Assert.That(plan.Warnings.Count(w => w.Contains("_saege_x_V7")), Is.EqualTo(1));
+            Assert.That(plan.Warnings.Count(w => w.Contains("_Fasenschnitt_V9")), Is.EqualTo(1));
         }
 
         [Test]

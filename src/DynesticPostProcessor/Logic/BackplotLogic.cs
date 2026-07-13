@@ -121,7 +121,10 @@ namespace WallabyHop.Logic
                     double[] a = PositionalArgs(t, 5);
                     if (a != null)
                     {
-                        if (nextIsChainStart) { seq++; nextIsChainStart = false; }
+                        // Every drill gets its own sequence number (machining
+                        // order) — one number per GROUP hid the order of all
+                        // but the first operation.
+                        seq++; nextIsChainStart = false;
                         ops.Add(new BackplotOp
                         {
                             Kind = OpKind.Drill,
@@ -141,7 +144,7 @@ namespace WallabyHop.Logic
                     double? x2 = NamedArg(t, "X2"), y2 = NamedArg(t, "Y2");
                     if (x1.HasValue && y1.HasValue && x2.HasValue && y2.HasValue)
                     {
-                        if (nextIsChainStart) { seq++; nextIsChainStart = false; }
+                        seq++; nextIsChainStart = false;   // one number per macro op
                         ops.Add(new BackplotOp
                         {
                             Kind = OpKind.MacroSegment,
@@ -157,7 +160,7 @@ namespace WallabyHop.Logic
                     double? cy = NamedArg(t, "Y_Mitte") ?? NamedArg(t, "Y_MITTE") ?? NamedArg(t, "SPY") ?? NamedArg(t, "POSY");
                     if (cx.HasValue && cy.HasValue)
                     {
-                        if (nextIsChainStart) { seq++; nextIsChainStart = false; }
+                        seq++; nextIsChainStart = false;   // one number per macro op
                         ops.Add(new BackplotOp
                         {
                             Kind = OpKind.MacroPoint,

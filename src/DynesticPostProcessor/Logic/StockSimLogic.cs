@@ -21,15 +21,17 @@ namespace WallabyHop.Logic
     /// </summary>
     internal static class StockSimLogic
     {
-        internal enum SolidKind { Cylinder, Slab }
+        internal enum SolidKind { Cylinder, Slab, Ring }
 
         internal struct CutSolid
         {
             public SolidKind Kind;
-            public double X1, Y1;        // Cylinder: center. Slab: segment start.
+            public double X1, Y1;        // Cylinder/Ring: center. Slab: segment start.
             public double X2, Y2;        // Slab: segment end.
             public double Z0, Z1;        // bottom / top of removed material
-            public double Width;         // diameter (cylinder) or slot width (slab)
+            public double Width;         // diameter (cylinder), slot width (slab), tool dia (ring)
+            public double PathRadius;    // Ring only: centerline radius of the circular path
+            public double CornerRadius;  // Slab only: fillet radius for pocket corners
             public bool RoundEnds;       // router path: extend ends by Width/2
             public int StepIndex;        // 1-based operation group for the step slider
         }
@@ -208,17 +210,141 @@ namespace WallabyHop.Logic
                     plan.StepLabels.Add("Circular path R" + F(r.Value)
                         + " @ (" + F(cx.Value) + ", " + F(cy.Value) + ")");
                     double dia = MillDia(toolNr, toolDiameters, defaultMillDiameter, diaWarned, plan.Warnings);
-                    double sweep = (Arg(t, "Winkel") ?? 360.0) * Math.PI / 180.0;
+                    double winkel = Arg(t, "Winkel") ?? 360.0;
                     double z0 = AbsCutZ(tiefe.Value, plan.Dz);
-                    int n = Math.Max(2, (int)Math.Ceiling(Math.Abs(sweep) / (Math.PI / 12)));
-                    for (int i = 0; i < n; i++)
+                    if (winkel >= 359.99)
                     {
-                        double a0 = sweep * i / n, a1 = sweep * (i + 1) / n;
-                        AddMillSegment(plan,
-                            cx.Value + r.Value * Math.Cos(a0), cy.Value + r.Value * Math.Sin(a0),
-                            cx.Value + r.Value * Math.Cos(a1), cy.Value + r.Value * Math.Sin(a1),
-                            z0, dia, step);
+                        // Full circle = one smooth annular ring, not a jagged
+                        // chain of slabs.
+                        plan.Cuts.Add(new CutSolid
+                        {
+                            Kind = SolidKind.Ring,
+                            X1 = cx.Value, Y1 = cy.Value,
+                            Z0 = z0, Z1 = plan.Dz,
+                            Width = dia,
+                            PathRadius = r.Value,
+                            StepIndex = step,
+                        });
                     }
+                    else
+                    {
+                        double sweep = winkel * Math.PI / 180.0;
+                        int n = Math.Max(2, (int)Math.Ceiling(Math.Abs(sweep) / (Math.PI / 36)));
+                        for (int i = 0; i < n; i++)
+                        {
+                            double a0 = sweep * i / n, a1 = sweep * (i + 1) / n;
+                            AddMillSegment(plan,
+                                cx.Value + r.Value * Math.Cos(a0), cy.Value + r.Value * Math.Sin(a0),
+                                cx.Value + r.Value * Math.Cos(a1), cy.Value + r.Value * Math.Sin(a1),
+                                z0, dia, step);
+                        }
+                    }
+                }
+                else if (t.IndexOf("_Bohgx_V5", StringComparison.OrdinalIgnoreCase) >= 0
+                      || t.IndexOf("_Bohgy_V5", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    // Drill row. BIX/BIY = first hole position along the row
+                    // axis, BII../BIII../BIIII.. = increments (INKREMENT:=1)
+                    // or absolute positions (INKREMENT:=0), gated by USEn.
+                    bool isX = t.IndexOf("_Bohgx_V5", StringComparison.OrdinalIgnoreCase) >= 0;
+                    string ax = isX ? "X" : "Y";
+                    double? cross = Arg(t, isX ? "SPY" : "SPX");
+                    double? b1 = Arg(t, "BI" + ax);
+                    double? tDepth = Arg(t, "T"), dia = Arg(t, "D");
+                    if (!(cross.HasValue && b1.HasValue && tDepth.HasValue && dia.HasValue)) continue;
+                    step++;
+                    bool incremental = (Arg(t, "INKREMENT") ?? 1) >= 0.5;
+                    double z0 = AbsCutZ(tDepth.Value, plan.Dz);
+                    var alongs = new List<double> { b1.Value };
+                    string[] names = { "BII" + ax, "BIII" + ax, "BIIII" + ax };
+                    for (int i = 0; i < 3; i++)
+                    {
+                        if ((Arg(t, "USE" + (i + 2)) ?? 1) < 0.5) continue;
+                        double? bi = Arg(t, names[i]);
+                        if (!bi.HasValue || Math.Abs(bi.Value) < 0.001) continue;
+                        alongs.Add(incremental ? alongs[alongs.Count - 1] + bi.Value : bi.Value);
+                    }
+                    plan.StepLabels.Add((isX ? "X" : "Y") + "-drill row: " + alongs.Count
+                        + " holes Ø" + F(dia.Value) + " @ " + (isX ? "Y" : "X") + "=" + F(cross.Value));
+                    foreach (double a in alongs)
+                        plan.Cuts.Add(new CutSolid
+                        {
+                            Kind = SolidKind.Cylinder,
+                            X1 = isX ? a : cross.Value,
+                            Y1 = isX ? cross.Value : a,
+                            Z0 = z0, Z1 = plan.Dz,
+                            Width = dia.Value,
+                            StepIndex = step,
+                        });
+                }
+                else if (t.IndexOf("_Topf_V5", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    // Blum cup hinge: cup Ø TOPF_D at (DISTANCE, POSn), two
+                    // dowels Ø DUEBEL_D at (DISTANCE+A, POSn ± B/2). SEITE 0
+                    // measures from X=0; SEITE 1 from the far edge. Other
+                    // SEITE values (machine edge indices 2/3) are drawn from
+                    // X=0 as an approximation.
+                    double? dist = Arg(t, "DISTANCE"), cupD = Arg(t, "TOPF_D"), cupT = Arg(t, "TOPF_T");
+                    if (!(dist.HasValue && cupD.HasValue && cupT.HasValue)) continue;
+                    double seite = Arg(t, "SEITE") ?? 0;
+                    double a9 = Arg(t, "A") ?? 9.5, b45 = Arg(t, "B") ?? 45;
+                    double dowelD = Arg(t, "DUEBEL_D") ?? 0, dowelT = Arg(t, "DUEBEL_T") ?? 0;
+                    double cupX = Math.Abs(seite - 1) < 0.01 ? plan.Dx - dist.Value : dist.Value;
+                    double dowelX = Math.Abs(seite - 1) < 0.01 ? cupX - a9 : cupX + a9;
+                    int cups = 0;
+                    for (int n = 1; n <= 4; n++)
+                    {
+                        if (n > 1 && (Arg(t, "USE" + n) ?? 0) < 0.5) continue;
+                        double? pos = Arg(t, "POS" + n);
+                        if (!pos.HasValue || (n > 1 && pos.Value <= 0)) continue;
+                        step++; cups++;
+                        plan.StepLabels.Add("Hinge cup Ø" + F(cupD.Value) + " @ ("
+                            + F(cupX) + ", " + F(pos.Value) + ")");
+                        plan.Cuts.Add(new CutSolid
+                        {
+                            Kind = SolidKind.Cylinder,
+                            X1 = cupX, Y1 = pos.Value,
+                            Z0 = plan.Dz - Math.Abs(cupT.Value), Z1 = plan.Dz,
+                            Width = cupD.Value,
+                            StepIndex = step,
+                        });
+                        if (dowelD > 0 && Math.Abs(dowelT) > 0.001)
+                            foreach (double dy in new[] { -b45 / 2.0, b45 / 2.0 })
+                                plan.Cuts.Add(new CutSolid
+                                {
+                                    Kind = SolidKind.Cylinder,
+                                    X1 = dowelX, Y1 = pos.Value + dy,
+                                    Z0 = plan.Dz - Math.Abs(dowelT), Z1 = plan.Dz,
+                                    Width = dowelD,
+                                    StepIndex = step,
+                                });
+                    }
+                }
+                else if (t.IndexOf("_saege_x_V7", StringComparison.OrdinalIgnoreCase) >= 0
+                      || t.IndexOf("_saege_y_V7", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    // Format cut: full-length saw pass at SY (X-cut) / SX
+                    // (Y-cut). The kerf width is NOT in the macro (the machine
+                    // takes it from the blade) — tool lookup or default.
+                    bool isX = t.IndexOf("_saege_x_V7", StringComparison.OrdinalIgnoreCase) >= 0;
+                    double? posv = Arg(t, isX ? "SY" : "SX");
+                    if (!posv.HasValue) continue;
+                    step++;
+                    plan.StepLabels.Add("Format cut " + (isX ? "X" : "Y")
+                        + " @ " + (isX ? "Y" : "X") + "=" + F(posv.Value));
+                    double kerf = MillDia(toolNr, toolDiameters, defaultMillDiameter, diaWarned, plan.Warnings);
+                    double ez = Arg(t, "EZ") ?? 0;
+                    plan.Cuts.Add(new CutSolid
+                    {
+                        Kind = SolidKind.Slab,
+                        X1 = isX ? 0 : posv.Value,
+                        Y1 = isX ? posv.Value : 0,
+                        X2 = isX ? plan.Dx : posv.Value,
+                        Y2 = isX ? posv.Value : plan.Dy,
+                        Z0 = Math.Min(ez, 0), Z1 = plan.Dz,
+                        Width = kerf,
+                        StepIndex = step,
+                    });
                 }
                 else if (t.IndexOf("_Rechteck_V7", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
@@ -230,9 +356,11 @@ namespace WallabyHop.Logic
                     step++;
                     plan.StepLabels.Add("Rect pocket " + F(len.Value) + "×" + F(wid.Value)
                         + " @ (" + F(cx.Value) + ", " + F(cy.Value) + ")");
-                    // Rect pocket = slab along its long axis, square ends.
-                    // ponytail: the corner RADIUS is ignored — the sim removes
-                    // sharp corners the real pocket rounds off (~1 mm² per corner).
+                    // Corner radius: the machined pocket can never have corners
+                    // sharper than the tool radius — use the larger of the
+                    // macro's RADIUS and the tool radius.
+                    double toolR = MillDia(toolNr, toolDiameters, defaultMillDiameter,
+                        diaWarned, plan.Warnings) / 2.0;
                     double ang = angDeg * Math.PI / 180.0;
                     double hx = Math.Cos(ang) * len.Value / 2.0, hy = Math.Sin(ang) * len.Value / 2.0;
                     plan.Cuts.Add(new CutSolid
@@ -242,6 +370,7 @@ namespace WallabyHop.Logic
                         X2 = cx.Value + hx, Y2 = cy.Value + hy,
                         Z0 = AbsCutZ(tiefe.Value, plan.Dz), Z1 = plan.Dz,
                         Width = wid.Value,
+                        CornerRadius = Math.Max(Arg(t, "RADIUS") ?? 0, toolR),
                         StepIndex = step,
                     });
                 }
@@ -296,7 +425,7 @@ namespace WallabyHop.Logic
             return fallback;
         }
 
-        /// <summary>Arc → straight segments (max 15° each), same center/direction
+        /// <summary>Arc → straight segments (max 5° each), same center/direction
         /// convention as BackplotLogic. Returns [x1,y1,x2,y2] quads.</summary>
         private static IEnumerable<double[]> TessellateArc(
             double sx, double sy, double ex, double ey, double cx, double cy, bool ccw)
@@ -310,7 +439,7 @@ namespace WallabyHop.Logic
             if (ccw && sweep <= 0) sweep += 2 * Math.PI;
             if (!ccw && sweep >= 0) sweep -= 2 * Math.PI;
 
-            int n = Math.Max(2, (int)Math.Ceiling(Math.Abs(sweep) / (Math.PI / 12)));
+            int n = Math.Max(2, (int)Math.Ceiling(Math.Abs(sweep) / (Math.PI / 36)));
             double px = sx, py = sy;
             for (int i = 1; i <= n; i++)
             {
@@ -349,12 +478,22 @@ namespace WallabyHop.Logic
             // IgnoreCase — unlike OpLineTransformer we only need the VALUE, and
             // macro emitters vary the casing (Tiefe/TIEFE); families never
             // collide on the same line.
-            var m = Regex.Match(line, @"(?<![A-Za-z_])" + Regex.Escape(name) + @"\s*:=\s*(-?[\d.]+)",
+            // Machine-generated files contain EXPRESSIONS ("SPX:=19+41") and
+            // units ("D:=5mm") — sum the +-terms and strip the unit.
+            var m = Regex.Match(line, @"(?<![A-Za-z_])" + Regex.Escape(name)
+                + @"\s*:=\s*(-?[\d.]+(?:\s*mm)?(?:\s*\+\s*-?[\d.]+(?:\s*mm)?)*)",
                 RegexOptions.IgnoreCase);
-            if (m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Any,
-                CultureInfo.InvariantCulture, out double v))
-                return v;
-            return null;
+            if (!m.Success) return null;
+
+            double sum = 0;
+            foreach (string part in m.Groups[1].Value.Split('+'))
+            {
+                string p = Regex.Replace(part, @"\s*mm\s*", "", RegexOptions.IgnoreCase).Trim();
+                if (!double.TryParse(p, NumberStyles.Any, CultureInfo.InvariantCulture, out double v))
+                    return null;
+                sum += v;
+            }
+            return sum;
         }
 
         private static string ToolLabel(string toolType, int toolNr) =>

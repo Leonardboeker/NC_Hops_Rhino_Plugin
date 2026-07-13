@@ -180,6 +180,21 @@ namespace WallabyHop.Components.Export
                 return new Cylinder(baseCircle, z1 - z0).ToBrep(true, true);
             }
 
+            if (cut.Kind == StockSimLogic.SolidKind.Ring)
+            {
+                // Full circular path: smooth annulus (outer minus inner
+                // cylinder) instead of a jagged chain of slabs.
+                var center = new Plane(new Point3d(cut.X1, cut.Y1, z0), Vector3d.ZAxis);
+                double rOut = cut.PathRadius + cut.Width / 2.0 + eps;
+                double rIn  = cut.PathRadius - cut.Width / 2.0 - eps;
+                Brep outer = new Cylinder(new Circle(center, rOut), z1 - z0).ToBrep(true, true);
+                if (rIn <= eps) return outer;   // path smaller than the tool = full disc
+                Brep inner = new Cylinder(new Circle(center, rIn), z1 - z0 ).ToBrep(true, true);
+                Brep[] ring = Brep.CreateBooleanDifference(
+                    new[] { outer }, new[] { inner }, 0.001);
+                return (ring != null && ring.Length == 1) ? ring[0] : outer;
+            }
+
             // Slab: oriented box along the segment. RoundEnds (router paths) is
             // approximated by extending both ends by the tool radius — the sim
             // removes square corners where the real cutter leaves them round.
@@ -191,6 +206,35 @@ namespace WallabyHop.Components.Export
             double endExt = cut.RoundEnds ? cut.Width / 2.0 : eps;
             var mid = new Point3d((cut.X1 + cut.X2) / 2.0, (cut.Y1 + cut.Y2) / 2.0, z0);
             var plane = new Plane(mid, dir, Vector3d.CrossProduct(Vector3d.ZAxis, dir));
+
+            // Pocket with corner radius (tool radius / macro RADIUS): extrude
+            // a filleted rectangle instead of a sharp box.
+            if (cut.CornerRadius > 0.01 && !cut.RoundEnds)
+            {
+                var rect = new Rectangle3d(plane,
+                    new Interval(-len / 2.0 - eps, len / 2.0 + eps),
+                    new Interval(-cut.Width / 2.0 - eps, cut.Width / 2.0 + eps));
+                Curve baseCrv = rect.ToNurbsCurve();
+                double maxR = Math.Min(len, cut.Width) / 2.0 - 0.01;
+                double r = Math.Min(cut.CornerRadius, maxR);
+                if (r > 0.01)
+                {
+                    Curve filleted = Curve.CreateFilletCornersCurve(baseCrv, r, 1e-6, 1e-6);
+                    if (filleted != null && filleted.IsClosed) baseCrv = filleted;
+                }
+                Surface ext = Surface.CreateExtrusion(baseCrv, new Vector3d(0, 0, z1 - z0));
+                if (ext != null)
+                {
+                    Brep b = ext.ToBrep();
+                    if (b != null)
+                    {
+                        Brep capped = b.CapPlanarHoles(0.001);
+                        if (capped != null) return capped;
+                    }
+                }
+                // fall through to the sharp box on any failure
+            }
+
             return new Box(plane,
                 new Interval(-len / 2.0 - endExt, len / 2.0 + endExt),
                 new Interval(-cut.Width / 2.0 - eps, cut.Width / 2.0 + eps),

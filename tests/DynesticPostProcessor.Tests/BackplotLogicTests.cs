@@ -102,7 +102,7 @@ namespace DynesticPostProcessor.Tests
         }
 
         [Test]
-        public void SequenceIndex_IncrementsPerChainOrGroup()
+        public void SequenceIndex_EveryOperationGetsItsOwnNumber()
         {
             var plan = BackplotLogic.Parse(string.Join("\n", new[]
             {
@@ -116,13 +116,16 @@ namespace DynesticPostProcessor.Tests
                 "G01 (300,0,0,0,0,2)",
             }));
 
-            // drill group = seq 1, first SP = 2, second SP = 3
-            Assert.That(plan.ChainCount, Is.EqualTo(3));
+            // Machining order: drill 1 = seq 1, drill 2 = seq 2 (each drill
+            // its own number — one number per GROUP hid the order of all but
+            // the first hole), first SP chain = 3, second SP chain = 4.
+            Assert.That(plan.ChainCount, Is.EqualTo(4));
             Assert.That(plan.Ops[0].SequenceIndex, Is.EqualTo(1));
+            Assert.That(plan.Ops[1].SequenceIndex, Is.EqualTo(2));
             var chainStarts = plan.Ops.Where(o => o.IsChainStart).ToList();
             Assert.That(chainStarts.Count, Is.EqualTo(2));
-            Assert.That(chainStarts[0].SequenceIndex, Is.EqualTo(2));
-            Assert.That(chainStarts[1].SequenceIndex, Is.EqualTo(3));
+            Assert.That(chainStarts[0].SequenceIndex, Is.EqualTo(3));
+            Assert.That(chainStarts[1].SequenceIndex, Is.EqualTo(4));
         }
     }
 }
