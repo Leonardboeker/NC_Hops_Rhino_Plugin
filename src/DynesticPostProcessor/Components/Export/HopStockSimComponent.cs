@@ -129,10 +129,7 @@ namespace WallabyHop.Components.Export
             var cutters = new List<Brep>();
             foreach (var cut in plan.Cuts)
                 if (cut.StepIndex <= shown)
-                {
-                    Brep b = BuildCutter(cut);
-                    if (b != null) cutters.Add(b);
-                }
+                    cutters.AddRange(BuildCutters(cut));
 
             var result = new List<Brep> { stock };
             bool booleanOk = true;
@@ -140,7 +137,26 @@ namespace WallabyHop.Components.Export
             {
                 Brep[] diff = Brep.CreateBooleanDifference(
                     new[] { stock }, cutters, 0.001);
-                if (diff != null && diff.Length > 0)
+
+                // Rhino booleans can also return WRONG geometry instead of
+                // null (observed: a 3-face fragment). Sanity: every piece
+                // solid, total volume plausible (>1% and <100.1% of the box).
+                bool plausible = diff != null && diff.Length > 0;
+                if (plausible)
+                {
+                    double boxVol = plan.Dx * plan.Dy * plan.Dz;
+                    double vol = 0;
+                    foreach (Brep b in diff)
+                    {
+                        if (b == null || !b.IsSolid) { plausible = false; break; }
+                        var vp = VolumeMassProperties.Compute(b);
+                        if (vp != null) vol += vp.Volume;
+                    }
+                    if (plausible && (vol < boxVol * 0.01 || vol > boxVol * 1.001))
+                        plausible = false;
+                }
+
+                if (plausible)
                 {
                     result = new List<Brep>(diff);
                 }
@@ -149,7 +165,8 @@ namespace WallabyHop.Components.Export
                     booleanOk = false;
                     _ghostCutters.AddRange(cutters);
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
-                        "Boolean difference failed — showing stock + cut solids (ghost view) instead.");
+                        "Boolean difference failed or returned implausible geometry — "
+                        + "showing stock + cut solids (ghost view) instead.");
                 }
             }
 
@@ -162,22 +179,25 @@ namespace WallabyHop.Components.Export
             DA.SetData(2, total);
         }
 
-        private static Brep BuildCutter(StockSimLogic.CutSolid cut)
+        private static List<Brep> BuildCutters(StockSimLogic.CutSolid cut)
         {
             // Inflate every cutter slightly: coincident faces (groove flush to
             // an edge, through-cuts ending exactly at Z=0) make booleans fail.
             const double eps = 0.02;
+            var result = new List<Brep>();
 
             double z0 = Math.Min(cut.Z0, cut.Z1) - eps;
             double z1 = Math.Max(cut.Z0, cut.Z1) + eps;
-            if (z1 - z0 < 0.01 || cut.Width <= 0) return null;
+            double h = z1 - z0;
+            if (h < 0.01 || cut.Width <= 0) return result;
 
             if (cut.Kind == StockSimLogic.SolidKind.Cylinder)
             {
                 var baseCircle = new Circle(
                     new Plane(new Point3d(cut.X1, cut.Y1, z0), Vector3d.ZAxis),
                     cut.Width / 2.0 + eps);
-                return new Cylinder(baseCircle, z1 - z0).ToBrep(true, true);
+                result.Add(new Cylinder(baseCircle, h).ToBrep(true, true));
+                return result;
             }
 
             if (cut.Kind == StockSimLogic.SolidKind.Ring)
@@ -187,12 +207,13 @@ namespace WallabyHop.Components.Export
                 var center = new Plane(new Point3d(cut.X1, cut.Y1, z0), Vector3d.ZAxis);
                 double rOut = cut.PathRadius + cut.Width / 2.0 + eps;
                 double rIn  = cut.PathRadius - cut.Width / 2.0 - eps;
-                Brep outer = new Cylinder(new Circle(center, rOut), z1 - z0).ToBrep(true, true);
-                if (rIn <= eps) return outer;   // path smaller than the tool = full disc
-                Brep inner = new Cylinder(new Circle(center, rIn), z1 - z0 ).ToBrep(true, true);
+                Brep outer = new Cylinder(new Circle(center, rOut), h).ToBrep(true, true);
+                if (rIn <= eps) { result.Add(outer); return result; }   // full disc
+                Brep inner = new Cylinder(new Circle(center, rIn), h).ToBrep(true, true);
                 Brep[] ring = Brep.CreateBooleanDifference(
                     new[] { outer }, new[] { inner }, 0.001);
-                return (ring != null && ring.Length == 1) ? ring[0] : outer;
+                result.Add(ring != null && ring.Length == 1 && ring[0].IsSolid ? ring[0] : outer);
+                return result;
             }
 
             // Slab: oriented box along the segment. RoundEnds (router paths) is
@@ -200,45 +221,48 @@ namespace WallabyHop.Components.Export
             // removes square corners where the real cutter leaves them round.
             var dir = new Vector3d(cut.X2 - cut.X1, cut.Y2 - cut.Y1, 0);
             double len = dir.Length;
-            if (len < 0.001) return null;
+            if (len < 0.001) return result;
             dir /= len;
 
-            double endExt = cut.RoundEnds ? cut.Width / 2.0 : eps;
             var mid = new Point3d((cut.X1 + cut.X2) / 2.0, (cut.Y1 + cut.Y2) / 2.0, z0);
             var plane = new Plane(mid, dir, Vector3d.CrossProduct(Vector3d.ZAxis, dir));
 
-            // Pocket with corner radius (tool radius / macro RADIUS): extrude
-            // a filleted rectangle instead of a sharp box.
-            if (cut.CornerRadius > 0.01 && !cut.RoundEnds)
+            double halfL = len / 2.0 + eps;
+            double halfW = cut.Width / 2.0 + eps;
+
+            // Pocket with rounded corners (tool radius / macro RADIUS):
+            // decomposed into PRIMITIVES — two overlapping boxes + four
+            // corner cylinders. A filleted-curve extrusion produced open
+            // breps that silently corrupted the boolean (3-face garbage).
+            double r = Math.Min(cut.CornerRadius, Math.Min(halfL, halfW) - 0.01);
+            if (r > 0.05 && !cut.RoundEnds)
             {
-                var rect = new Rectangle3d(plane,
-                    new Interval(-len / 2.0 - eps, len / 2.0 + eps),
-                    new Interval(-cut.Width / 2.0 - eps, cut.Width / 2.0 + eps));
-                Curve baseCrv = rect.ToNurbsCurve();
-                double maxR = Math.Min(len, cut.Width) / 2.0 - 0.01;
-                double r = Math.Min(cut.CornerRadius, maxR);
-                if (r > 0.01)
-                {
-                    Curve filleted = Curve.CreateFilletCornersCurve(baseCrv, r, 1e-6, 1e-6);
-                    if (filleted != null && filleted.IsClosed) baseCrv = filleted;
-                }
-                Surface ext = Surface.CreateExtrusion(baseCrv, new Vector3d(0, 0, z1 - z0));
-                if (ext != null)
-                {
-                    Brep b = ext.ToBrep();
-                    if (b != null)
+                result.Add(new Box(plane,
+                    new Interval(-halfL, halfL),
+                    new Interval(-(halfW - r), halfW - r),
+                    new Interval(0, h)).ToBrep());
+                result.Add(new Box(plane,
+                    new Interval(-(halfL - r), halfL - r),
+                    new Interval(-halfW, halfW),
+                    new Interval(0, h)).ToBrep());
+                foreach (double sx in new[] { -1.0, 1.0 })
+                    foreach (double sy in new[] { -1.0, 1.0 })
                     {
-                        Brep capped = b.CapPlanarHoles(0.001);
-                        if (capped != null) return capped;
+                        Point3d c = plane.PointAt(sx * (halfL - r), sy * (halfW - r));
+                        result.Add(new Cylinder(new Circle(
+                            new Plane(c, Vector3d.ZAxis), r), h).ToBrep(true, true));
                     }
-                }
-                // fall through to the sharp box on any failure
+                result.RemoveAll(b => b == null);
+                return result;
             }
 
-            return new Box(plane,
+            double endExt = cut.RoundEnds ? cut.Width / 2.0 : eps;
+            result.Add(new Box(plane,
                 new Interval(-len / 2.0 - endExt, len / 2.0 + endExt),
-                new Interval(-cut.Width / 2.0 - eps, cut.Width / 2.0 + eps),
-                new Interval(0, z1 - z0)).ToBrep();
+                new Interval(-halfW, halfW),
+                new Interval(0, h)).ToBrep());
+            result.RemoveAll(b => b == null);
+            return result;
         }
 
         // ---------------------------------------------------------------
