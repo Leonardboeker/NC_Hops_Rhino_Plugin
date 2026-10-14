@@ -23,9 +23,9 @@ namespace WallabyHop
         internal const string DefaultTemplatePathFallback =
             @"E:\Rhino Resourcen\Plan Köpfe\Leonard Elias Böker.3dm";
 
-        // Default tool-database path. Same override scheme as the template.
+        // Default tool-database path (machine file, kept local in LOCAL/, never public). Same override scheme as the template.
         internal const string DefaultToolDbPathFallback =
-            @"D:\Projekte\SynologyDrive\53_post-processor\reference-hops\werkzeug klemp.too";
+            @"D:\Projekte\SynologyDrive\53_post-processor\LOCAL\reference-hops\werkzeug klemp.too";
 
         private const string TemplateEnvVar = "WALLABYHOP_TEMPLATE_PATH";
         private const string ToolDbEnvVar   = "WALLABYHOP_TOOLDB_PATH";
