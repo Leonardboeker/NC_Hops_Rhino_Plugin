@@ -15,13 +15,17 @@ namespace DynesticPostProcessor.Tests
         }
 
         [Test]
-        public void BuildHeader_ContainsDimensions()
+        public void BuildHeader_WritesZeroOffsets_NeverDimensions()
         {
+            // ;DX/;DY/;DZ in the header are offsets. Every machine-generated
+            // reference file has 0.000/0.000/0 there; the dimensions belong in
+            // the VARS block only. This test pinned the old, wrong behaviour.
             var lines = NcExport.BuildHeader("test", 2440.0, 1220.0, 18.0, "");
             string joined = string.Join("\n", lines);
-            Assert.That(joined, Does.Contain(";DX=2440.000"));
-            Assert.That(joined, Does.Contain(";DY=1220.000"));
-            Assert.That(joined, Does.Contain(";DZ=18.000"));
+            Assert.That(joined, Does.Contain(";DX=0.000"));
+            Assert.That(joined, Does.Contain(";DY=0.000"));
+            Assert.That(joined, Does.Contain(";DZ=0"));
+            Assert.That(joined, Does.Not.Contain(";DX=2440.000"));
         }
 
         [Test]
@@ -123,6 +127,74 @@ namespace DynesticPostProcessor.Tests
                 if (sorted[i].StartsWith("SP "))
                     Assert.That(sorted[i + 1], Does.Not.StartWith("SP "),
                         "Nested SP detected at position " + i);
+        }
+
+        private static List<string> StartSection(string content)
+        {
+            var all = new List<string>(content.Split(new[] { "\r\n" }, System.StringSplitOptions.None));
+            return all.GetRange(all.IndexOf("START"), all.Count - all.IndexOf("START"));
+        }
+
+        [Test]
+        public void AssembleFile_ParksWithMachineStandardRightAfterFertigteil()
+        {
+            var start = StartSection(NcExport.AssembleFile("p", 800, 400, 19, "", null,
+                new List<string> { "WZB (1,_VE,_V*1,_VA,_SD,0,'')", "Bohrung (1,2,8,-10,10,0,0,0,0,0,0,0)" }));
+            Assert.That(start[2], Is.EqualTo("CALL Park_V7 ( VAL MODE:=2,POSX:=0,POSY:=0)"));
+            Assert.That(start.FindAll(l => l.Contains("Park")).Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void AssembleFile_HopNestingParkLineReplacesDefault()
+        {
+            // A HopNesting block wired after the cuts brings its own Park_V7 with
+            // its ParkMode: it moves up behind Fertigteil, never a second park call.
+            var ops = new List<string> { "WZB (1,_VE,_V*1,_VA,_SD,0,'')", "Bohrung (1,2,8,-10,10,0,0,0,0,0,0,0)" };
+            ops.AddRange(NcExport.NestingBlock(3, 0, 0, 0, true));
+            var start = StartSection(NcExport.AssembleFile("p", 800, 400, 19, "", null, ops));
+            Assert.That(start[2], Is.EqualTo("CALL Park_V7 ( VAL MODE:=3,POSX:=0,POSY:=0)"));
+            Assert.That(start.FindAll(l => l.Contains("Park")).Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void NestingBlock_UsesMachineSpellingAndOrder()
+        {
+            // As in all 127 nesting machine files.
+            Assert.That(NcExport.NestingBlock(2, 0, 0, 0, true), Is.EqualTo(new List<string>
+            {
+                "CALL Park_V7 ( VAL MODE:=2,POSX:=0,POSY:=0)",
+                "CALL HH_MarkLabel ( VAL POSX:=_hhdata_LabelPosX,POSY:=_hhdata_LabelPosY,ANGLE:=0,LASER:=0)",
+                "CALL BN_TrennerInnenAussen ()",
+                "CALL BN_NestKontur ()",
+            }));
+            Assert.That(NcExport.NestingBlock(2, 0, 0, 0, false), Has.None.Contains("HH_MarkLabel"));
+        }
+
+        [Test]
+        public void StartSection_HoistsNestBlockOnceAndDefaultsPark()
+        {
+            // Wired after a WZB block (and twice, from two parts): the block must
+            // not stay between tool blocks, and must appear exactly once.
+            var ops = new List<string> { "WZF (4,_VE,_V*1,_VA,_SD,0,'')", "G01 (1,2,0,0,0,2)" };
+            ops.AddRange(NcExport.NestingBlock(2, 0, 0, 0, true));
+            ops.Add("WZB (1,_VE,_V*1,_VA,_SD,0,'')");
+            ops.Add("Bohrung (1,2,8,-10,10,0,0,0,0,0,0,0)");
+            ops.AddRange(NcExport.NestingBlock(3, 0, 0, 0, true));
+
+            var head = NcExport.StartSection(ops);
+
+            var expected = new List<string> { "START", "Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)" };
+            expected.AddRange(NcExport.NestingBlock(2, 0, 0, 0, true));
+            Assert.That(head, Is.EqualTo(expected));
+            Assert.That(ops, Is.EqualTo(new List<string>
+            {
+                "WZF (4,_VE,_V*1,_VA,_SD,0,'')", "G01 (1,2,0,0,0,2)",
+                "WZB (1,_VE,_V*1,_VA,_SD,0,'')", "Bohrung (1,2,8,-10,10,0,0,0,0,0,0,0)",
+            }));
+
+            var bare = NcExport.StartSection(new List<string> { "WZB (1,_VE,_V*1,_VA,_SD,0,'')" });
+            Assert.That(bare, Is.EqualTo(new List<string>
+                { "START", "Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)", NcExport.ParkLine() }));
         }
     }
 }

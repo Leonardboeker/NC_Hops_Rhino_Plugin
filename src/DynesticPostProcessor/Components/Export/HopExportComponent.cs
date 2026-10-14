@@ -19,7 +19,8 @@ namespace WallabyHop.Components.Export
 
         public HopExportComponent()
             : base("HopExport", "HopExport",
-                "Assembles and writes a complete NC-Hops .hop file for the DYNESTIC CNC. Combines sheet dimensions, tool preset, and operation lines into the standard .hop format.",
+                "Assembles and writes a complete NC-Hops .hop file for the DYNESTIC CNC. Combines sheet dimensions, tool preset, and operation lines into the standard .hop format. " +
+                "Parks with the machine-standard Park_V7 MODE:=2 right after Fertigteil; a Park_V7 line from HopNesting takes its place.",
                 "Wallaby Hop", "7 | Export")
         {
         }

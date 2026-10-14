@@ -41,12 +41,19 @@ namespace WallabyHop.Components.Operations
             pManager.AddNumberParameter("Stepdown", "stepdown", "Depth per pass in mm for peck drilling. 0 = single pass at full depth. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddIntegerParameter("ToolNr", "toolNr", "Tool magazine position number. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddColourParameter("Colour", "colour", "Preview colour for drill cylinders in the Rhino viewport.", GH_ParamAccess.item, Color.Red);
+            pManager.AddIntegerParameter("DepthRef", "depthRef",
+                "Which plane the depth counts from (9th macro field):\n"
+                + "0 = part TOP -- a 12 mm hole becomes -12. Default.\n"
+                + "1 = TABLE at Z=0 -- for drilling THROUGH: set Depth to the overshoot\n"
+                + "    past the underside (0.2), not the material thickness.",
+                GH_ParamAccess.item, 0);
 
             // Mark optional parameters
             pManager[1].Optional = true;
             pManager[2].Optional = true;
             pManager[3].Optional = true;
             pManager[5].Optional = true;
+            pManager[6].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
@@ -76,6 +83,7 @@ namespace WallabyHop.Components.Operations
             double stepdown = 0.0;
             int toolNr = 0;
             Color colour = Color.Empty;
+            int depthRef = 0;
 
             if (!DA.GetDataList(0, points)) return;
             DA.GetData(1, ref depth);
@@ -83,6 +91,12 @@ namespace WallabyHop.Components.Operations
             DA.GetData(3, ref stepdown);
             if (!DA.GetData(4, ref toolNr)) return;
             DA.GetData(5, ref colour);
+            DA.GetData(6, ref depthRef);
+            if (depthRef < 0 || depthRef > 1)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "DepthRef must be 0 (top) or 1 (table)");
+                return;
+            }
 
             _drawColor = colour.IsEmpty ? _defaultColor : colour;
 
@@ -181,6 +195,7 @@ namespace WallabyHop.Components.Operations
                 Diameter = diameter,
                 Stepdown = stepdown,
                 ToolNr = toolNr,
+                DepthFromTable = depthRef == 1,
             };
             var result = DrillLogic.Generate(pureInput);
 
@@ -224,6 +239,9 @@ namespace WallabyHop.Components.Operations
                 WallabyHop.AutoWire.Spec.Float("0<0<50"),
                 WallabyHop.AutoWire.Spec.Int("1<1<20"),
                 WallabyHop.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.ValueList(
+                    ("depth from top", "0"),
+                    ("depth from table (through)", "1")),
             });
         }
     }

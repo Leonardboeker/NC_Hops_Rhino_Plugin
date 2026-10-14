@@ -22,7 +22,7 @@ namespace DynesticPostProcessor.Tests
             Assert.That(lines, Is.EquivalentTo(new[]
             {
                 "WZF (4,_VE,_V*1,_VA,_SD,0,'')",
-                "CALL _Kreisbahn_V5(VAL X_Mitte:=100,Y_Mitte:=50,Tiefe:=9,ZuTiefe:=0," +
+                "CALL _Kreisbahn_V5(VAL X_Mitte:=100,Y_Mitte:=50,Tiefe:=-10,ZuTiefe:=0," +
                 "Radius:=25,Radiuskorrektur:=0,AB:=1,Aufmass:=0,Bearb_umkehren:=1," +
                 "Winkel:=360,ANF:=_ANF,ABF:=_ANF,Rampe:=1,Interpol:=0,esxy:=0,esmd:=0,laser:=0)",
             }));
@@ -136,8 +136,8 @@ namespace DynesticPostProcessor.Tests
             Assert.That(lines, Is.EquivalentTo(new[]
             {
                 "WZS (2,_VE,_V*0.3,_VA,_SD,0,'')",
-                "CALL _saege_x_V7(VAL SX:=0,SY:=100,SZ:=0,EX:=0,EZ:=-0.2,BL:=2," +
-                "EINPASSEN:=0,EL:=0,AL:=0,PARALLEL:=0,K:=2,KW:=0," +
+                "CALL _saege_x_V7(VAL SX:=0,SY:=100,SZ:=-3,EX:=0,EZ:=-0.2,BL:=2," +
+                "EINPASSEN:=0,EL:=0,AL:=0,PARALLEL:=0,K:=0,KW:=0," +
                 "BH:=0,RITZVERSATZ:=0.05,ESZ:=0,ESXY1:=1,ESX:=3)",
             }));
         }

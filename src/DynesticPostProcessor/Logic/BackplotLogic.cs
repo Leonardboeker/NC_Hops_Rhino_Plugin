@@ -23,7 +23,8 @@ namespace WallabyHop.Logic
             public double EndX, EndY;
             public double CenterX, CenterY;   // arcs only
             public bool IsCCW;                // arcs only
-            public double Z;                  // plunge/cut Z where known
+            public double Z;                  // SP: cut Z (table = 0); drill: depth field as written
+            public bool DepthFromTable;       // drills: Z counts from the table, not the top
             public double Diameter;           // drills, when parseable
             public string ToolType;           // WZB / WZF / WZS / ""
             public int ToolNr;
@@ -118,8 +119,7 @@ namespace WallabyHop.Logic
                 }
                 else if (t.StartsWith("Bohrung ("))
                 {
-                    double[] a = PositionalArgs(t, 5);
-                    if (a != null)
+                    if (NcDrill.TryParse(t, out var d) && d.HasXY)
                     {
                         // Every drill gets its own sequence number (machining
                         // order) — one number per GROUP hid the order of all
@@ -128,9 +128,10 @@ namespace WallabyHop.Logic
                         ops.Add(new BackplotOp
                         {
                             Kind = OpKind.Drill,
-                            StartX = a[0], StartY = a[1], EndX = a[0], EndY = a[1],
-                            Z = a[3],
-                            Diameter = a[4],
+                            StartX = d.X, StartY = d.Y, EndX = d.X, EndY = d.Y,
+                            Z = d.Depth,
+                            DepthFromTable = d.DepthFromTable,
+                            Diameter = d.Diameter,
                             ToolType = toolType, ToolNr = toolNr,
                             SequenceIndex = seq, IsChainStart = false,
                         });
@@ -138,6 +139,9 @@ namespace WallabyHop.Logic
                 }
                 else if (t.StartsWith("CALL "))
                 {
+                    // Park calls carry POSX/POSY but machine nothing: no phantom op at (0,0)
+                    if (Regex.IsMatch(t, @"^CALL\s+(Park_V7|HH_Park)\b", RegexOptions.IgnoreCase)) continue;
+
                     // Named XY pairs cover the macro families: segment macros
                     // (X1/Y1..X2/Y2), center macros (X_Mitte/X_MITTE), clamps (SPX/SPY)
                     double? x1 = NamedArg(t, "X1"), y1 = NamedArg(t, "Y1");

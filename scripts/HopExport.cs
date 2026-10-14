@@ -135,11 +135,11 @@ public class Script_Instance : GH_ScriptInstance
     lines.Add("   DZ := " + dz.ToString(CultureInfo.InvariantCulture) + ";*VAR*Dimension Z");
 
     // ---------------------------------------------------------------
-    // 7. BUILD START SECTION -- Fertigteil + HH_Park
+    // 7. BUILD START SECTION -- Fertigteil + Park_V7
     // ---------------------------------------------------------------
     lines.Add("START");
     lines.Add("Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)");
-    lines.Add("CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)");
+    lines.Add("CALL Park_V7 ( VAL MODE:=2,POSX:=0,POSY:=0)");
 
     // ---------------------------------------------------------------
     // 8. INSERT OPERATION LINES -- Phase 3+ integration point

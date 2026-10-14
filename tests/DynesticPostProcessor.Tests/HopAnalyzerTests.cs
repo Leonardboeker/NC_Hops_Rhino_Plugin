@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using WallabyHop;
 using WallabyHop.Logic;
 
 namespace DynesticPostProcessor.Tests
@@ -96,12 +97,12 @@ namespace DynesticPostProcessor.Tests
         [Test]
         public void DrillDepthExceedsDZPlusAllowance_TriggersWarning()
         {
-            // DZ=19, drill depth = 30 (surf=0, cut=-30) → 30 > 19 + 5 → warning
+            // DZ=19, 8 mm drill 30 deep from the top → 30 > 19 + 5 → warning
             var content = string.Join("\n", new[]
             {
                 ";DZ=19.000",
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (0,0,0,-30,8,0,0,0,0,0,0,0)",
+                "Bohrung (0,0,8,-30,10,0,0,0,0,0,0,0)",
             });
             var r = HopAnalyzer.Analyze(content);
             Assert.That(r.ZWarnings.Count, Is.EqualTo(1));
@@ -116,10 +117,55 @@ namespace DynesticPostProcessor.Tests
             {
                 ";DZ=19.000",
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (0,0,0,-23,8,0,0,0,0,0,0,0)",
+                "Bohrung (0,0,8,-23,10,0,0,0,0,0,0,0)",
             });
             var r = HopAnalyzer.Analyze(content);
             Assert.That(r.ZWarnings.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void HingeCupOn19mm_NoFalseDepthWarning()
+        {
+            // 35 mm cup (type 30), 13 deep. The pre-machine-order reader took
+            // 35 - (-13) = 48 mm as the depth and warned on every cup.
+            var content = string.Join("\n", new[]
+            {
+                ";DZ=19.000",
+                "Bohrung (100,37,35,-13,30,0,0,0,0,0,0,0)",
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.ZWarnings, Is.Empty);
+        }
+
+        [Test]
+        public void DrillDepthFromTable_ThroughHoleIsFine_DeepSpoilboardCutWarns()
+        {
+            // Field 9 = 1: the depth is a Z above the table. -0.2 = through by
+            // 0.2 mm (fine); -6 = 6 mm into the spoilboard = 25 from the top (> 24).
+            var content = string.Join("\n", new[]
+            {
+                ";DZ=19.000",
+                NcDrill.DrillLine(50, 50, 8, 0.2, depthFromTable: true),
+                NcDrill.DrillLine(80, 50, 8, 6, depthFromTable: true),
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.ZWarnings.Count, Is.EqualTo(1));
+            Assert.That(r.ZWarnings[0], Does.StartWith("L3: Drill depth=25.0"));
+        }
+
+        [Test]
+        public void SkippableDrill_WithExpressionPosition_IsStillDepthChecked()
+        {
+            // Machine files write "/Bohrung (DX-37,…)": no XY number, but the
+            // depth fields are plain numbers and must still be checked.
+            var content = string.Join("\n", new[]
+            {
+                ";DZ=19.000",
+                "/Bohrung (DX-37,37,8,-30,10,0,0,0,0,0,0,0)",
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.DrillCount, Is.EqualTo(1));
+            Assert.That(r.ZWarnings.Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -129,7 +175,7 @@ namespace DynesticPostProcessor.Tests
             {
                 ";DZ=19.000",
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (0,0,0,-15,8,0,0,0,0,0,0,0)",
+                "Bohrung (0,0,8,-15,10,0,0,0,0,0,0,0)",
                 "WZF (4,_VE,_V*1,_VA,_SD,0,'')",
                 "SP (0,0,-18,2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)",
                 "G01 (100,0,0,0,0,2)",
@@ -207,7 +253,7 @@ namespace DynesticPostProcessor.Tests
                 "   DZ := 19;Dicke Z",
                 "START",
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (0,0,0,-30,8,0,0,0,0,0,0,0)",  // 30mm deep into 19mm plate
+                "Bohrung (0,0,8,-30,10,0,0,0,0,0,0,0)",  // 30mm deep into 19mm plate
             });
             var r = HopAnalyzer.Analyze(content);
             Assert.That(r.HeaderDZ, Is.EqualTo(19).Within(1e-9));
@@ -240,7 +286,7 @@ namespace DynesticPostProcessor.Tests
             var content = string.Join("\n", new[]
             {
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (0,0,0,-10,8,0,0,0,0,0,0,0)",
+                "Bohrung (0,0,8,-10,10,0,0,0,0,0,0,0)",
             });
             var r = HopAnalyzer.Analyze(content);
             Assert.That(r.Summary, Does.StartWith("OK  "));
@@ -259,7 +305,7 @@ namespace DynesticPostProcessor.Tests
             {
                 "/CALL Fixchip_K ( VAL SPX:=100,SPY:=100,SPZ:=9.5,WKLXY:=0)",
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (100,100,19,9,8,0,0,0,0,0,0,0)",
+                "Bohrung (100,100,8,-10,10,0,0,0,0,0,0,0)",
             });
             var r = HopAnalyzer.Analyze(content);
             Assert.That(r.FixchipWarnings.Count, Is.EqualTo(1));
@@ -270,6 +316,27 @@ namespace DynesticPostProcessor.Tests
         }
 
         [Test]
+        public void FixchipCollision_DrillWithoutAbsolutePosition_IsNotChecked()
+        {
+            // An expression position (read as 0,0) and an anchored (25,25) would both
+            // sit inside the clamp radius if taken as points; neither is one. The
+            // depth check still runs: -30 on 19 mm warns.
+            var content = string.Join("\n", new[]
+            {
+                ";DZ=19.000",
+                "/CALL Fixchip_K ( VAL SPX:=10,SPY:=10,SPZ:=9.5,WKLXY:=0)",
+                "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
+                "Bohrung (DX-37,37,8,-10,10,0,0,0,0,0,0,0)",
+                "Bohrung (25,25,8,-30,10,0,0,5,0,0,0,0)",
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.FixchipWarnings, Is.Empty);
+            Assert.That(r.DrillCount, Is.EqualTo(2));
+            Assert.That(r.ZWarnings.Count, Is.EqualTo(1));
+            Assert.That(r.ZWarnings[0], Does.StartWith("L5: Drill depth=30.0"));
+        }
+
+        [Test]
         public void FixchipCollision_DrillFarFromClamp_NoWarning()
         {
             // Clamp at (100,100); drill at (500,500) -> ~566 mm distance, way outside 25 mm
@@ -277,7 +344,7 @@ namespace DynesticPostProcessor.Tests
             {
                 "/CALL Fixchip_K ( VAL SPX:=100,SPY:=100,SPZ:=9.5,WKLXY:=0)",
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (500,500,19,9,8,0,0,0,0,0,0,0)",
+                "Bohrung (500,500,8,-10,10,0,0,0,0,0,0,0)",
             });
             var r = HopAnalyzer.Analyze(content);
             Assert.That(r.FixchipWarnings.Count, Is.EqualTo(0));
@@ -313,6 +380,77 @@ namespace DynesticPostProcessor.Tests
             });
             var r = HopAnalyzer.Analyze(content);
             Assert.That(r.FixchipWarnings, Has.Some.Contains("CALL"));
+        }
+
+        // ---- Part-frame guard -------------------------------------------
+        // Real accident 2026-08-10: DX/DY declared 1470 x 471 while the slots were
+        // drawn for a part 471 x 1470 -- run-out to Y=1520 put the saw a metre
+        // beside the plate.
+        [Test]
+        public void Analyze_OpsFarOutsideDeclaredPart_IsError()
+        {
+            var content = string.Join("\r\n", new[]
+            {
+                "VARS",
+                "   DX := 1470;*VAR*Dimension X",
+                "   DY := 470.97;*VAR*Dimension Y",
+                "   DZ := 19;*VAR*Dimension Z",
+                "START",
+                "CALL _nuten_frei_v5(VAL X1:=3.5,Y1:=-50,X2:=3.5,Y2:=1520,NB:=3.2,Tiefe:=-5,LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)"
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(r.IsValid, Is.False);
+            Assert.That(string.Join(" | ", r.Errors), Does.Contain("outside the declared part"));
+        }
+
+        // The normal 50 mm through-cut overshoot must pass untouched.
+        [Test]
+        public void Analyze_NormalRunOutOvershoot_IsNoError()
+        {
+            var content = string.Join("\r\n", new[]
+            {
+                "VARS",
+                "   DX := 470.97;*VAR*Dimension X",
+                "   DY := 1470;*VAR*Dimension Y",
+                "   DZ := 19;*VAR*Dimension Z",
+                "START",
+                "CALL _nuten_frei_v5(VAL X1:=3.5,Y1:=-50,X2:=3.5,Y2:=1520,NB:=3.2,Tiefe:=-5,LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)"
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(string.Join(" | ", r.Errors), Does.Not.Contain("outside the declared part"));
+        }
+
+        // ---- Degenerate contour ------------------------------------------
+        // Real case, "Einlege Boeden 6 Stk.hop" 2026-08-10: SP and its single G01
+        // carried identical XY, so the router plunged at one point and retracted.
+        // Move count is 1, so the empty-block check stayed silent.
+        [Test]
+        public void Analyze_ContourMovesNeverLeaveStartPoint_IsError()
+        {
+            var content = string.Join("\r\n", new[]
+            {
+                "SP (1151.4847,437.5733,14,2,0,_ANF,0,0,0,0,1,0,2,0,0,0,0,0,0,0,0,0,0)",
+                "G01 (1151.4847,437.5733,0,0,0,2)",
+                "EP (0,_ANF,0)"
+            });
+            var r = HopAnalyzer.Analyze(content);
+            // Warning, not error: a point plunge can be intentional, so the export
+            // must still be allowed to run.
+            Assert.That(string.Join(" | ", r.ZWarnings), Does.Contain("Contour goes nowhere"));
+        }
+
+        // A contour that genuinely travels must stay silent.
+        [Test]
+        public void Analyze_ContourThatTravels_IsNoError()
+        {
+            var content = string.Join("\r\n", new[]
+            {
+                "SP (362.2285,899.743,18.8,2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)",
+                "G01 (1417.9909,899.743,0,0,0,2)",
+                "EP (0,_ANF,0)"
+            });
+            var r = HopAnalyzer.Analyze(content);
+            Assert.That(string.Join(" | ", r.ZWarnings), Does.Not.Contain("Contour goes nowhere"));
         }
     }
 }

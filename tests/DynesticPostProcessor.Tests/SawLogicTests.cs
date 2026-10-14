@@ -54,7 +54,7 @@ namespace DynesticPostProcessor.Tests
             // segment is exactly 1000 long along X, midpoint (500, 50, 19), kerf centered
             Assert.That(result.Lines[1], Is.EqualTo(
                 "CALL _nuten_frei_v5(VAL X1:=0,Y1:=50,X2:=1000,Y2:=50," +
-                "NB:=3.2,Tiefe:=0,LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0," +
+                "NB:=3.2,Tiefe:=-19,LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0," +
                 "esmd:=0,esxy1:=0,esxy2:=0)"));
         }
 
@@ -166,13 +166,16 @@ namespace DynesticPostProcessor.Tests
         // CUT Z = origin Z minus depth (regardless of sign of depth input)
         // -------------------------------------------------------------
         [Test]
-        public void CutZ_IsAlwaysSurfaceMinusAbsDepth()
+        public void CutZ_IsTopRelativeNegative_DrawingZIgnored()
         {
+            // Machine-verified 2026-08-10: the old rule (surface minus depth,
+            // here 19-19=0) cut NOTHING on the HolzHer. Tiefe is top-relative
+            // negative, and the drawing Z (19) must not leak in.
             var input = Input(
                 new[] { Seg(0, 0, 100, 0, z: 19.0) },
                 depth: 19.0);
             var result = SawLogic.Generate(input);
-            Assert.That(result.Segments[0].CutZ, Is.EqualTo(0.0).Within(1e-9));
+            Assert.That(result.Segments[0].CutZ, Is.EqualTo(-19.0).Within(1e-9));
         }
 
         // -------------------------------------------------------------

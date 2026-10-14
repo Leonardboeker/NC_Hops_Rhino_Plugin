@@ -100,7 +100,10 @@ check_marker ";DIMENSION_UNIT=0"
 check_marker "^VARS$"
 check_marker "^START$"
 check_marker "Fertigteil (DX,DY,DZ"
-check_marker "CALL HH_Park"
+check_marker "CALL .*Park"   # Park_V7 (writer, machine standard) or HH_Park (old samples)
+if grep -q "CALL HH_Park" "$HOP_FILE"; then
+  echo "  WARN: HH_Park is the HOPS 5.5 sample form; HOPS 7.7 machine files park with Park_V7 MODE:=2"
+fi
 
 # ------------------------------------------------------------------
 # Check 6: VARS block format (3-space indent, ;*VAR* suffix, dot decimals)

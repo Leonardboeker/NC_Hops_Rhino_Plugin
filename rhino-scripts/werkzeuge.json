@@ -1,0 +1,50 @@
+{
+  "_quelle": "Werkzeugdatei der Maschine (.too, Stand 2026-04-12), 53_post-processor/reference-hops",
+  "_hinweis": "Bohrkopf-Bohrer haben in der .too KEINE Werkzeug-ID (ID=-1) - HOPS waehlt sie ueber den DURCHMESSER. bohrer_typ ist nur die Typ-Nummer fuer den DXF-Layer TT$<typ>$ (wie HolzHer-Muster).",
+  "fraeser_kontur": 20,
+  "fraeser_kontur_name": "Dia 20/45 (D19.25)",
+  "fraeser_kontur_d": 19.25,
+  "tisch_max_mm": [
+    2800,
+    2070
+  ],
+  "tisch_max_hinweis": "KONSERVATIV: groesstes maschinengelaufenes Referenzmass (DX 2800 / DY 2070 ueber alle reference-hops, 2026-09-06) - NICHT das echte Tischmass. Ueberschreitung ist im CncExport ein FEHLER, kein Hinweis (Council 2026-08-31: freie Geometrie erlaubt erstmals Teile groesser als jede Korpusplatte). Echtes Mass in der Werkstatt erfragen (Maschinenplan) und hier eintragen.",
+  "fraeser_nesting": 23,
+  "fraeser_nesting_name": "DIA Nesting 20mm",
+  "bohrer_typ": 501,
+  "bohrkopf_mm": [
+    3,
+    5,
+    6,
+    8,
+    10,
+    15,
+    35
+  ],
+  "bohrkopf_horizontal_mm": [
+    8,
+    10
+  ],
+  "topf35_am_bohrkopf": true,
+  "p_system": {
+    "nut": 136,
+    "fixchip": 108,
+    "bohrer6": 306
+  },
+  "vorlage": "KB",
+  "vorlage_hinweis": "Leos HOPS-7.7-Importvorlage (belegt durch Seite_links.hop 2026-09-01): macht aus JEDEM Layer KB/KonturFraesen-Bloecke, ignoriert Layernamen-Werkzeug, Startpunkte und Konturtiefen. Defaults der Vorlage: Fraeser ID=10, Bohrer IDDH=501, Z=-16.2 (an der Maschine auf Referenz Unterkante -0.2 umstellen!). DXF fuer diese Vorlage: NUR Konturen + Bohrkreise - kein Rohteil-Rechteck, kein Startpunkt.",
+  "vorlage_defaults": {
+    "fraeser_id": 10,
+    "bohrer_iddh": 501,
+    "z_default": -16.2
+  },
+  "fraeser_nut": 8,
+  "fraeser_nut_d": 4,
+  "fraeser_nut_name": "4mm Nuter (Schneiden-ID 8, ToolNo 19, r2 lt. Werkzeugdatei .too; Rueckwandnut lt. Werkstatt 2026-08-29: 'der 4mm', Breite = Rueckwand + 0.5 Luft, 3 Zustellungen - Makro-Lauf prueft T10. Der 6mm Nuter ist Schneiden-ID 6.)",
+  "bohrer_wzb": 501,
+  "topf_mm": [
+    15,
+    35
+  ],
+  "topf_hinweis": "Bohrung Feld 5 = HOPS-Bohrtyp-Code: 00 Standard, 10 Sackloch, 20 Durchgangsloch, 30 Topfband, 40 Senker. Beleg: Foto HOPS-Werkzeugdialog Bohrer D35 = (30) Topfband (Werkstatt 2026-08-29); Praxis: normale Bohrungen mit 10, Toepfe mit 30."
+}

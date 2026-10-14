@@ -18,6 +18,11 @@ namespace WallabyHop.Logic
         // Kept as a public alias for backwards compatibility with tests; defers to MachineConstants
         internal const double SpoilboardAllowance = MachineConstants.SpoilboardAllowanceMm;
 
+        // Below this a contour move counts as "did not go anywhere". Coordinates are
+        // emitted with 4 decimals, so 0.01 mm is far above formatting noise and far
+        // below any cut a person would intend.
+        internal const double DegenerateTolMm = 0.01;
+
         internal struct AnalysisResult
         {
             public bool IsValid;
@@ -38,6 +43,8 @@ namespace WallabyHop.Logic
             public int ToolChangeCount;
             public int FixchipCount;
             public double PathLength;
+            // Most negative RAW depth value (SP z, TIEFE/NT, Bohrung field 4), not a
+            // physical depth: these mix the top and the table reference frames.
             public double DeepestZ;
             public double HeaderDZ;
         }
@@ -76,6 +83,9 @@ namespace WallabyHop.Logic
             double pathLength = 0.0;
             double prevX      = double.NaN;
             double prevY      = double.NaN;
+            double blockStartX = double.NaN;
+            double blockStartY = double.NaN;
+            bool blockMoved   = false;
             double deepestZ   = double.MaxValue;
 
             // Pass 1 — extract plate thickness DZ.
@@ -84,9 +94,17 @@ namespace WallabyHop.Logic
             // reference-hops/files/HZK_Boden_Deckel_602x278.hop. Check the
             // VARS form first; header value is the fallback.
             double headerDZ = 0;
+            double varsDX = 0, varsDY = 0;
             foreach (string raw in lines)
             {
                 string h = (raw ?? "").Trim();
+                var mdim = Regex.Match(h, @"^D([XY])\s*:=\s*([-\d.]+)", RegexOptions.IgnoreCase);
+                if (mdim.Success && double.TryParse(mdim.Groups[2].Value, NumberStyles.Any,
+                    CultureInfo.InvariantCulture, out double dimVal) && dimVal > 0)
+                {
+                    if (mdim.Groups[1].Value.ToUpperInvariant() == "X") varsDX = dimVal;
+                    else varsDY = dimVal;
+                }
                 if (h.StartsWith("DZ ", StringComparison.OrdinalIgnoreCase)
                     || h.StartsWith("DZ:", StringComparison.OrdinalIgnoreCase))
                 {
@@ -118,6 +136,8 @@ namespace WallabyHop.Logic
                     spStack.Push(lineNum);
                     spCount++;
                     movesInBlock = 0;
+                    blockMoved = false;
+                    blockStartX = double.NaN; blockStartY = double.NaN;
 
                     int o = s.IndexOf('('), c = s.LastIndexOf(')');
                     if (o >= 0 && c > o)
@@ -130,6 +150,7 @@ namespace WallabyHop.Logic
                         {
                             deepestZ = Math.Min(deepestZ, spZ);
                             prevX = spX; prevY = spY;
+                            blockStartX = spX; blockStartY = spY;
                             operations.Add(new OpXY { LineNum = lineNum, X = spX, Y = spY, Kind = "SP" });
                             if (headerDZ > 0 && spZ < -(headerDZ + SpoilboardAllowance))
                                 zWarnings.Add("L" + lineNum + ": SP depth="
@@ -151,6 +172,20 @@ namespace WallabyHop.Logic
                             emptyBlocks++;
                             errors.Add("L" + matchedSp
                                 + ": Empty SP/EP block (no moves between SP and EP)");
+                        }
+                        else if (!blockMoved)
+                        {
+                            // WARNING, not an error: plunging at a single point is a
+                            // legitimate operation (a stopped hole bored with the router),
+                            // so this must not veto the export. It is almost always a
+                            // collapsed input curve, but the intent is the operator's to
+                            // judge -- surfacing it is enough. Downgraded 2026-08-10 after
+                            // it blocked a real job on its first day.
+                            zWarnings.Add("L" + matchedSp
+                                + ": Contour goes nowhere — all " + movesInBlock
+                                + " move(s) sit on the SP point. The tool plunges and"
+                                + " retracts without cutting a path. Intentional point"
+                                + " plunge, or a zero-length input curve?");
                         }
                         movesInBlock = 0;
                     }
@@ -177,6 +212,14 @@ namespace WallabyHop.Logic
                         {
                             if (!double.IsNaN(prevX))
                                 pathLength += Math.Sqrt((mx - prevX) * (mx - prevX) + (my - prevY) * (my - prevY));
+                            // Does this block actually go anywhere? A block whose moves
+                            // all sit on the SP point plunges and retracts without
+                            // cutting a path — the "Empty block" check misses it because
+                            // the move count is non-zero.
+                            if (!double.IsNaN(blockStartX)
+                                && (Math.Abs(mx - blockStartX) > DegenerateTolMm
+                                    || Math.Abs(my - blockStartY) > DegenerateTolMm))
+                                blockMoved = true;
                             prevX = mx; prevY = my;
                             operations.Add(new OpXY { LineNum = lineNum, X = mx, Y = my, Kind = "Move" });
                         }
@@ -190,33 +233,23 @@ namespace WallabyHop.Logic
                 {
                     callCount++;
                 }
-                else if (s.StartsWith("Bohrung ("))
+                else if (s.StartsWith("Bohrung (") || s.StartsWith("/Bohrung ("))
                 {
+                    // /Bohrung = operator-skippable, still checked like /CALL below
                     drillCount++;
-                    int o = s.IndexOf('('), c = s.LastIndexOf(')');
-                    if (o >= 0 && c > o)
+                    if (NcDrill.TryParse(s, out var d))
                     {
-                        string[] bp = s.Substring(o + 1, c - o - 1).Split(',');
-                        // Bohrung (X,Y,surfZ,cutZ,...) — capture XY for fixchip check
-                        if (bp.Length >= 2
-                            && double.TryParse(bp[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double bx)
-                            && double.TryParse(bp[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double by))
-                        {
-                            operations.Add(new OpXY { LineNum = lineNum, X = bx, Y = by, Kind = "Drill" });
-                        }
-                        if (bp.Length >= 4 && headerDZ > 0
-                            && double.TryParse(bp[2].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double surfZ)
-                            && double.TryParse(bp[3].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double cutZ))
-                        {
-                            double drillDepth = surfZ - cutZ;
-                            deepestZ = Math.Min(deepestZ, cutZ);
-                            if (drillDepth > headerDZ + SpoilboardAllowance)
-                                zWarnings.Add("L" + lineNum + ": Drill depth="
-                                    + drillDepth.ToString("F1", CultureInfo.InvariantCulture)
-                                    + " mm exceeds plate DZ="
-                                    + headerDZ.ToString("F1", CultureInfo.InvariantCulture)
-                                    + " mm + 5 mm spoilboard allowance");
-                        }
+                        if (d.HasXY)
+                            operations.Add(new OpXY { LineNum = lineNum, X = d.X, Y = d.Y, Kind = "Drill" });
+                        // Raw depth field, like TIEFE from the CALL scan below
+                        deepestZ = Math.Min(deepestZ, d.Depth);
+                        double drillDepth = headerDZ - d.BottomZ(headerDZ);   // from the top
+                        if (headerDZ > 0 && drillDepth > headerDZ + SpoilboardAllowance)
+                            zWarnings.Add("L" + lineNum + ": Drill depth="
+                                + drillDepth.ToString("F1", CultureInfo.InvariantCulture)
+                                + " mm exceeds plate DZ="
+                                + headerDZ.ToString("F1", CultureInfo.InvariantCulture)
+                                + " mm + 5 mm spoilboard allowance");
                     }
                 }
                 // Fixchip clamp declarations — checked OUTSIDE the else-if chain
@@ -240,6 +273,22 @@ namespace WallabyHop.Logic
                 // Also matches "/CALL ..." (operator-skippable blocks).
                 if (s.StartsWith("CALL ") || s.StartsWith("/CALL "))
                 {
+                    // Slot / saw endpoints (X1:=..,Y1:=..,X2:=..,Y2:=..) -- these
+                    // were invisible to every check until the part-frame guard
+                    // below needed them.
+                    var mEnds = Regex.Match(s,
+                        @"X1\s*:=\s*(-?[\d.]+)\s*,\s*Y1\s*:=\s*(-?[\d.]+)\s*,\s*X2\s*:=\s*(-?[\d.]+)\s*,\s*Y2\s*:=\s*(-?[\d.]+)",
+                        RegexOptions.IgnoreCase);
+                    if (mEnds.Success
+                        && double.TryParse(mEnds.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double e1x)
+                        && double.TryParse(mEnds.Groups[2].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double e1y)
+                        && double.TryParse(mEnds.Groups[3].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double e2x)
+                        && double.TryParse(mEnds.Groups[4].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double e2y))
+                    {
+                        operations.Add(new OpXY { LineNum = lineNum, X = e1x, Y = e1y, Kind = "SLOT" });
+                        operations.Add(new OpXY { LineNum = lineNum, X = e2x, Y = e2y, Kind = "SLOT" });
+                    }
+
                     // X_Mitte / Y_Mitte (rect pocket, circ pocket, circ path)
                     var xyMatch = _callXYRegex.Match(s);
                     if (xyMatch.Success
@@ -297,6 +346,36 @@ namespace WallabyHop.Logic
                             + "," + fc.Y.ToString("F1", CultureInfo.InvariantCulture)
                             + "); clamp radius is "
                             + r.ToString("F1", CultureInfo.InvariantCulture) + " mm");
+                    }
+                }
+            }
+
+            // Part-frame guard: machining coordinates must fit the declared
+            // part. Through-cuts legitimately overshoot the edge by ~50 mm
+            // (saw run-out), so only flag beyond 60 mm. The real accident this
+            // catches: DX/DY describing the part in one orientation while the
+            // operations are drawn in the other -- observed as slots running to
+            // Y=1520 on a part declared DY=471, i.e. a metre beside the plate.
+            const double frameSlack = 60.0;
+            if (varsDX > 0 && varsDY > 0)
+            {
+                foreach (var op in operations)
+                {
+                    double outX = Math.Max(-op.X, op.X - varsDX);
+                    double outY = Math.Max(-op.Y, op.Y - varsDY);
+                    double beyond = Math.Max(outX, outY);
+                    if (beyond > frameSlack)
+                    {
+                        errors.Add("L" + op.LineNum + ": " + op.Kind
+                            + " at (" + op.X.ToString("F1", CultureInfo.InvariantCulture)
+                            + "," + op.Y.ToString("F1", CultureInfo.InvariantCulture)
+                            + ") lies " + beyond.ToString("F0", CultureInfo.InvariantCulture)
+                            + " mm outside the declared part DX="
+                            + varsDX.ToString("F1", CultureInfo.InvariantCulture)
+                            + " x DY=" + varsDY.ToString("F1", CultureInfo.InvariantCulture)
+                            + " -- dimensions and machining coordinates disagree"
+                            + " (DX/DY swapped or geometry rotated 90 degrees?)");
+                        break;   // one clear error per file beats fifty repeats
                     }
                 }
             }

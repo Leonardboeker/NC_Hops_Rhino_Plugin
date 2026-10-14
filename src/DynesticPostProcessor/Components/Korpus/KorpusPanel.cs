@@ -137,7 +137,7 @@ namespace WallabyHop.Components.Korpus
         {
             var group = new List<string>();
             group.Add(NcDrill.ToolCall(toolNr));
-            group.Add(NcDrill.DrillLine(x, y, 0.0, -depth, diameter));
+            group.Add(NcDrill.DrillLine(x, y, diameter, depth));
             OperationGroups.Add(group);
         }
     }

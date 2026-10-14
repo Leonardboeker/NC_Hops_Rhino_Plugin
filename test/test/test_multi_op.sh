@@ -46,7 +46,7 @@ printf '   DY := 400;*VAR*Dimension Y\r\n' >> "$OUTPUT_FILE"
 printf '   DZ := 19;*VAR*Dimension Z\r\n' >> "$OUTPUT_FILE"
 printf 'START\r\n' >> "$OUTPUT_FILE"
 printf 'Fertigteil (DX,DY,DZ,0,0,0,0,0,'"'"''"'"',0,0,0)\r\n' >> "$OUTPUT_FILE"
-printf 'CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)\r\n' >> "$OUTPUT_FILE"
+printf 'CALL Park_V7 ( VAL MODE:=2,POSX:=0,POSY:=0)\r\n' >> "$OUTPUT_FILE"
 
 # -- Operation 1: Contour (WZF tool call + SP/G01/G03M/G01/EP) --
 printf 'WZF (20,_VE,_V*1,_VA,_SD,0,'"'"''"'"')\r\n' >> "$OUTPUT_FILE"

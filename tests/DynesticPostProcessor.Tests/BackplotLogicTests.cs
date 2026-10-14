@@ -13,7 +13,7 @@ namespace DynesticPostProcessor.Tests
             var plan = BackplotLogic.Parse(string.Join("\n", new[]
             {
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (10,20,19,9,8,0,0,0,0,0,0,0)",
+                "Bohrung (10,20,8,-10,10,0,0,0,0,0,0,0)",
                 "WZF (4,_VE,_V*1,_VA,_SD,0,'')",
                 "SP (0,0,-10,2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)",
                 "G01 (100,0,0,0,0,2)",
@@ -66,17 +66,45 @@ namespace DynesticPostProcessor.Tests
         }
 
         [Test]
-        public void Drills_CarryDiameterAndZ()
+        public void Drills_ReadMachineFieldOrder_DiameterDepthReference()
         {
+            // Bohrung (X, Y, DIA, DEPTH, TYPE, _, _, POS, REF, ...): a golden
+            // line (5 mm, 13 deep from the top) and an emitted through hole
+            // (8 mm, 0.2 past the underside, depth from the table).
             var plan = BackplotLogic.Parse(string.Join("\n", new[]
             {
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (100,50,19,6,5,0,0,0,0,0,0,0)",
+                "Bohrung (37,37,5,-13,10,0,0,0,0,0,0,0)",
+                WallabyHop.NcDrill.DrillLine(100, 50, 8, 0.2, depthFromTable: true),
             }));
-            var d = plan.Ops.Single();
-            Assert.That(d.Kind, Is.EqualTo(BackplotLogic.OpKind.Drill));
-            Assert.That(d.Diameter, Is.EqualTo(5));
-            Assert.That(d.Z, Is.EqualTo(6));
+            Assert.That(plan.Ops.Count, Is.EqualTo(2));
+            var blind = plan.Ops[0];
+            Assert.That(blind.Kind, Is.EqualTo(BackplotLogic.OpKind.Drill));
+            Assert.That(blind.StartX, Is.EqualTo(37));
+            Assert.That(blind.Diameter, Is.EqualTo(5), "field 5 is the drill type, not the diameter");
+            Assert.That(blind.Z, Is.EqualTo(-13));
+            Assert.That(blind.DepthFromTable, Is.False);
+            var through = plan.Ops[1];
+            Assert.That(through.Diameter, Is.EqualTo(8));
+            Assert.That(through.Z, Is.EqualTo(-0.2));
+            Assert.That(through.DepthFromTable, Is.True);
+        }
+
+        [Test]
+        public void Drill_WithExpressionPosition_IsNotPlottedAtOrigin()
+        {
+            // Machine files write positions as expressions (DX-37) -- no number,
+            // no point; it must not land at (0,0).
+            var plan = BackplotLogic.Parse("Bohrung (DX-37,37,5,-13,10,0,0,0,0,0,0,0)");
+            Assert.That(plan.Ops, Is.Empty);
+        }
+
+        [Test]
+        public void Drill_WithAnchorCode_IsNotPlottedAtItsRawXY()
+        {
+            // Field 8 = 5: (25,25) measured from another corner, not from the origin.
+            var plan = BackplotLogic.Parse("Bohrung (25,25,8,-16,10,0,0,5,0,0,0,0)");
+            Assert.That(plan.Ops, Is.Empty);
         }
 
         [Test]
@@ -107,8 +135,8 @@ namespace DynesticPostProcessor.Tests
             var plan = BackplotLogic.Parse(string.Join("\n", new[]
             {
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (10,10,19,9,8,0,0,0,0,0,0,0)",
-                "Bohrung (20,10,19,9,8,0,0,0,0,0,0,0)",
+                "Bohrung (10,10,8,-10,10,0,0,0,0,0,0,0)",
+                "Bohrung (20,10,8,-10,10,0,0,0,0,0,0,0)",
                 "WZF (4,_VE,_V*1,_VA,_SD,0,'')",
                 "SP (0,0,-10,2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)",
                 "G01 (100,0,0,0,0,2)",
@@ -126,6 +154,23 @@ namespace DynesticPostProcessor.Tests
             Assert.That(chainStarts.Count, Is.EqualTo(2));
             Assert.That(chainStarts[0].SequenceIndex, Is.EqualTo(3));
             Assert.That(chainStarts[1].SequenceIndex, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void ParkCall_IsNotDrawnAsMacroPoint()
+        {
+            // Park_V7 carries POSX/POSY:=0 -- it must not become op #1 at (0,0).
+            string hop = WallabyHop.NcExport.AssembleFile("p", 800, 400, 19, "", null,
+                new System.Collections.Generic.List<string>
+                {
+                    WallabyHop.NcDrill.ToolCall(1), WallabyHop.NcDrill.DrillLine(100, 50, 8, 10),
+                });
+            var plan = BackplotLogic.Parse(hop);
+
+            Assert.That(plan.Ops.Count, Is.EqualTo(1));
+            Assert.That(plan.Ops[0].Kind, Is.EqualTo(BackplotLogic.OpKind.Drill));
+            Assert.That(plan.Ops[0].SequenceIndex, Is.EqualTo(1));
+            Assert.That(plan.ChainCount, Is.EqualTo(1));
         }
     }
 }

@@ -57,11 +57,17 @@ fi
 # 3. Run the test suite
 # -------------------------------------------------------------
 yellow "==> Running dotnet test..."
-if ! dotnet test tests/DynesticPostProcessor.Tests/DynesticPostProcessor.Tests.csproj \
-       --nologo --verbosity quiet 2>&1 | tail -5; then
+# Ausgabe in eine Variable, Status direkt pruefen. Die alte Form
+# "if ! dotnet test ... | tail -5" prueft den Status von tail (gelingt immer)
+# -- rote Tests kamen durch das Gate. Gefunden 2026-08-17 beim Aufbau von
+# 68_Nesting; dort ist derselbe Fix von Anfang an drin (tools/pre-commit).
+TEST_OUT=$(dotnet test tests/DynesticPostProcessor.Tests/DynesticPostProcessor.Tests.csproj \
+       --nologo --verbosity quiet 2>&1) || {
+    printf '%s\n' "$TEST_OUT" | tail -15
     red "==> BLOCKED: tests failed. Fix them or use --no-verify."
     exit 1
-fi
+}
+printf '%s\n' "$TEST_OUT" | tail -5
 
 green "==> pre-commit: all checks passed"
 exit 0

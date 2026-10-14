@@ -10,9 +10,10 @@ namespace WallabyHop.Components.Nesting
 {
     /// <summary>
     /// Generates the complete nesting system block for the DYNESTIC CNC:
-    ///   Park_V7 + BN_NestKontur + BN_TrennerInnenAussen + HH_MarkLabel
-    /// These four macros always appear together in nesting .hop files (58% of reference files).
-    /// Park_V7 moves the machine to park position after all cuts.
+    ///   Park_V7 + HH_MarkLabel + BN_TrennerInnenAussen + BN_NestKontur
+    /// These four macros open every nesting .hop file (127 of 214 reference files),
+    /// directly after Fertigteil and before the first tool call; the exporters move
+    /// them there wherever the block is wired (NcExport.StartSection).
     /// BN_NestKontur / BN_TrennerInnenAussen define nesting contour and inner/outer separation.
     /// HH_MarkLabel triggers the label printer at the configured position.
     /// </summary>
@@ -21,8 +22,9 @@ namespace WallabyHop.Components.Nesting
         public HopNestingComponent() : base(
             "HopNesting", "HopNesting",
             "Generates the nesting system block for the DYNESTIC CNC.\n\n" +
-            "Outputs Park_V7 + BN_NestKontur + BN_TrennerInnenAussen + HH_MarkLabel in the correct order.\n" +
-            "Wire output into HopExport OperationLines (append after all cutting operations).",
+            "Outputs Park_V7 + HH_MarkLabel + BN_TrennerInnenAussen + BN_NestKontur, spelled as in the machine files.\n" +
+            "Wire output into the OperationLines of HopExport, HopJob or HopPart, anywhere in the list.\n" +
+            "The exporter moves the block up behind Fertigteil; its Park_V7 replaces the default park call.",
             "Wallaby Hop", "6 | Nest") { }
 
         public override Guid ComponentGuid => new Guid("9041a2b3-04c5-2345-0123-456789012345");
@@ -53,7 +55,8 @@ namespace WallabyHop.Components.Nesting
 
             // 3 - ParkMode
             pManager.AddIntegerParameter("ParkMode", "parkMode",
-                "Park position mode for Park_V7.\n2 = standard park (default)\n0 = custom position (requires ParkX/ParkY)",
+                "MODE of Park_V7 (POSX/POSY are always 0).\n2 = machine standard (default; 132 of 214 machine files, all nesting files)\n" +
+                "3 and 5 also occur; their meaning is not confirmed yet.",
                 GH_ParamAccess.item, 2);
             pManager[3].Optional = true;
 
@@ -67,8 +70,8 @@ namespace WallabyHop.Components.Nesting
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("OperationLines", "operationLines",
-                "Nesting system macro strings (Park_V7 + BN_NestKontur + BN_TrennerInnenAussen + HH_MarkLabel). " +
-                "Wire into HopExport OperationLines after all cutting operations.",
+                "Nesting system macro strings (Park_V7 + HH_MarkLabel + BN_TrennerInnenAussen + BN_NestKontur). " +
+                "Wire into the exporter's OperationLines; it places them behind Fertigteil.",
                 GH_ParamAccess.list);
         }
 
@@ -86,32 +89,17 @@ namespace WallabyHop.Components.Nesting
             DA.GetData(3, ref parkMode);
             DA.GetData(4, ref includeLabel);
 
-            var lines = new List<string>();
+            // MODE 2/3/5 occur with POSX:=0 in the machine files; 10 only with POSX:=2200.
+            if (parkMode != 2 && parkMode != 3 && parkMode != 5)
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                    "ParkMode " + parkMode + " does not occur with POSX:=0 in the machine files "
+                    + "(2 = standard; 3 and 5 are rare). Check the park call before running it.");
 
-            // 1. Park_V7 — standard park position
-            lines.Add("CALL Park_V7(VAL MODE:=" + parkMode + ",POSX:=0,POSY:=0)");
-
-            // 2. BN_TrennerInnenAussen — nesting separator inner/outer (no params)
-            lines.Add("CALL BN_TrennerInnenAussen");
-
-            // 3. BN_NestKontur — nesting contour definition (no params)
-            lines.Add("CALL BN_NestKontur");
-
-            // 4. HH_MarkLabel — label printer
-            if (includeLabel)
-            {
-                string posX = labelPosX != 0.0 ? NcFmt.F(labelPosX) : "_hhdata_LabelPosX";
-                string posY = labelPosY != 0.0 ? NcFmt.F(labelPosY) : "_hhdata_LabelPosY";
-                lines.Add("CALL HH_MarkLabel(VAL "
-                    + "POSX:=" + posX + ","
-                    + "POSY:=" + posY + ","
-                    + "ANGLE:=" + NcFmt.F(labelAngle) + ","
-                    + "LASER:=0)");
-            }
+            var lines = NcExport.NestingBlock(parkMode, labelPosX, labelPosY, labelAngle, includeLabel);
 
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark,
-                "Nesting block: Park_V7 + BN_TrennerInnenAussen + BN_NestKontur"
-                + (includeLabel ? " + HH_MarkLabel" : ""));
+                "Nesting block: Park_V7" + (includeLabel ? " + HH_MarkLabel" : "")
+                + " + BN_TrennerInnenAussen + BN_NestKontur");
 
             DA.SetDataList(0, lines);
         }

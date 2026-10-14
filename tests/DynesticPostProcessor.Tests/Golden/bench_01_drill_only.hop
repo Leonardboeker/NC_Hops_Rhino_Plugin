@@ -8,9 +8,9 @@
 ;MASCHINE=HOLZHER
 ;NCNAME=bench_drill_only
 ;KOMMENTAR=
-;DX=600.000
-;DY=400.000
-;DZ=19.000
+;DX=0.000
+;DY=0.000
+;DZ=0
 ;DIALOGDLL=Dialoge.Dll
 ;DIALOGPROC=StandardFormAnzeigen
 ;AUTOSCRIPTSTART=1
@@ -22,10 +22,10 @@ VARS
    DZ := 19;*VAR*Dimension Z
 START
 Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)
-CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)
+CALL Park_V7 ( VAL MODE:=2,POSX:=0,POSY:=0)
 WZB (1,_VE,_V*1,_VA,_SD,0,'')
-Bohrung (37,37,19,6,5,0,0,0,0,0,0,0)
-Bohrung (37,69,19,6,5,0,0,0,0,0,0,0)
-Bohrung (37,101,19,6,5,0,0,0,0,0,0,0)
-Bohrung (523,37,19,6,5,0,0,0,0,0,0,0)
-Bohrung (523,69,19,6,5,0,0,0,0,0,0,0)
+Bohrung (37,37,5,-13,10,0,0,0,0,0,0,0)
+Bohrung (37,69,5,-13,10,0,0,0,0,0,0,0)
+Bohrung (37,101,5,-13,10,0,0,0,0,0,0,0)
+Bohrung (523,37,5,-13,10,0,0,0,0,0,0,0)
+Bohrung (523,69,5,-13,10,0,0,0,0,0,0,0)

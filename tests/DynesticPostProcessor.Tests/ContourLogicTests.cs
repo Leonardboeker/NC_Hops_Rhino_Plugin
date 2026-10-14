@@ -50,9 +50,9 @@ namespace DynesticPostProcessor.Tests
             Assert.That(lines, Is.EquivalentTo(new[]
             {
                 "WZF (4,_VE,_V*1,_VA,_SD,0,'')",
-                "SP (0,0,-10,2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)",
+                "SP (0,0,-10,2,1,_ANF,0,0,0,0,1,2,0,0,0,0,0,0,0,0,0,0,0)",
                 "G01 (100,0,0,0,0,2)",
-                "EP (0,_ANF,0)",
+                "EP (1,_ANF,0)",
             }));
         }
 
@@ -65,7 +65,7 @@ namespace DynesticPostProcessor.Tests
 
             // SP line should encode -5 plunge AND multi-pass tail
             Assert.That(lines[1],
-                Is.EqualTo("SP (0,0,-5,2,0,_ANF,0,0,0,0,1,0,2,0,0,0,0,0,0,0,0,0,0)"));
+                Is.EqualTo("SP (0,0,-5,2,2,_ANF,0,0,0,0,1,2,0,0,0,0,0,0,0,0,0,0,0)"));
         }
 
         [Test]

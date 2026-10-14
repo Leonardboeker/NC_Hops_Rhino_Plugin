@@ -42,6 +42,13 @@ namespace WallabyHop.Components.Operations
             pManager.AddNumberParameter("Stepdown", "stepdown", "Depth per pass in mm (stepdown). 0 = single pass. Default 0.", GH_ParamAccess.item, 0.0);
             pManager.AddIntegerParameter("ToolNr", "toolNr", "Tool magazine position number. Must be greater than 0.", GH_ParamAccess.item);
             pManager.AddColourParameter("Colour", "colour", "Preview colour for the pocket volume in the Rhino viewport.", GH_ParamAccess.item, Color.Cyan);
+            pManager.AddIntegerParameter("DepthRef", "depthRef",
+                "Which plane the depth counts from (macro parameter ESMD):\n"
+                + "0 = part TOP -- a 5 mm pocket becomes TIEFE:=-5. Default.\n"
+                + "1 = machine TABLE at Z=0 -- for cutting THROUGH: set Depth to the\n"
+                + "    overshoot past the underside (0.2), not the material thickness,\n"
+                + "    so the line reads TIEFE:=-0.2 like the machine's own files.",
+                GH_ParamAccess.item, 0);
 
             // Mark optional parameters
             pManager[1].Optional = true;
@@ -49,6 +56,7 @@ namespace WallabyHop.Components.Operations
             pManager[3].Optional = true;
             pManager[4].Optional = true;
             pManager[6].Optional = true;
+            pManager[7].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
@@ -236,6 +244,9 @@ namespace WallabyHop.Components.Operations
                 WallabyHop.AutoWire.Spec.Float("0<0<50"),
                 WallabyHop.AutoWire.Spec.Int("1<1<20"),
                 WallabyHop.AutoWire.Spec.Skip(),
+                WallabyHop.AutoWire.Spec.ValueList(
+                    ("depth from top", "0"),
+                    ("depth from table (through cuts)", "1")),
             });
         }
     }

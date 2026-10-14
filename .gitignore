@@ -13,3 +13,4 @@ LOCAL/
 
 # Per-rechner config (paths/env overrides for the plugin)
 WallabyHop.config.txt
+__pycache__/

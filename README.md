@@ -111,22 +111,22 @@ A `.hop` file is a plain ASCII text file with CRLF line endings. It has three se
 ...
 
 VARS                     ← Variable declarations
-   DX := 800.0;*VAR*Dimension X
-   DY := 400.0;*VAR*Dimension Y
-   DZ := 19.0;*VAR*Dimension Z
+   DX := 800;*VAR*Dimension X
+   DY := 400;*VAR*Dimension Y
+   DZ := 19;*VAR*Dimension Z
 
 START                    ← Program body
 Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)
-CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)
+CALL Park_V7 ( VAL MODE:=2,POSX:=0,POSY:=0)
 WZB (5,_VE,_V*1,_VA,_SD,0,'')          ← Tool call
-Bohrung (100.0,200.0,19.0,2.0,8.0,0,0,0,0,0,0,0)   ← Operation macro
+Bohrung (100,200,8,-10,10,0,0,0,0,0,0,0)           ← Operation macro
 ```
 
 **Key macros used by this plugin:**
 
 | Macro | Operation | Component |
 |-------|-----------|-----------|
-| `Bohrung(x,y,surfZ,cutZ,dia,...)` | Vertical drill | HopDrill |
+| `Bohrung(x,y,dia,depth,10,...)` | Vertical drill | HopDrill |
 | `CALL _Bohgx_V5(...)` / `_Bohgy_V5(...)` | Drill row (X/Y) | HopDrillRow |
 | `SP(...)` / `G01(...)` / `G02M(...)` / `G03M(...)` / `EP(...)` | Contour / engraving path | HopContour, HopEngraving |
 | `CALL _Rechteck_V7(...)` | Rectangular pocket | HopRectPocket |
@@ -460,12 +460,12 @@ Assembles all operation lines into a complete `.hop` file and writes it to disk.
 ;WZGV=7023K_681
 ...
 VARS
-   DX := 800.0;*VAR*Dimension X
-   DY := 400.0;*VAR*Dimension Y
-   DZ := 19.0;*VAR*Dimension Z
+   DX := 800;*VAR*Dimension X
+   DY := 400;*VAR*Dimension Y
+   DZ := 19;*VAR*Dimension Z
 START
 Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)
-CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)
+CALL Park_V7 ( VAL MODE:=2,POSX:=0,POSY:=0)
 [operationLines here]
 ```
 
@@ -650,6 +650,8 @@ Same safety pipeline as HopExport: rising-edge trigger, per-part HopAnalyzer pre
 #### HopNesting
 
 Generates the nesting system operation lines (label position/angle, park mode) for nested sheet programs. Inputs: `labelPosX`, `labelPosY`, `labelAngle`, `parkMode`, `includeLabel`. Output: `operationLines`.
+
+Every exporter (HopExport, HopJob, HopPartExport, HopSheetExport) starts the program with `Fertigteil` + `CALL Park_V7 ( VAL MODE:=2,POSX:=0,POSY:=0)`, the park call found in the machine files. HopNesting lines may be wired anywhere into the operation lines: the exporter moves them behind `Fertigteil` in the machine order `Park_V7`, `HH_MarkLabel`, `BN_TrennerInnenAussen`, `BN_NestKontur` (`NcExport.StartSection`), and their `Park_V7` (with `parkMode`) replaces the default, so a file never parks twice. A `parkMode` other than 2, 3 or 5 raises a warning.
 
 ---
 

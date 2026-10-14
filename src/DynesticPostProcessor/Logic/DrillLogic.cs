@@ -24,6 +24,9 @@ namespace WallabyHop.Logic
             public double Diameter;
             public double Stepdown;
             public int ToolNr;
+            // Depth reference, the drill's ESMD equivalent (9th macro field).
+            // false = from the part top, true = from the table at Z=0 (through).
+            public bool DepthFromTable;
         }
 
         internal struct DrillResult
@@ -58,16 +61,14 @@ namespace WallabyHop.Logic
                     for (int p = 0; p < passCount; p++)
                     {
                         double passDepth = Math.Min((p + 1) * input.Stepdown, depth);
-                        double cutZ = surfaceZ - passDepth;
-                        lines.Add(NcDrill.DrillLine(pt.X, pt.Y, surfaceZ, cutZ, diameter));
+                        lines.Add(NcDrill.DrillLine(pt.X, pt.Y, diameter, passDepth, input.DepthFromTable));
                     }
                 }
             }
             else
             {
-                double cutZ = surfaceZ - Math.Abs(depth);
                 foreach (var pt in input.Points)
-                    lines.Add(NcDrill.DrillLine(pt.X, pt.Y, surfaceZ, cutZ, diameter));
+                    lines.Add(NcDrill.DrillLine(pt.X, pt.Y, diameter, depth, input.DepthFromTable));
             }
 
             return new DrillResult

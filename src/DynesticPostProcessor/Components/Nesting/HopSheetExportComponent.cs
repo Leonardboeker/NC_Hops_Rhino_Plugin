@@ -20,7 +20,8 @@ namespace WallabyHop.Components.Nesting
     {
         public HopSheetExportComponent()
             : base("HopSheetExport", "HopSheetExport",
-                "Exports a per-sheet .hop file from nested HopPart objects. Filters parts by OpenNest sheet index, extracts sheet dimensions from curve, and writes NC-Hops format.",
+                "Exports a per-sheet .hop file from nested HopPart objects. Filters parts by OpenNest sheet index, extracts sheet dimensions from curve, and writes NC-Hops format. " +
+                "The file parks with the machine-standard Park_V7 MODE:=2.",
                 "Wallaby Hop", "6 | Nest")
         {
         }
@@ -243,6 +244,7 @@ namespace WallabyHop.Components.Nesting
             // 7. FILTER PARTS BY SHEET INDEX -- OpenNest IDS semantics
             // ---------------------------------------------------------------
             List<string> allOpLines = new List<string>();
+            List<string> sheetMacros = new List<string>();
             int partsOnSheet = 0;
             int unfittedCount = 0;
             bool exportBlocked = false;
@@ -288,6 +290,11 @@ namespace WallabyHop.Components.Nesting
                     foreach (var group in opLineGroups)
                         foreach (string line in group)
                             partLines.Add(line);
+
+                // Park/label/nest macros are sheet-level: keep their POSX/POSY
+                // out of the part offset; StartSection places them once.
+                sheetMacros.AddRange(partLines.FindAll(NcExport.IsStartMacro));
+                partLines.RemoveAll(NcExport.IsStartMacro);
 
                 // C2: rewrite part-local coordinates into sheet coordinates.
                 Transform xf = transforms[i];
@@ -373,11 +380,10 @@ namespace WallabyHop.Components.Nesting
             lines.Add("   DZ := " + NcFmt.F(dz) + ";*VAR*Dimension Z");
 
             // ---------------------------------------------------------------
-            // 10. BUILD START SECTION -- Fertigteil + HH_Park
+            // 10. BUILD START SECTION -- Fertigteil + one Park_V7 (+ nest block)
             // ---------------------------------------------------------------
-            lines.Add("START");
-            lines.Add("Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)");
-            lines.Add("CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)");
+            allOpLines.AddRange(sheetMacros);
+            lines.AddRange(NcExport.StartSection(allOpLines));
 
             // ---------------------------------------------------------------
             // 11. INSERT OPERATION LINES -- bucket-sorted so duplicate tool

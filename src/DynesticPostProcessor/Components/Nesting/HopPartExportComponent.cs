@@ -16,7 +16,8 @@ namespace WallabyHop.Components.Nesting
         public HopPartExportComponent()
             : base("HopPartExport", "HopPartExport",
                 "Exports one .hop file per part from a list of HopPart or HopKorpus panel dictionaries. " +
-                "When CabinetData is connected, automatically creates a subfolder named Korpus_{Nr}_{W}x{H}x{D}.",
+                "When CabinetData is connected, automatically creates a subfolder named Korpus_{Nr}_{W}x{H}x{D}. " +
+                "Every file parks with the machine-standard Park_V7 MODE:=2.",
                 "Wallaby Hop", "6 | Nest")
         {
         }
@@ -309,18 +310,13 @@ namespace WallabyHop.Components.Nesting
             lines.Add("   DY := " + NcFmt.F(dy) + ";*VAR*Dimension Y");
             lines.Add("   DZ := " + NcFmt.F(dz) + ";*VAR*Dimension Z");
 
-            // START section
-            lines.Add("START");
-            lines.Add("Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)");
-            lines.Add("CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)");
-
-            // Operation lines
+            // START section (one park call, nest block hoisted) + operation lines
+            var ops = new List<string>();
             if (opLineGroups != null)
-            {
                 foreach (var group in opLineGroups)
-                    foreach (string line in group)
-                        lines.Add(line);
-            }
+                    ops.AddRange(group);
+            lines.AddRange(NcExport.StartSection(ops));
+            lines.AddRange(ops);
 
             return string.Join("\r\n", lines) + "\r\n";
         }

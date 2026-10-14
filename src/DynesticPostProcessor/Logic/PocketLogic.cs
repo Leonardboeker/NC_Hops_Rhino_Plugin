@@ -24,6 +24,12 @@ namespace WallabyHop.Logic
             public int ToolNr;
             public string ToolType;    // default WZF
             public double FeedFactor;  // default 1.0
+            // ESMD in the macro: which plane the depth counts from.
+            // false = part TOP  (a 5 mm pocket is TIEFE:=-5)
+            // true  = machine TABLE at Z=0 (a through cut is TIEFE:=-0.2)
+            // Machine-confirmed 2026-08-10 by diffing a hand-corrected file:
+            // ESMD was the only parameter that changed besides the depth.
+            public bool DepthFromTable;
         }
 
         internal static List<string> GenerateRect(RectPocketInput input)
@@ -32,7 +38,12 @@ namespace WallabyHop.Logic
             double feedFactor = input.FeedFactor > 0 ? input.FeedFactor : 1.0;
             double depth = input.Depth > 0 ? input.Depth : 1.0;
             double cornerRadius = input.CornerRadius < 0 ? 0 : input.CornerRadius;
-            double cutZ = input.SurfaceZ - Math.Abs(depth);
+            // Machine-verified 2026-08-10: the mill-macro family (TIEFE/Tiefe)
+            // is referenced from the part TOP, negative down (reference file
+            // Muster_DXF_Import.hop: -10/-20/-5; a through cut emitted as 0 cut
+            // NOTHING on the HolzHer). Drawing Z must not leak in here -- the
+            // contour/saw/drill emitters use bed-absolute Z, this family not.
+            double cutZ = -Math.Abs(depth);
             double stepdownVal = input.Stepdown > 0 ? input.Stepdown : 0;
 
             var lines = new List<string>();
@@ -52,7 +63,9 @@ namespace WallabyHop.Logic
                 + "RADIUSKORREKTUR:=2,"
                 + "AB:=2,AUFMASS:=0,ANF:=_ANF,ABF:=_ANF,"
                 + "UMKEHREN:=0,RAMPE:=0,RAMPENLAENGE:=50,QUADRANT:=1,"
-                + "INTERPOL:=1,ESXY:=0,ESMD:=0,LASER:=0)");
+                + "INTERPOL:=1,ESXY:=0,ESMD:="
+                + (input.DepthFromTable ? "1" : "0")
+                + ",LASER:=0)");
 
             return lines;
         }
@@ -75,7 +88,12 @@ namespace WallabyHop.Logic
             string toolType = string.IsNullOrEmpty(input.ToolType) ? "WZF" : input.ToolType;
             double feedFactor = input.FeedFactor > 0 ? input.FeedFactor : 1.0;
             double depth = input.Depth > 0 ? input.Depth : 1.0;
-            double cutZ = input.SurfaceZ - Math.Abs(depth);
+            // Machine-verified 2026-08-10: the mill-macro family (TIEFE/Tiefe)
+            // is referenced from the part TOP, negative down (reference file
+            // Muster_DXF_Import.hop: -10/-20/-5; a through cut emitted as 0 cut
+            // NOTHING on the HolzHer). Drawing Z must not leak in here -- the
+            // contour/saw/drill emitters use bed-absolute Z, this family not.
+            double cutZ = -Math.Abs(depth);
             double stepdownVal = input.Stepdown > 0 ? input.Stepdown : 0;
 
             var lines = new List<string>();

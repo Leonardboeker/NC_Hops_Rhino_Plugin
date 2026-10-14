@@ -96,18 +96,15 @@ namespace WallabyHop.Logic
 
                 if (t.StartsWith("Bohrung ("))
                 {
-                    double[] a = PositionalArgs(t, 5);
-                    if (a == null) continue;
+                    if (!NcDrill.TryParse(t, out var d) || !d.HasXY) continue;
                     step++;
-                    plan.StepLabels.Add("Drill Ø" + F(a[4]) + " @ (" + F(a[0]) + ", " + F(a[1]) + ")");
-                    double zTop = Math.Max(a[2], a[3]);
-                    double zBot = Math.Min(a[2], a[3]);
+                    plan.StepLabels.Add("Drill Ø" + F(d.Diameter) + " @ (" + F(d.X) + ", " + F(d.Y) + ")");
                     plan.Cuts.Add(new CutSolid
                     {
                         Kind = SolidKind.Cylinder,
-                        X1 = a[0], Y1 = a[1], X2 = a[0], Y2 = a[1],
-                        Z0 = zBot, Z1 = zTop,
-                        Width = a[4] > 0 ? a[4] : defaultMillDiameter,
+                        X1 = d.X, Y1 = d.Y, X2 = d.X, Y2 = d.Y,
+                        Z0 = d.BottomZ(plan.Dz), Z1 = plan.Dz,
+                        Width = d.Diameter > 0 ? d.Diameter : defaultMillDiameter,
                         StepIndex = step,
                     });
                 }
@@ -376,11 +373,12 @@ namespace WallabyHop.Logic
                 }
                 else if (t.StartsWith("CALL "))
                 {
-                    // Fixchip clamps remove no material; anything else is honest-
-                    // ly reported instead of silently missing from the sim.
+                    // Fixchip clamps and park calls remove no material; anything
+                    // else is honestly reported instead of silently missing from the sim.
                     var name = Regex.Match(t, @"^CALL\s+(\S+?)\s*\(");
                     string macro = name.Success ? name.Groups[1].Value : "?";
                     if (macro.IndexOf("Fixchip", StringComparison.OrdinalIgnoreCase) < 0
+                        && macro.IndexOf("Park_V7", StringComparison.OrdinalIgnoreCase) < 0
                         && macro.IndexOf("HH_Park", StringComparison.OrdinalIgnoreCase) < 0
                         && unknownMacros.Add(macro))
                         plan.Warnings.Add("Macro " + macro + " is not simulated (no removal geometry known).");

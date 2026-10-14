@@ -18,6 +18,13 @@ namespace WallabyHop.Components.Operations
         // PREVIEW FIELDS
         // ---------------------------------------------------------------
         private static readonly Color _defaultColor = Color.Yellow;
+
+        // Bump when changing the flattening path, so a stale .gha in the Grasshopper
+        // Libraries folder can be told apart from a genuine failure of the new code.
+        private const string BuildTag = "flatten-4";
+        // What the flattening probes returned for the piece being built, so the
+        // "collapsed" error can say WHY instead of only that it happened.
+        private string _probe = "";
         private List<Brep> _previewVolumes = new List<Brep>();
         private List<Line> _approachLines  = new List<Line>();
         private Color      _drawColor      = Color.Yellow;
@@ -386,8 +393,49 @@ namespace WallabyHop.Components.Operations
                 }
                 else
                 {
-                    pieceSegs.Add(converted); // single ArcCurve or LineCurve
+                    // A PolylineCurve is NOT a PolyCurve — "as PolyCurve" returns null,
+                    // so the branch above never fired and the whole polyline was added
+                    // as ONE segment. ToContourSegments then read it as a line from
+                    // PointAtStart to PointAtEnd, which for a CLOSED polyline is the
+                    // same point: the contour collapsed and the tool only plunged.
+                    // (Real case 2026-08-10: a closed PolylineCurve 5128.72 mm long.)
+                    // DuplicateSegments does NOT help here — on a PolylineCurve it
+                    // returns the curve itself, so the collapse survived that attempt.
+                    // Walk the polyline's own vertices instead.
+                    Polyline pl;
+                    Curve[] spans = converted.DuplicateSegments();
+                    _probe = "build=" + BuildTag
+                        + ", TryGetPolyline=" + (converted.TryGetPolyline(out pl) ? "yes" : "no")
+                        + ", polySegments=" + (pl == null ? -1 : pl.SegmentCount)
+                        + ", duplicateSegments=" + (spans == null ? -1 : spans.Length);
+                    if (converted.TryGetPolyline(out pl) && pl != null && pl.SegmentCount > 1)
+                    {
+                        for (int pi = 0; pi < pl.SegmentCount; pi++)
+                        {
+                            Line ln = pl.SegmentAt(pi);
+                            if (ln.Length > RhinoMath.ZeroTolerance)
+                                pieceSegs.Add(new LineCurve(ln));
+                        }
+                    }
+                    else if (spans != null && spans.Length > 1)
+                    {
+                        pieceSegs.AddRange(spans);
+                    }
+                    else
+                    {
+                        pieceSegs.Add(converted);
+                    }
                 }
+                // Applies to BOTH branches above: whichever one filled pieceSegs, a
+                // multi-vertex PolylineCurve may still be sitting in it as a single
+                // entry, and ToContourSegments would read it as one line from
+                // PointAtStart to PointAtEnd. Open polyline -> silently a straight cut
+                // that skips every interior vertex. Closed polyline -> start == end,
+                // so the contour collapses to a point (observed 2026-08-10 on a closed
+                // 5128 mm polyline; the open case had been quietly wrong all along).
+                pieceSegs = ExpandPolylines(pieceSegs);
+                _probe += "; afterExpand=" + pieceSegs.Count;
+
                 if (pieceSegs.Count > 0) allPieces.Add(pieceSegs);
             }
 
@@ -406,7 +454,31 @@ namespace WallabyHop.Components.Operations
             foreach (List<Curve> pieceSegs in allPieces)
             {
                 segmentCount += pieceSegs.Count;
-                pureP.Add(ToContourSegments(pieceSegs));
+                var segs = ToContourSegments(pieceSegs);
+
+                // A piece that goes nowhere used to be emitted as a valid-looking
+                // SP/G01/EP block that plunges and retracts without cutting. Report
+                // it here, where the ORIGINAL curve is still available to describe --
+                // the analyzer downstream only sees identical coordinates and cannot
+                // say why. Observed 2026-08-10 on a contour that had to follow a path.
+                double spanned = 0.0;
+                foreach (var sg in segs)
+                    spanned += Math.Abs(sg.EndX - sg.StartX) + Math.Abs(sg.EndY - sg.StartY);
+                if (spanned <= tol)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                        "Contour collapsed to a point after flattening — the tool would"
+                        + " plunge and retract without cutting. Input curve: "
+                        + curve.GetType().Name
+                        + ", closed=" + (curve.IsClosed ? "yes" : "no")
+                        + ", length=" + curve.GetLength().ToString("F2", CultureInfo.InvariantCulture)
+                        + " mm, degree=" + curve.Degree
+                        + "; flattening produced " + pieceSegs.Count + " segment(s) of type "
+                        + (pieceSegs.Count > 0 ? pieceSegs[0].GetType().Name : "none")
+                        + ". Flattening probe: " + (_probe == "" ? "(not reached)" : _probe));
+                    return null;
+                }
+                pureP.Add(segs);
             }
             pieceCount += allPieces.Count;
 
@@ -461,6 +533,38 @@ namespace WallabyHop.Components.Operations
             if (landedLeft != wantLeft)
                 return curve.Offset(Plane.WorldXY, -dist, tol, cs);
             return offsets;
+        }
+
+        /// <summary>
+        /// Replace every multi-vertex PolylineCurve in the list with its individual
+        /// line spans. Rhino hands polylines back as ONE curve object in several
+        /// places (ToArcsAndLines, PolyCurve.Explode, DuplicateSegments), and every
+        /// consumer downstream assumes one entry == one straight span.
+        /// </summary>
+        private static List<Curve> ExpandPolylines(List<Curve> segs)
+        {
+            var result = new List<Curve>();
+            if (segs == null) return result;
+            foreach (Curve c in segs)
+            {
+                if (c == null) continue;
+                Polyline pl;
+                if (!(c is LineCurve) && !(c is ArcCurve)
+                    && c.TryGetPolyline(out pl) && pl != null && pl.SegmentCount > 1)
+                {
+                    for (int i = 0; i < pl.SegmentCount; i++)
+                    {
+                        Line ln = pl.SegmentAt(i);
+                        if (ln.Length > RhinoMath.ZeroTolerance)
+                            result.Add(new LineCurve(ln));
+                    }
+                }
+                else
+                {
+                    result.Add(c);
+                }
+            }
+            return result;
         }
 
         private static IReadOnlyList<ContourLogic.ContourSegment> ToContourSegments(List<Curve> flat)

@@ -1,0 +1,63 @@
+;MAKROTYP=0
+;INSTVERSION=5.6.1.9b
+;EXEVERSION=5.5.2.219[Hops.exe]
+;BILD=Muster_DXF_Import.wmf
+;INFO=
+;WZGV=7023K_681
+;WZGVCONFIG=
+;MASCHINE=HOLZHER
+;NCNAME=Muster_DXF_Import
+;KOMMENTAR=
+;DX=0.000
+;DY=0.000
+;DZ=0
+;DIALOGDLL=Dialoge.Dll
+;DIALOGPROC=StandardFormAnzeigen
+;AUTOSCRIPTSTART=1
+;BUTTONBILD=
+;DIMENSION_UNIT=0
+VARS
+   DX := 800;*VAR*Dimension X
+   DY := 400;*VAR*Dimension Y
+   DZ := 19;*VAR*Dimension Z
+START
+Fertigteil (DX,DY,DZ,0,0,0,0,0,'',0,0,0)
+CALL HH_Park ( VAL PARK:=3,X:=0,Y:=0)
+WZF (20,_VE,_V*1,_VA,_SD,0,'')
+SP (38.54616,344.55023,-5,2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+G01 (648.2028,377.13866,0,0,0,2)
+G01 (785.82826,221.43837,0,0,0,2)
+G01 (761.68344,12.631,0,0,0,2)
+G01 (33.71719,12.631,0,0,0,2)
+G01 (38.54616,344.55023,0,0,0,2)
+EP (0,_ANF,0)
+SP (300,130,-5,2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+G03M (500,130,0,400,130,0,0,2,0)
+G03M (300,130,0,400,130,0,0,2,0)
+EP (0,_ANF,0)
+WZB (501,_VE,_V*1,_VA,_SD,0,'')
+Bohrung (510,270,5,-10,10,0,0,0,0,0,0,0)
+Bohrung (510,260,5,-10,10,0,0,0,0,0,0,0)
+Bohrung (510,250,5,-10,10,0,0,0,0,0,0,0)
+Bohrung (510,240,5,-10,10,0,0,0,0,0,0,0)
+Bohrung (520,270,5,-10,10,0,0,0,0,0,0,0)
+Bohrung (520,260,5,-10,10,0,0,0,0,0,0,0)
+Bohrung (520,250,5,-10,10,0,0,0,0,0,0,0)
+Bohrung (520,240,5,-10,10,0,0,0,0,0,0,0)
+Bohrung (530,240,5,-10,10,0,0,0,0,0,0,0)
+Bohrung (530,250,5,-10,10,0,0,0,0,0,0,0)
+Bohrung (530,260,5,-10,10,0,0,0,0,0,0,0)
+Bohrung (530,270,5,-10,10,0,0,0,0,0,0,0)
+HorzB (90.45585,0,9.5,8,-20,0,0,90,0,2,0,0)
+HorzB (110,0,10,8,-20,0,0,90,0,2,0,0)
+HorzB (130,0,10,8,-20,0,0,90,0,2,0,0)
+HorzB (150,0,10,8,-20,0,0,90,0,2,0,0)
+HorzB (170,0,10,8,-20,0,0,90,0,2,0,0)
+WZS (220,_VE,_V*0.3,_VA,_SD,0,'')
+CALL _nuten_frei_v5(VAL X1:=637.18998,Y1:=345.52201,X2:=489.51177,Y2:=345.52201,NB:=13.95082,Tiefe:=-10,LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)
+WZF (20,_VE,_V*0.4,_VA,_SD,0,'')
+CALL _Kreistasche_V5(VAL X_Mitte:=396.28543,Y_Mitte:=286.1046,Radius:=48.08552,Tiefe:=-10,Zustellung:=0,AB:=2,ABF:=_ANF,Interpol:=0,umkehren:=0,esxy:=0,esmd:=0,laser:=0)
+CALL _Kreisbahn_V5(VAL X_Mitte:=150,Y_Mitte:=100,Tiefe:=-20,ZuTiefe:=0,Radius:=70,Radiuskorrektur:=1,AB:=1,Aufmass:=0,Bearb_umkehren:=1,Winkel:=360,ANF:=_ANF,ABF:=_ANF,Rampe:=1,Interpol:=0,esxy:=0,esmd:=0,laser:=0)
+CALL _RechteckTasche_V5(VAL x_Mitte:=650,Y_Mitte:=125,Taschenlaenge:=100,Taschenbreite:=150,Radius:=40,Winkel:=0,Tiefe:=-5,Zustellung:=0,AB:=2,ABF:=_ANF,Interpol:=1,umkehren:=0,esxy:=0,esmd:=0,laser:=0)
+WZF (20,_VE,_V*1,_VA,_SD,0,'')
+CALL _RechteckTasche_V5(VAL x_Mitte:=184.12158,Y_Mitte:=235.45754,Taschenlaenge:=100.0008,Taschenbreite:=98.59295,Radius:=0,Winkel:=0,Tiefe:=-10,Zustellung:=0,AB:=2,ABF:=_ANF,Interpol:=1,umkehren:=1,esxy:=0,esmd:=0,laser:=0)

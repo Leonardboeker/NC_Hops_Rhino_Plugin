@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using WallabyHop;
 using WallabyHop.Logic;
 
 namespace DynesticPostProcessor.Tests
@@ -37,19 +38,55 @@ namespace DynesticPostProcessor.Tests
         [Test]
         public void Drill_BecomesCylinderWithMacroDiameterAndZ()
         {
+            // Golden-file form: Bohrung (X, Y, DIA 5, DEPTH -13 from the top, TYPE 10, ...)
             var plan = Parse(
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')\r\n" +
-                "Bohrung (100,50,19,9,5,0,0,0,0,0,0,0)");
+                "Bohrung (100,50,5,-13,10,0,0,0,0,0,0,0)");
 
             Assert.That(plan.Cuts.Count, Is.EqualTo(1));
             var c = plan.Cuts[0];
             Assert.That(c.Kind, Is.EqualTo(StockSimLogic.SolidKind.Cylinder));
             Assert.That(c.X1, Is.EqualTo(100));
             Assert.That(c.Y1, Is.EqualTo(50));
-            Assert.That(c.Width, Is.EqualTo(5));
+            Assert.That(c.Width, Is.EqualTo(5), "field 5 is the drill type, not the diameter");
             Assert.That(c.Z1, Is.EqualTo(19));
-            Assert.That(c.Z0, Is.EqualTo(9)); // 10 mm deep
+            Assert.That(c.Z0, Is.EqualTo(6)); // 13 mm below the 19 mm top
             Assert.That(plan.StepLabels.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Drill_DepthFromTable_ReachesPastTheUnderside()
+        {
+            // Through hole: field 9 = 1, -0.2 = 0.2 mm below the table-side face
+            var plan = Parse(
+                "WZB (1,_VE,_V*1,_VA,_SD,0,'')\r\n" +
+                NcDrill.DrillLine(100, 50, 8, 0.2, depthFromTable: true));
+
+            var c = plan.Cuts.Single();
+            Assert.That(c.Width, Is.EqualTo(8));
+            Assert.That(c.Z0, Is.EqualTo(-0.2).Within(1e-9));
+            Assert.That(c.Z1, Is.EqualTo(19));
+        }
+
+        [Test]
+        public void Drill_DepthFromTable_PositiveValueLeavesMaterial()
+        {
+            // Table reference with a positive value = residual height above the
+            // table (form used in the reference files): 10 mm left of 19.
+            var plan = Parse("Bohrung (100,50,5,10,10,0,0,0,1,0,0,0)");
+            Assert.That(plan.Cuts.Single().Z0, Is.EqualTo(10));
+        }
+
+        [Test]
+        public void Drill_WithoutAbsolutePosition_CutsNothing()
+        {
+            // An expression position (DX-37) or an anchor code in field 8 (5 = from
+            // another corner) is no point in the part frame -- no cylinder at its raw XY.
+            var plan = Parse(
+                "WZB (1,_VE,_V*1,_VA,_SD,0,'')\r\n" +
+                "Bohrung (DX-37,37,5,-13,10,0,0,0,0,0,0,0)\r\n" +
+                "Bohrung (25,25,8,-16,10,0,0,5,0,0,0,0)");
+            Assert.That(plan.Cuts, Is.Empty);
         }
 
         [Test]
@@ -278,6 +315,14 @@ namespace DynesticPostProcessor.Tests
         }
 
         [Test]
+        public void ParkCall_RemovesNoMaterial_AndRaisesNoWarning()
+        {
+            var plan = Parse(NcExport.ParkLine());
+            Assert.That(plan.Cuts, Is.Empty);
+            Assert.That(plan.Warnings, Is.Empty);
+        }
+
+        [Test]
         public void UnknownMacro_WarnsOnceInsteadOfSilentlyMissing()
         {
             var plan = Parse(
@@ -292,7 +337,7 @@ namespace DynesticPostProcessor.Tests
         {
             var plan = Parse(
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')\r\n" +
-                "/Bohrung (100,50,19,9,5,0,0,0,0,0,0,0)");
+                "/Bohrung (100,50,5,-10,10,0,0,0,0,0,0,0)");
             Assert.That(plan.Cuts.Count, Is.EqualTo(1));
         }
 
@@ -301,8 +346,8 @@ namespace DynesticPostProcessor.Tests
         {
             var plan = Parse(
                 "WZB (1,_VE,_V*1,_VA,_SD,0,'')\r\n" +
-                "Bohrung (100,50,19,9,5,0,0,0,0,0,0,0)\r\n" +
-                "Bohrung (200,50,19,9,5,0,0,0,0,0,0,0)\r\n" +
+                "Bohrung (100,50,5,-10,10,0,0,0,0,0,0,0)\r\n" +
+                "Bohrung (200,50,5,-10,10,0,0,0,0,0,0,0)\r\n" +
                 "WZS (10,_VE,_V*0.3,_VA,_SD,0,'')\r\n" +
                 "CALL _nuten_frei_v5(VAL X1:=0,Y1:=100,X2:=600,Y2:=100,NB:=3.2," +
                 "Tiefe:=0,LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0,esmd:=0,esxy1:=0,esxy2:=0)");

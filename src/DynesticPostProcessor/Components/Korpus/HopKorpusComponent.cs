@@ -668,24 +668,10 @@ namespace WallabyHop.Components.Korpus
                 {
                     foreach (var line in group)
                     {
-                        if (!line.StartsWith("Bohrung")) continue;
-                        // Format: Bohrung (x,y,surfZ,cutZ,dia,...)
-                        int p1 = line.IndexOf('(');
-                        int p2 = line.IndexOf(')');
-                        if (p1 < 0 || p2 < 0) continue;
-                        string[] parts = line.Substring(p1 + 1, p2 - p1 - 1).Split(',');
-                        if (parts.Length < 5) continue;
-                        double hx, hy, hCutZ, hDia;
-                        if (!double.TryParse(parts[0].Trim(), System.Globalization.NumberStyles.Any,
-                                System.Globalization.CultureInfo.InvariantCulture, out hx)) continue;
-                        if (!double.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.Any,
-                                System.Globalization.CultureInfo.InvariantCulture, out hy)) continue;
-                        if (!double.TryParse(parts[3].Trim(), System.Globalization.NumberStyles.Any,
-                                System.Globalization.CultureInfo.InvariantCulture, out hCutZ)) continue;
-                        if (!double.TryParse(parts[4].Trim(), System.Globalization.NumberStyles.Any,
-                                System.Globalization.CultureInfo.InvariantCulture, out hDia)) continue;
-                        double depth = Math.Abs(hCutZ);
-                        double radius = hDia / 2.0;
+                        if (!NcDrill.TryParse(line, out var drill) || !drill.HasXY) continue;
+                        double hx = drill.X, hy = drill.Y;
+                        double depth = panel.Thickness - drill.BottomZ(panel.Thickness);
+                        double radius = drill.Diameter / 2.0;
                         if (radius <= 0 || depth <= 0) continue;
 
                         // Flat Z=0 = machined face of the panel (inner face for vertical panels,

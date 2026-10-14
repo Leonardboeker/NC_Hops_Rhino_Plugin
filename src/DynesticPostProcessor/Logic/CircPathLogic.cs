@@ -30,7 +30,12 @@ namespace WallabyHop.Logic
             double feedFactor = input.FeedFactor > 0 ? input.FeedFactor : 1.0;
             double depth = input.Depth > 0 ? input.Depth : 1.0;
             double angle = input.Angle > 0 ? input.Angle : 360.0;
-            double cutZ = input.SurfaceZ - Math.Abs(depth);
+            // Machine-verified 2026-08-10: the mill-macro family (TIEFE/Tiefe)
+            // is referenced from the part TOP, negative down (reference file
+            // Muster_DXF_Import.hop: -10/-20/-5; a through cut emitted as 0 cut
+            // NOTHING on the HolzHer). Drawing Z must not leak in here -- the
+            // contour/saw/drill emitters use bed-absolute Z, this family not.
+            double cutZ = -Math.Abs(depth);
             double stepdownVal = input.Stepdown > 0 ? input.Stepdown : 0;
 
             var lines = new List<string>();

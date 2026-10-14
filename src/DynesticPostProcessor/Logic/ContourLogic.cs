@@ -132,9 +132,13 @@ namespace WallabyHop.Logic
 
                 double startX = flat[gStart].StartX;
                 double startY = flat[gStart].StartY;
-                string spTail = nPasses > 1
-                    ? ",2,0,_ANF,0,0,0,0,1,0," + nPasses + ",0,0,0,0,0,0,0,0,0,0)"
-                    : ",2,0,_ANF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)";
+                // Field 5 is "Anzahl Fraesschritte" (pass count) -- confirmed by two
+                // independent machine files: "kontouren nuter und fraesen.hop" has
+                // SP(...,2,2,_ANF,...) + EP(2,...), Tritt_217.hop has
+                // SP(...,2,3,_ANF,...) + EP(3,...). The emitter used to leave field 5
+                // at 0 and put the count in field 13, so HOPS read ZERO passes and the
+                // contour did nothing. Fields 11/12 carry 1,2 in every machine file.
+                string spTail = ",2," + nPasses + ",_ANF,0,0,0,0,1,2,0,0,0,0,0,0,0,0,0,0,0)";
 
                 // Lead-in: approach along reversed entry tangent
                 double spX = startX;
@@ -174,7 +178,8 @@ namespace WallabyHop.Logic
                     lines.Add("G01 (" + Fmt(depX) + "," + Fmt(depY) + ",0,0,0,2)");
                 }
 
-                lines.Add("EP (0,_ANF,0)");
+                // EP repeats the pass count from SP field 5 (both machine files agree).
+                lines.Add("EP (" + nPasses + ",_ANF,0)");
                 gStart = gEnd + 1;
             }
         }

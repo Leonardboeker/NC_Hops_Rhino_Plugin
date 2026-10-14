@@ -42,9 +42,9 @@ namespace DynesticPostProcessor.Tests
         [Test]
         public void DrillLine_NoisyInputs()
         {
-            string line = NcDrill.DrillLine(Tiny, Noisy, Tiny, -19.0 + Tiny, 8.0);
+            string line = NcDrill.DrillLine(Tiny, Noisy, 8.0, 19.0 - Tiny);
             AssertNoScientificNotation(new[] { line });
-            Assert.That(line, Does.Contain("Bohrung (0,0.3,0,-19,8,"));
+            Assert.That(line, Does.Contain("Bohrung (0,0.3,8,-19,10,"));
         }
 
         [Test]

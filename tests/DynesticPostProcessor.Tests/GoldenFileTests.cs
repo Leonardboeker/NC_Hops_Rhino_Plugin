@@ -241,5 +241,37 @@ namespace DynesticPostProcessor.Tests
                 "bench_nested_sheet", 2440, 1220, 19, "7535D_250", null, ops);
             AssertMatchesGolden("bench_05_nested_sheet", content);
         }
+
+        // -------------------------------------------------------------
+        // 6. NESTED SHEET + HopNesting block wired after the last (WZB) cut.
+        //    The block must open the program as in the nesting machine files:
+        //    Fertigteil, Park_V7, HH_MarkLabel, BN_TrennerInnenAussen,
+        //    BN_NestKontur, then the first tool call.
+        // -------------------------------------------------------------
+        [Test]
+        public void Golden_06_NestedSheetWithNestingBlock()
+        {
+            var part = new List<string>();
+            part.AddRange(PocketLogic.GenerateRect(new PocketLogic.RectPocketInput
+            {
+                CenterX = 150, CenterY = 100, SurfaceZ = 19,
+                Width = 80, Height = 40, Depth = 5, ToolNr = 4,
+            }));
+            part.AddRange(DrillLogic.Generate(new DrillLogic.DrillInput
+            {
+                Points = new[] { new DrillLogic.Point2dz(50, 50, 19) },
+                Depth = 10, Diameter = 8, Stepdown = 0, ToolNr = 1,
+            }).Lines);
+            var placed = OpLineTransformer.Apply(part,
+                new OpLineTransformer.Placement { Tx = 10, Ty = 10 });
+            Assert.That(placed.Error, Is.Null);
+
+            var ops = new List<string>(placed.Lines);
+            ops.AddRange(NcExport.NestingBlock(2, 0, 0, 0, true));
+
+            string content = NcExport.AssembleFile(
+                "bench_nested_sheet_block", 2440, 1220, 19, "7535D_250", null, ops);
+            AssertMatchesGolden("bench_06_nested_sheet_block", content);
+        }
     }
 }

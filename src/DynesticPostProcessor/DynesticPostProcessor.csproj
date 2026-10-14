@@ -31,7 +31,9 @@
   </ItemGroup>
 
   <!-- Post-build: rename .dll to .gha and auto-install to GH Libraries -->
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+  <!-- SkipGhaInstall=true baut ohne den Kopierschritt: noetig, solange Rhino die
+       installierte .gha sperrt (dotnet test waehrend Rhino laeuft), und fuer CI. -->
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(SkipGhaInstall)' != 'true'">
     <Copy SourceFiles="$(TargetPath)"
           DestinationFiles="$(TargetDir)$(AssemblyName).gha" />
     <Copy SourceFiles="$(TargetDir)$(AssemblyName).gha"

@@ -67,8 +67,8 @@ namespace WallabyHop.Components.Operations
 
             // 3 -- kerf
             pManager.AddNumberParameter("SawKerf", "sawKerf",
-                "Saw blade kerf (cut width) in mm. Typical: 3.2 mm. Must be > 0.",
-                GH_ParamAccess.item, 3.2);
+                "Saw blade kerf (cut width) in mm. Must be > 0. Default 4.2 -- the blade actually fitted; measure before trusting it.",
+                GH_ParamAccess.item, 4.2);
             pManager[3].Optional = true;
 
             // 4 -- depth
@@ -133,7 +133,7 @@ namespace WallabyHop.Components.Operations
             List<Curve>  dirCurves   = new List<Curve>();
             List<double> bladeAngles = new List<double>();
             double length  = 0.0;
-            double sawKerf = 3.2;
+            double sawKerf = 4.2;
             double depth   = 19.0;
             int    side    = 0;
             double extend  = 0.0;

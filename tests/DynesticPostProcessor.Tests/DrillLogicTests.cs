@@ -41,7 +41,7 @@ namespace DynesticPostProcessor.Tests
             Assert.That(result.Lines, Is.EquivalentTo(new[]
             {
                 "WZB (3,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (100,200,19,4,8,0,0,0,0,0,0,0)",
+                "Bohrung (100,200,8,-15,10,0,0,0,0,0,0,0)",
             }));
         }
 
@@ -94,9 +94,9 @@ namespace DynesticPostProcessor.Tests
             Assert.That(result.Lines, Is.EquivalentTo(new[]
             {
                 "WZB (3,_VE,_V*1,_VA,_SD,0,'')",
-                "Bohrung (0,0,19,14,8,0,0,0,0,0,0,0)",
-                "Bohrung (0,0,19,9,8,0,0,0,0,0,0,0)",
-                "Bohrung (0,0,19,4,8,0,0,0,0,0,0,0)",
+                "Bohrung (0,0,8,-5,10,0,0,0,0,0,0,0)",
+                "Bohrung (0,0,8,-10,10,0,0,0,0,0,0,0)",
+                "Bohrung (0,0,8,-15,10,0,0,0,0,0,0,0)",
             }));
         }
 
@@ -135,8 +135,10 @@ namespace DynesticPostProcessor.Tests
                 new[] { new DrillLogic.Point2dz(0, 0, 0) },
                 depth: 5.0, diameter: 0.0);
             var result = DrillLogic.Generate(input);
-            // Verify the drill line carries diameter=8 (the default)
-            Assert.That(result.Lines[1], Does.Contain(",8,0,0,0,0,0,0,0)"));
+            // Diameter is the 3rd parameter now, immediately before the negative
+            // depth — checking the old trailing position would pass on the constant
+            // 10 in the 5th field and prove nothing.
+            Assert.That(result.Lines[1], Is.EqualTo("Bohrung (0,0,8,-5,10,0,0,0,0,0,0,0)"));
         }
     }
 }

@@ -30,7 +30,7 @@ namespace DynesticPostProcessor.Tests
             {
                 "WZF (4,_VE,_V*1,_VA,_SD,0,'')",
                 "CALL _nuten_frei_v5(VAL X1:=0,Y1:=0,X2:=100,Y2:=50," +
-                "NB:=8,Tiefe:=9,LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0," +
+                "NB:=8,Tiefe:=-10,LAGE:=0,RK:=0,SPEGA:=0,EPEGA:=0," +
                 "esmd:=0,esxy1:=0,esxy2:=0)",
             }));
         }
@@ -38,7 +38,9 @@ namespace DynesticPostProcessor.Tests
         [Test]
         public void FreeSlot_TopZIsHigherEndpoint()
         {
-            // P1Z=10, P2Z=19 → topZ=19 → cutZ = 19 - 10 = 9
+            // Machine-verified 2026-08-10: Tiefe is top-relative, negative.
+            // Drawing Z (10 vs 19 endpoints) must NOT leak into the depth --
+            // the old behaviour (topZ - depth = 9) cut nothing on the HolzHer.
             var input = new SlotLogic.FreeSlotInput
             {
                 P1X = 0, P1Y = 0, P1Z = 10,
@@ -46,7 +48,7 @@ namespace DynesticPostProcessor.Tests
                 SlotWidth = 8, Depth = 10, ToolNr = 4,
             };
             var lines = SlotLogic.GenerateFreeSlot(input);
-            Assert.That(lines[1], Does.Contain("Tiefe:=9"));
+            Assert.That(lines[1], Does.Contain("Tiefe:=-10"));
         }
 
         // -------------------------------------------------------------

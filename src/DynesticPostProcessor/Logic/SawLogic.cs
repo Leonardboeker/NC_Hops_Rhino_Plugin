@@ -136,7 +136,10 @@ namespace WallabyHop.Logic
                 double cutP2x = extend > 0.001 ? p2x + travelX * extend : p2x;
                 double cutP2y = extend > 0.001 ? p2y + travelY * extend : p2y;
 
-                double cutZ = oz - Math.Abs(depth);
+                // Machine-verified 2026-08-10: _nuten_frei Tiefe is top-relative,
+                // negative down -- emitted as 0 it cut NOTHING on the HolzHer.
+                // Drawing Z (oz) must not leak into the depth.
+                double cutZ = -Math.Abs(depth);
 
                 lines.Add(NcSaw.ToolCall(input.ToolNr));
                 lines.Add(NcSaw.FreeSlotLine(cutP1x, cutP1y, cutP2x, cutP2y, kerf, cutZ, bladeAngle));

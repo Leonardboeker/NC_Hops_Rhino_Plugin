@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "keys": {
+    "process": ["cnc", "print3d", "sheetmetal", "saw", "purchase"],
+    "material": ["mpx-birch", "mpx-beech", "mdf", "osb", "three-layer", "solid-oak", "solid-beech", "solid-ash", "hpl", "petg", "pla", "alu", "steel", "acrylic", "other"],
+    "finish": ["raw", "oiled", "lacquered"],
+    "status": ["open", "nested", "produced", "installed"]
+  },
+  "thickness_required_for": ["cnc", "saw", "sheetmetal"],
+  "thickness_stock": [1, 1.5, 2, 3, 4, 5, 6, 6.5, 8, 9, 10, 12, 15, 16, 18, 19, 21, 22, 25, 27, 30, 38, 40],
+  "layer_hints": {
+    "blech": {"process": "sheetmetal"},
+    "zuschnitt": {"process": "saw"},
+    "cnc": {"process": "cnc"},
+    "fraes": {"process": "cnc"},
+    "druck": {"process": "print3d"},
+    "print": {"process": "print3d"},
+    "kauf": {"process": "purchase"},
+    "beschlag": {"process": "purchase"}
+  }
+}
