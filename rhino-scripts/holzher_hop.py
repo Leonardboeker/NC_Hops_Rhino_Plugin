@@ -108,7 +108,7 @@ class HopWriter(object):
         """Aussenkontur 'Rechteck auf DX/DY' ueber das belegte Makro.
 
         Zeile WOERTLICH aus den Referenzen - 17 aktive Aufrufe exakt so,
-        z. B. leo-design/Sophia_Schwester/Seite_2000x400.hop, dort unter
+        z. B. eine lokale Referenzdatei (Seite 2000x400), dort unter
         aktivem WZF: TIEFE:=-0.2 + ESMD:=1 = Bezug Tisch, durchtrennen
         (alle 85 _Format_V5-Aufrufe im LEO-Korpus tragen ESMD:=1,
         MASCHINENABGLEICH). Das Makro traegt KEINE Koordinaten - es
@@ -214,7 +214,7 @@ class HopWriter(object):
 
         x1/y1 -> x2/y2 ist die MITTE der Nut, `tiefe` misst von OBEN und wird
         auch so geschrieben (negativ). Beleg ist der direkte Praezedenzfall
-        `Ploom/Gluecksrad/Rueckwand.hop`: gleiches Werkzeug (WZF 8), gleiche
+        eine lokale Referenzdatei (Rueckwand): gleiches Werkzeug (WZF 8), gleiche
         freie SP/G01/EP-Nutbahn, DZ 19, `SP (83,0,-10,0,0,_ANF,...,0,2,2,...)`
         - Tiefe von oben, Feld 11 = 0. Die Kombination Feld 11 = 0 mit
         POSITIVER Z kommt in 722 Korpuszeilen null mal vor (Audit 2026-08-29);

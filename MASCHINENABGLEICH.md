@@ -98,7 +98,7 @@ Schnitt einen Ritzgang erzwungen. Die Maschinendateien nutzen fast durchweg `0`.
 
 Die Beispielzeile unten (`…,10,0,0,2,0,…`) wurde lange als Vorlage kopiert —
 das Feld 8 (`2`) ist aber ein Bezugs-/Positionscode. Beleg
-`leo-design/Kumpel/Format_1.hop`: ein 6-Loch-Muster nutzt bei identischen
+eine lokale Referenzdatei (Format_1): ein 6-Loch-Muster nutzt bei identischen
 XY-Werten die Codes 1/7/5/3 (vier Ecken) und 2/6 (Mitte untere/obere Kante) —
 gleiche Koordinaten, verschiedene physische Positionen. Alle Referenzzeilen
 mit Code `2` haben X=0. Für ABSOLUTE Koordinaten gilt Code `0` (so schreibt
@@ -167,7 +167,7 @@ Frage 4 im Maschinenplan): weiter `1` schreiben — einmal belegt
 
 **Felder 11/12 sind NICHT durchgehend `1,2`:** 9 SP-Zeilen tragen Feld 11 = `0`
 (tiefe Nut-/Falzdurchgänge, `Linz_Steri_Raum/Arbeitsplatte*.hop` mit `z=-18`,
-`Ploom/Gluecksrad/Seite_1144x400.hop` mit `z=-10`), 1× Feld 12 = `1`
+eine lokale Referenzdatei (Seite 1144x400) mit `z=-10`), 1× Feld 12 = `1`
 (`Oben_Unten_HKV.hop`). Für Weltkoordinaten-Konturen wie aus dem Writer bleibt
 `…,1,2,…` die mit Abstand häufigste und sichere Form (117× bzw. 125×).
 
@@ -211,7 +211,7 @@ Auszahlung über alle 215 Dateien, nur Blöcke mit einheitlichem Marker:
 Negative Koordinaten sind bei absoluter Lesart auf einem Teil 0…DX unmöglich —
 42 von 43 Marker-10-Blöcken haben sie, kein einziger läuft aus dem Teil heraus,
 wenn man ihn als Wegstrecke liest. Die drei Marker-`0`-Blöcke mit negativen
-Werten sind kein Gegenbeleg: `Ploom/Duft Spender/Brett_Duft_Spender.hop` startet
+Werten sind kein Gegenbeleg: eine lokale Referenzdatei (Brett) startet
 dort bei `SP (109.63,-20)` und fährt nach `(109.63,90.5)` — ein Anfahren
 20 mm unterhalb der Kante, absolut gelesen völlig plausibel.
 
@@ -346,7 +346,7 @@ einen Fräser erfüllt es nicht. Deshalb schreibt der Writer die Nut jetzt als
   quer zur Nutmittellinie versetzt, dann die Mitte; `SP`-Z = **−Tiefe von der
   Oberkante** (also −8, nicht +11), Feld 11 = `0`, Feld 12 = `0`.
 - **Präzedenzfall für genau diesen Fall** (Audit 2026-08-29):
-  `leo-design/Ploom/Gluecksrad/Rueckwand.hop` Z. 104–107 fräst eine Nut mit
+  eine lokale Referenzdatei (Rueckwand) Z. 104–107 fräst eine Nut mit
   demselben Werkzeug (`WZF (8,…)`) als freie `SP`/`G01`/`EP`-Bahn auf einem
   19-mm-Teil: `SP (70+9.5+3.5,0,-10,0,0,_ANF,0,0,0,0,0,2,2,…)`. Tiefe von
   oben, Feld 11 = `0`. Die Kombination **Feld 11 = `0` mit positiver Z gibt es
